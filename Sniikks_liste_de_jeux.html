@@ -236,28 +236,59 @@
 
   /* ══════════════ RESPONSIVE ══════════════ */
   @media (max-width:760px) {
-    .page-header { padding:14px 18px; flex-direction:column; gap:10px; }
-    .menu-btn { position:static; transform:none; order:1; }
-    .header-io { position:static; transform:none; order:2; width:100%; justify-content:flex-end; }
-    .brand { order:0; }
-    .sticky-inner { padding:0 18px; }
-    .main-content { padding:20px 18px 70px; }
+    .page-header {
+      padding:10px 12px; flex-direction:row; flex-wrap:nowrap; align-items:center;
+      justify-content:space-between; gap:8px; border-bottom:none;
+    }
+    .menu-btn { position:static; transform:none; order:0; padding:7px 10px; font-size:11.5px; flex-shrink:0; }
+    .brand { order:1; flex:1; justify-content:center; min-width:0; gap:6px; }
+    .brand-icon { width:22px; height:22px; font-size:11px; flex-shrink:0; }
+    .brand h1 { font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .header-io { position:static; transform:none; order:2; width:auto; gap:5px; flex-shrink:0; }
+    .text-action-btn { padding:6px 9px; font-size:10.5px; }
+
+    .sticky-inner { padding:0 12px; }
+    .toolbar-row { padding:8px 0 4px; gap:6px; justify-content:flex-start; }
+
+    .status-pills { justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap; max-width:100%; padding-bottom:2px; scrollbar-width:none; }
+    .status-pills::-webkit-scrollbar { display:none; }
+    .status-pill { padding:6px 10px; font-size:11.5px; flex-shrink:0; }
+
+    .row2-right { justify-content:space-between; width:100%; gap:8px; }
+    .view-toggle button, .view-btn { width:28px; height:28px; font-size:12px; }
+    .add-btn-main { padding:7px 12px; font-size:11.5px; }
+
+    .stats-years { flex-direction:column; align-items:stretch; gap:6px; }
+    .inline-stats { justify-content:center; gap:16px; }
+    .top-stat-num { font-size:14px; }
+    .top-stat-label { font-size:9px; }
+    .year-filters, .platform-row {
+      justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap; padding-bottom:4px; scrollbar-width:none;
+    }
+    .year-filters::-webkit-scrollbar, .platform-row::-webkit-scrollbar { display:none; }
+    .year-pill, .filter-btn { flex-shrink:0; padding:5px 10px; font-size:11px; }
+
+    .search-wrap, .search-box { width:100%; }
+    .search-box { padding:7px 12px 7px 30px; font-size:12.5px; }
+
+    .main-content { padding:16px 12px 60px; }
     .card-grid { grid-template-columns:repeat(auto-fill,minmax(102px,1fr)); gap:9px; }
     .main-content.compact .card-grid { grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); gap:6px; }
-    .toolbar-row { justify-content:flex-start; }
-    .status-pills { overflow-x:auto; flex-wrap:nowrap; max-width:100%; padding-bottom:2px; scrollbar-width:none; }
-    .status-pills::-webkit-scrollbar { display:none; }
-    .stats-years { flex-direction:column; align-items:stretch; gap:10px; }
-    .year-filters, .platform-row { justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap; padding-bottom:6px; scrollbar-width:none; }
-    .year-filters::-webkit-scrollbar, .platform-row::-webkit-scrollbar { display:none; }
-    .row2-right { justify-content:space-between; width:100%; }
-    .search-wrap, .search-box { width:100%; }
+    .year-heading { padding-bottom:8px; margin-bottom:14px; }
+    .yh-year { font-size:15px; }
+  }
+  @media (max-width:420px) {
+    .brand h1 { display:none; }
+    .text-action-btn { padding:6px 7px; font-size:0; }
+    .text-action-btn::before { font-size:12px; }
+    #exportBtn::before { content:'⇩'; }
+    #importBtn::before { content:'⇧'; }
   }
   @media (max-width:480px) {
     .overlay, .info-overlay { align-items:flex-end; padding:0; }
     .modal, .info-modal { width:100%; max-width:100%; border-radius:18px 18px 0 0; }
     .form-grid { grid-template-columns:1fr; }
-    .add-btn-main { width:100%; text-align:center; }
+    .add-btn-main { width:auto; }
     .info-img-wrap, .info-no-img { aspect-ratio:16/9; }
   }
   @media (prefers-reduced-motion: reduce) {
