@@ -71,9 +71,9 @@
   .search-box::placeholder { color:var(--text-faint); }
 
   .status-pills { display:flex; align-items:center; justify-content:center; gap:4px; flex-wrap:wrap; }
-  .status-pill { background:transparent; border:1px solid transparent; color:var(--text-dim); padding:7px 13px; font-family:'Manrope',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; border-radius:var(--radius); white-space:nowrap; transition:all .15s; }
+  .status-pill { background:transparent; border:1px solid var(--border); color:var(--text-dim); padding:7px 13px; font-family:'Manrope',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; border-radius:var(--radius); white-space:nowrap; transition:all .15s; }
   .status-pill:hover { color:var(--text); background:var(--bg3); }
-  .status-pill.active { color:#0a0a0c; background:var(--gold); }
+  .status-pill.active { color:#0a0a0c; background:var(--gold); border-color:var(--gold); }
   .status-pill .sp-count { font-size:10.5px; opacity:.75; margin-left:3px; }
 
   .row2-right { display:flex; align-items:center; gap:10px; flex-wrap:nowrap; justify-content:flex-end; }
@@ -251,8 +251,8 @@
     .toolbar-row { padding:8px 0 4px; gap:6px; justify-content:flex-start; }
 
     .status-pills { justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap; max-width:100%; padding-bottom:2px; scrollbar-width:none;
-      -webkit-mask-image:linear-gradient(to right, transparent 0, black 18px, black calc(100% - 18px), transparent 100%);
-      mask-image:linear-gradient(to right, transparent 0, black 18px, black calc(100% - 18px), transparent 100%); }
+      -webkit-mask-image:linear-gradient(to right, black 0, black calc(100% - 18px), transparent 100%);
+      mask-image:linear-gradient(to right, black 0, black calc(100% - 18px), transparent 100%); }
     .status-pills::-webkit-scrollbar { display:none; }
     .status-pill { padding:6px 10px; font-size:11.5px; flex-shrink:0; }
 
@@ -266,8 +266,8 @@
     .top-stat-label { font-size:9px; }
     .year-filters, .platform-row {
       justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap; padding-bottom:4px; scrollbar-width:none;
-      -webkit-mask-image:linear-gradient(to right, transparent 0, black 18px, black calc(100% - 18px), transparent 100%);
-      mask-image:linear-gradient(to right, transparent 0, black 18px, black calc(100% - 18px), transparent 100%);
+      -webkit-mask-image:linear-gradient(to right, black 0, black calc(100% - 18px), transparent 100%);
+      mask-image:linear-gradient(to right, black 0, black calc(100% - 18px), transparent 100%);
     }
     .year-filters::-webkit-scrollbar, .platform-row::-webkit-scrollbar { display:none; }
     .year-pill, .filter-btn { flex-shrink:0; padding:5px 10px; font-size:11px; }
