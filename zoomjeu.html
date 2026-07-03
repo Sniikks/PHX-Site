@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZoomJeu - PHX</title>
+<link rel="shortcut icon" href="https://cdn.discordapp.com/icons/1030553621252821053/2e7356a5d822245ad7953afdb143581a.webp?size=160&quality=lossless">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap');
+
+  :root {
+    --bg:#0a0a0c; --bg2:#111114; --bg3:#161619;
+    --gold:#e8b84b; --gold2:#c49a30; --gold-dim:#9c7d33;
+    --text:#ededf0; --text2:#8c8c94;
+    --border:#232327;
+    --good:#5fbf86; --bad:#e2685f;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 50% -200px, rgba(232,184,75,.08), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Manrope',sans-serif;
+    min-height:100vh;
+    display:flex; flex-direction:column; align-items:center;
+    padding:1.6rem 1.2rem 3rem;
+  }
+
+  a.back {
+    align-self:flex-start;
+    color:var(--text2);
+    text-decoration:none;
+    font-size:12px;
+    letter-spacing:.05em;
+    margin-bottom:1rem;
+  }
+  a.back:hover { color:var(--gold); }
+
+  .title {
+    font-family:'Sora',sans-serif;
+    font-size:clamp(1.3rem,4vw,1.9rem);
+    font-weight:700;
+    letter-spacing:.1em;
+    color:var(--gold);
+    text-transform:uppercase;
+  }
+  .subtitle { color:var(--text2); font-size:12.5px; margin-top:.35rem; margin-bottom:1.5rem; letter-spacing:.03em; text-align:center; }
+
+  .card {
+    width:100%; max-width:560px;
+    background:var(--bg2);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:1.3rem;
+  }
+
+  .zoom-frame {
+    width:100%;
+    aspect-ratio:16/9;
+    border-radius:14px;
+    overflow:hidden;
+    background-color:#000;
+    background-repeat:no-repeat;
+    position:relative;
+    border:1px solid var(--border);
+    transition:background-size .5s cubic-bezier(.2,.8,.2,1), background-position .5s cubic-bezier(.2,.8,.2,1);
+  }
+  .zoom-frame.reveal { background-size: 100% !important; }
+
+  .attempts-row {
+    display:flex; justify-content:center; gap:.4rem;
+    margin:1rem 0 .3rem;
+  }
+  .attempt-dot {
+    width:30px; height:30px; border-radius:9px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Sora',sans-serif; font-size:.75rem; font-weight:600;
+    background:var(--bg3); border:1px solid var(--border); color:var(--text2);
+  }
+  .attempt-dot.wrong { background:rgba(226,104,95,.15); border-color:var(--bad); color:var(--bad); }
+  .attempt-dot.correct { background:rgba(95,191,134,.15); border-color:var(--good); color:var(--good); }
+  .attempt-dot.pending { color:var(--gold-dim); }
+
+  .guess-list { margin:.6rem 0 0; display:flex; flex-direction:column; gap:.4rem; }
+  .guess-item {
+    font-size:.82rem; padding:.5rem .7rem; border-radius:9px;
+    background:var(--bg3); border:1px solid var(--border); color:var(--text2);
+  }
+  .guess-item.wrong { color:var(--bad); border-color:rgba(226,104,95,.3); }
+
+  form.guess-form { display:flex; gap:.5rem; margin-top:1rem; }
+  input#guessInput {
+    flex:1; background:var(--bg3); border:1px solid var(--border); color:var(--text);
+    border-radius:10px; padding:.75rem .9rem; font-family:'Manrope',sans-serif; font-size:.9rem;
+    outline:none;
+  }
+  input#guessInput:focus { border-color:var(--gold-dim); }
+  button {
+    font-family:'Sora',sans-serif; font-weight:600; font-size:.8rem; letter-spacing:.04em;
+    border-radius:10px; border:1px solid var(--gold-dim); background:transparent; color:var(--gold);
+    padding:.75rem 1.1rem; cursor:pointer; transition:background .2s ease, color .2s ease;
+  }
+  button:hover:not(:disabled) { background:var(--gold); color:#151510; }
+  button:disabled { opacity:.35; cursor:default; }
+  button.ghost { border-color:var(--border); color:var(--text2); }
+  button.ghost:hover:not(:disabled) { background:var(--bg3); color:var(--text); }
+
+  .actions-row { display:flex; justify-content:space-between; gap:.6rem; margin-top:.7rem; }
+
+  .result-box {
+    margin-top:1.1rem; padding:1rem; border-radius:12px;
+    background:var(--bg3); border:1px solid var(--border);
+    text-align:center;
+  }
+  .result-box .answer {
+    font-family:'Sora',sans-serif; font-weight:700; font-size:1.05rem; color:var(--gold); margin-bottom:.3rem;
+  }
+  .result-box .verdict { font-size:.85rem; color:var(--text2); margin-bottom:.8rem; }
+  .result-box.win .verdict { color:var(--good); }
+  .result-box.lose .verdict { color:var(--bad); }
+
+  .share-grid { font-size:1.1rem; letter-spacing:.15em; margin-bottom:.7rem; }
+
+  .leaderboard {
+    display:flex; gap:.6rem; margin-top:.6rem;
+  }
+  .lb-card {
+    flex:1; background:var(--bg2); border:1px solid var(--border); border-radius:10px;
+    padding:.6rem; text-align:center;
+  }
+  .lb-card .lb-name { font-family:'Sora',sans-serif; font-size:.75rem; color:var(--gold); letter-spacing:.05em; }
+  .lb-card .lb-val { font-size:.78rem; color:var(--text2); margin-top:.25rem; }
+  .lb-card .lb-val.win { color:var(--good); }
+  .lb-card .lb-val.lose { color:var(--bad); }
+
+  .player-select {
+    margin-top:1.2rem; text-align:center; font-size:11.5px; color:var(--text2);
+  }
+  .player-btns { display:flex; justify-content:center; gap:.5rem; margin-top:.5rem; }
+  .player-btn {
+    font-family:'Sora',sans-serif; font-size:.72rem; padding:.4rem .9rem; border-radius:20px;
+    border:1px solid var(--border); color:var(--text2); background:var(--bg3); cursor:pointer;
+  }
+  .player-btn.active { border-color:var(--gold); color:var(--gold); }
+
+  .state-msg { color:var(--text2); font-size:.85rem; text-align:center; margin-top:2rem; }
+
+  footer { margin-top:2rem; font-size:11px; color:var(--gold-dim); letter-spacing:.1em; }
+  #dbStatus.db-ok { color:#5fbf86; }
+  #dbStatus.db-error { color:#e2685f; }
+
+  @media (max-width:640px) {
+    body { padding:1.2rem .8rem 2.4rem; }
+    .card { padding:1rem; }
+  }
+</style>
+</head>
+<body>
+
+  <a class="back" href="index.html">← Retour</a>
+  <div class="title">ZoomJeu</div>
+  <div class="subtitle" id="subtitleEl">Devine le jeu à partir d'un screenshot zoomé.</div>
+
+  <div class="card" id="cardEl">
+    <div class="state-msg" id="loadingMsg">Chargement du puzzle du jour…</div>
+  </div>
+
+  <div class="player-select">
+    Tu joues en tant que
+    <div class="player-btns">
+      <button class="player-btn" data-player="369" id="btn369">369</button>
+      <button class="player-btn" data-player="Sniikks" id="btnSniikks">Sniikks</button>
+    </div>
+  </div>
+
+  <footer>PHX © 2026 <span id="dbStatus" style="margin-left:.6rem;"></span></footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="db.js"></script>
+  <script>
+  // ==========================================================
+  // ZoomJeu — logique client
+  // ==========================================================
+
+  const MAX_ATTEMPTS = 5;
+  const ZOOM_LEVELS = [650, 400, 250, 150, 100]; // % background-size, attempt 1 -> 5
+  const LAUNCH_DATE = '2026-07-06';
+
+  // ── Utils de comparaison texte (identiques au bot Discord "369") ──
+  function normalize(str) {
+    return str
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[™®©]/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  function levenshtein(a, b) {
+    const m = a.length, n = b.length;
+    if (m === 0) return n;
+    if (n === 0) return m;
+    const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+    return dp[m][n];
+  }
+  function getVariants(name) {
+    const cleanName = name.replace(/\s*\(\d{4}\)\s*$/, '');
+    const base = normalize(cleanName);
+    const parts = cleanName.split(/[:\-]/).map(p => normalize(p)).filter(p => p.length >= 3);
+    return [...new Set([base, ...parts])];
+  }
+  function tokensMatch(a, b) {
+    if (a === b) return true;
+    if (/\d/.test(a) || /\d/.test(b)) return false;
+    if (a.length <= 3 || b.length <= 3) return false;
+    const maxLen = Math.max(a.length, b.length);
+    const threshold = maxLen <= 6 ? 1 : 2;
+    return levenshtein(a, b) <= threshold;
+  }
+  function tokenWindowMatch(guessTokens, targetTokens) {
+    const gLen = guessTokens.length;
+    if (gLen === 0 || gLen > targetTokens.length) return false;
+    for (let start = 0; start + gLen <= targetTokens.length; start++) {
+      let ok = true;
+      for (let k = 0; k < gLen; k++) {
+        if (!tokensMatch(guessTokens[k], targetTokens[start + k])) { ok = false; break; }
+      }
+      if (ok) return true;
+    }
+    return false;
+  }
+  function isCorrectGuess(guessRaw, gameName) {
+    const guess = normalize(guessRaw);
+    if (guess.length < 2) return false;
+    const guessTokens = guess.split(' ').filter(Boolean);
+    for (const variant of getVariants(gameName)) {
+      if (guess === variant) return true;
+      const variantTokens = variant.split(' ').filter(Boolean);
+      if (tokenWindowMatch(guessTokens, variantTokens)) return true;
+    }
+    return false;
+  }
+
+  // ── Dates ──
+  function parisDateString(offset = 0) {
+    const now = new Date(Date.now() + offset * 86400000);
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+    const get = t => parts.find(p => p.type === t).value;
+    return `${get('year')}-${get('month')}-${get('day')}`;
+  }
+  function puzzleNumber(dateStr) {
+    const d1 = new Date(`${LAUNCH_DATE}T00:00:00Z`);
+    const d2 = new Date(`${dateStr}T00:00:00Z`);
+    return Math.max(1, Math.round((d2 - d1) / 86400000) + 1);
+  }
+
+  // ── État local ──
+  const todayStr = parisDateString();
+  const stateKey = 'zoomjeu_state_' + todayStr;
+  let puzzle = null;
+  let state = loadState();
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(stateKey);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return { guesses: [], solved: false, gaveUp: false };
+  }
+  function saveState() {
+    localStorage.setItem(stateKey, JSON.stringify(state));
+  }
+
+  // ── Joueur ──
+  let currentPlayer = localStorage.getItem('zoomjeu_player') || null;
+  function setPlayerUI() {
+    document.getElementById('btn369').classList.toggle('active', currentPlayer === '369');
+    document.getElementById('btnSniikks').classList.toggle('active', currentPlayer === 'Sniikks');
+  }
+  document.getElementById('btn369').addEventListener('click', () => { currentPlayer = '369'; localStorage.setItem('zoomjeu_player', '369'); setPlayerUI(); });
+  document.getElementById('btnSniikks').addEventListener('click', () => { currentPlayer = 'Sniikks'; localStorage.setItem('zoomjeu_player', 'Sniikks'); setPlayerUI(); });
+  setPlayerUI();
+
+  // ── Chargement du puzzle depuis Supabase ──
+  async function loadPuzzle() {
+    const { data, error } = await supabaseClient.from('app_data').select('data').eq('id', 'zoomjeu_' + todayStr).maybeSingle();
+    const el = document.getElementById('dbStatus');
+    if (error) {
+      el.textContent = '● Base de données non configurée'; el.classList.add('db-error');
+    } else {
+      el.textContent = '● Connecté à Supabase'; el.classList.add('db-ok');
+    }
+    if (!data) {
+      renderMissing();
+      return;
+    }
+    puzzle = data.data;
+    document.getElementById('subtitleEl').textContent = `ZoomJeu #${puzzle.number} — ${todayStr}`;
+    render();
+    loadLeaderboard();
+  }
+
+  function renderMissing() {
+    document.getElementById('cardEl').innerHTML = `
+      <div class="state-msg">
+        Le puzzle du jour n'est pas encore prêt.<br>Reviens un peu plus tard 🙂
+      </div>`;
+  }
+
+  // ── Rendu ──
+  function currentZoomIndex() {
+    return Math.min(state.guesses.length, MAX_ATTEMPTS - 1);
+  }
+
+  function render() {
+    const finished = state.solved || state.gaveUp || state.guesses.length >= MAX_ATTEMPTS;
+    const zoomPct = finished ? 100 : ZOOM_LEVELS[currentZoomIndex()];
+
+    let attemptsHtml = '<div class="attempts-row">';
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      let cls = 'pending', label = i + 1;
+      if (i < state.guesses.length) {
+        cls = state.guesses[i].correct ? 'correct' : 'wrong';
+        label = state.guesses[i].correct ? '✓' : '✕';
+      }
+      attemptsHtml += `<div class="attempt-dot ${cls}">${label}</div>`;
+    }
+    attemptsHtml += '</div>';
+
+    let guessListHtml = '<div class="guess-list">';
+    state.guesses.forEach(g => {
+      guessListHtml += `<div class="guess-item ${g.correct ? '' : 'wrong'}">${g.correct ? '✓' : '✕'} ${escapeHtml(g.text)}</div>`;
+    });
+    guessListHtml += '</div>';
+
+    let bottomHtml = '';
+    if (finished) {
+      const success = state.solved;
+      bottomHtml = `
+        <div class="result-box ${success ? 'win' : 'lose'}">
+          <div class="answer">${escapeHtml(puzzle.answer)}</div>
+          <div class="verdict">${success ? `Trouvé en ${state.guesses.filter(g=>true).length} essai${state.guesses.length>1?'s':''} 🎉` : 'Perdu — bien joué quand même'}</div>
+          <div class="share-grid">${shareEmojis()}</div>
+          <button id="shareBtn">Partager le résultat</button>
+        </div>
+        <div class="leaderboard" id="leaderboardEl"></div>
+      `;
+    } else {
+      bottomHtml = `
+        <form class="guess-form" id="guessForm" autocomplete="off">
+          <input id="guessInput" type="text" placeholder="Nom du jeu…" />
+          <button type="submit">Valider</button>
+        </form>
+        <div class="actions-row">
+          <button type="button" class="ghost" id="giveUpBtn">Abandonner</button>
+          <span></span>
+        </div>
+      `;
+    }
+
+    document.getElementById('cardEl').innerHTML = `
+      <div class="zoom-frame ${finished ? 'reveal' : ''}" id="zoomFrame" style="background-image:url('${puzzle.image}'); background-size:${zoomPct}%; background-position:${puzzle.focus.x}% ${puzzle.focus.y}%;"></div>
+      ${attemptsHtml}
+      ${guessListHtml}
+      ${bottomHtml}
+    `;
+
+    if (!finished) {
+      document.getElementById('guessForm').addEventListener('submit', onGuessSubmit);
+      document.getElementById('giveUpBtn').addEventListener('click', onGiveUp);
+      document.getElementById('guessInput').focus();
+    } else {
+      document.getElementById('shareBtn').addEventListener('click', onShare);
+      loadLeaderboard();
+    }
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function onGuessSubmit(e) {
+    e.preventDefault();
+    const input = document.getElementById('guessInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    const correct = isCorrectGuess(text, puzzle.answer);
+    state.guesses.push({ text, correct });
+    if (correct) state.solved = true;
+    saveState();
+
+    if (correct || state.guesses.length >= MAX_ATTEMPTS) {
+      submitResult();
+    }
+    render();
+  }
+
+  function onGiveUp() {
+    state.gaveUp = true;
+    saveState();
+    submitResult();
+    render();
+  }
+
+  function shareEmojis() {
+    let out = '';
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      if (i < state.guesses.length) {
+        out += state.guesses[i].correct ? '🟩' : '🟥';
+      } else {
+        out += '⬛';
+      }
+    }
+    return out;
+  }
+
+  function onShare() {
+    const url = location.origin + location.pathname;
+    const text = `ZoomJeu #${puzzle.number} — ${state.solved ? state.guesses.length + '/5' : 'X/5'}\n${shareEmojis()}\n${url}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('shareBtn');
+        if (btn) { const old = btn.textContent; btn.textContent = 'Copié ✓'; setTimeout(() => btn.textContent = old, 1500); }
+      }).catch(() => alert(text));
+    } else {
+      alert(text);
+    }
+  }
+
+  // ── Classement partagé (369 vs Sniikks) via Supabase ──
+  async function submitResult() {
+    if (!currentPlayer) return; // pas de joueur sélectionné, pas de sauvegarde partagée
+    const resultsId = 'zoomjeu_results_' + todayStr;
+    try {
+      const { data } = await supabaseClient.from('app_data').select('data').eq('id', resultsId).maybeSingle();
+      const current = data?.data || {};
+      current[currentPlayer] = {
+        tries: state.guesses.length,
+        success: !!state.solved,
+        gaveUp: !!state.gaveUp
+      };
+      await supabaseClient.from('app_data').upsert({ id: resultsId, data: current, updated_at: new Date().toISOString() });
+    } catch (e) {
+      console.error('Erreur sauvegarde résultat ZoomJeu:', e);
+    }
+  }
+
+  async function loadLeaderboard() {
+    const el = document.getElementById('leaderboardEl');
+    if (!el) return;
+    try {
+      const { data } = await supabaseClient.from('app_data').select('data').eq('id', 'zoomjeu_results_' + todayStr).maybeSingle();
+      const results = data?.data || {};
+      const names = ['369', 'Sniikks'];
+      el.innerHTML = names.map(n => {
+        const r = results[n];
+        let val = 'Pas encore joué';
+        let cls = '';
+        if (r) {
+          if (r.success) { val = `${r.tries}/5 ✅`; cls = 'win'; }
+          else { val = 'Perdu ❌'; cls = 'lose'; }
+        }
+        return `<div class="lb-card"><div class="lb-name">${n}</div><div class="lb-val ${cls}">${val}</div></div>`;
+      }).join('');
+    } catch (e) {
+      console.error('Erreur chargement classement ZoomJeu:', e);
+    }
+  }
+
+  loadPuzzle();
+  </script>
+</body>
+</html>
