@@ -3,18 +3,19 @@
 // Génère automatiquement le puzzle "ZoomJeu" du jour et le stocke
 // dans Supabase (table app_data, clé "zoomjeu_YYYY-MM-DD").
 //
+// Une seule ligne par jour : les infos du puzzle (jeu, image, zoom)
+// ET la session de jeu partagée (essais) sont fusionnées dans le
+// même objet JSON, sous "session".
+//
 // Déclenché chaque jour par Vercel Cron (voir vercel.json).
 // Peut aussi être déclenché manuellement : /api/generate-daily?key=TON_ADMIN_KEY
-//
-// Réutilise la logique de sélection de jeux du bot Discord 369
-// (SteamSpy + Steam Store pour les gros jeux, RAWG pour les jeux
-// consoles/rétro), adaptée pour ne piocher qu'UN SEUL jeu par jour.
+// Ajoute &force=true pour régénérer même si un puzzle existe déjà pour le jour.
 // ==========================================================
 
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY; // la clé anon suffit, les policies app_data sont déjà publiques
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
 const RAWG_API_KEY = (process.env.RAWG_API_KEY || '').trim().replace(/^["']|["']$/g, '') || null;
 const CRON_SECRET = process.env.CRON_SECRET || null;
 const ADMIN_KEY = process.env.ADMIN_KEY || null;
@@ -25,8 +26,6 @@ const STEAMSPY_BASE = 'https://steamspy.com/api.php';
 const STEAM_STORE_BASE = 'https://store.steampowered.com/api/appdetails';
 const RAWG_BASE = 'https://api.rawg.io/api';
 
-// Premier jour de puzzle — sert à calculer le numéro "ZoomJeu #N".
-// Adapte cette date à ton vrai jour de lancement.
 const LAUNCH_DATE = '2026-07-06';
 
 const RAWG_PLATFORM_GROUPS = {
@@ -55,7 +54,7 @@ const STEAMSPY_GENRES = [
 
 const MIN_OWNERS = 20000;
 
-// ───────────────────────── Utils texte (identiques au bot) ─────────────────────────
+// ───────────────────────── Utils texte ─────────────────────────
 
 const NON_LATIN_SCRIPT_REGEX = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\uAC00-\uD7AF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\u0590-\u05FF\u0E00-\u0E7F\u0400-\u04FF]/;
 
@@ -237,7 +236,6 @@ async function fetchRawgDetails(rawgId) {
 // ───────────────────────── Sélection du jeu du jour ─────────────────────────
 
 async function pickDailyGame(usedIds, usedNames) {
-    // 65% gros jeux Steam connus, 35% rétro/console (RAWG si dispo, sinon Steam profond)
     const mode = Math.random() < 0.65 ? 'big' : 'retro';
 
     let pool = mode === 'big'
@@ -246,7 +244,6 @@ async function pickDailyGame(usedIds, usedNames) {
 
     if (!pool || pool.length === 0) pool = await fetchSteamBigPool();
 
-    // shuffle
     for (let i = pool.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -284,7 +281,6 @@ async function pickDailyGame(usedIds, usedNames) {
 
 function getParisDateString(offsetDays = 0) {
     const now = new Date(Date.now() + offsetDays * 86400000);
-    // Formatte en date "civile" Europe/Paris (indépendant du fuseau du serveur Vercel)
     const parts = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit'
     }).formatToParts(now);
@@ -314,8 +310,11 @@ export default async function handler(req, res) {
         const dateStr = getParisDateString(dayOffset);
         const puzzleId = `zoomjeu_${dateStr}`;
 
-        const { data: existing } = await supabase.from('app_data').select('id').eq('id', puzzleId).maybeSingle();
-        if (existing && !req.query.force) {
+        const { data: existing } = await supabase.from('app_data').select('data').eq('id', puzzleId).maybeSingle();
+        // On considère qu'un puzzle valide existe déjà seulement s'il a un jeu et une image.
+        // Une ligne vidée manuellement ({}) est donc traitée comme "à générer", sans besoin de &force=true.
+        const hasValidPuzzle = !!(existing?.data && existing.data.answer && existing.data.image);
+        if (hasValidPuzzle && !req.query.force) {
             return res.status(200).json({ ok: true, skipped: true, message: 'Puzzle déjà généré pour ' + dateStr });
         }
 
@@ -330,6 +329,7 @@ export default async function handler(req, res) {
 
         const focus = { x: Math.round(20 + Math.random() * 60), y: Math.round(20 + Math.random() * 60) };
 
+        // Une seule ligne par jour : infos du puzzle + session de jeu partagée fusionnées.
         const puzzle = {
             date: dateStr,
             number: puzzleNumber(dateStr),
@@ -339,7 +339,8 @@ export default async function handler(req, res) {
             released: game.released,
             source: game.source,
             refId: game.id,
-            focus
+            focus,
+            session: { guesses: [], solved: false, gaveUp: false }
         };
 
         await supabase.from('app_data').upsert({ id: puzzleId, data: puzzle, updated_at: new Date().toISOString() });
