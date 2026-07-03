@@ -98,6 +98,21 @@
     z-index:1;
   }
 
+  @media (max-width:640px) {
+    body { padding:1.4rem .9rem; }
+    .subtitle { margin-bottom:1.6rem; }
+    .grid {
+      grid-template-columns:repeat(2, 1fr);
+      gap:.7rem;
+      max-width:480px;
+    }
+    .tile { aspect-ratio:1/1; border-radius:14px; gap:.55rem; }
+    .tile-icon { font-size:1.9rem; }
+    .tile-icon svg { width:38px; height:38px; }
+    .tile-label { font-size:.72rem; }
+    .tile-soon { bottom:.5rem; font-size:8px; }
+  }
+
   footer {
     margin-top:1rem;
     font-size:11px;
