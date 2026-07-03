@@ -220,6 +220,10 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
   .info-overlay{align-items:flex-end;}
   .info-modal{width:100%;max-width:100%;border-radius:16px 16px 0 0;}
 }
+
+.menu-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);border-radius:10px;color:#e5e5e5;font-family:'Manrope',sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.02em;text-decoration:none;cursor:pointer;transition:all .15s ease;white-space:nowrap;}
+.menu-btn:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.24);color:#fff;}
+
 </style>
 </head>
 <body>
@@ -229,6 +233,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 <div class="sh-inner">
   <div class="sh-title">
     <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <a href="index.html" class="menu-btn">← Menu</a>
       <div class="logo">// <span>GAME</span>TRACKER</div>
       <div class="tabs">
         <button class="tab-btn" id="tabBtn1" onclick="switchTab('tab1',this)">Jeux à faire</button>
@@ -252,7 +257,6 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
   <div class="sh-row" id="filterRow2">
     <input type="text" id="searchInput2" class="sh-search" placeholder="Rechercher une proposition...">
     <button class="filter-btn active" data-filter2="Tous">Tous</button>
-    <button class="filter-btn" data-filter2="Oui-Oui">✅ Les deux</button>
     <button class="filter-btn" data-filter2="369">369 Oui</button>
     <button class="filter-btn" data-filter2="Sniikks">Sniikks Oui</button>
     <button class="btn-add-main" onclick="openModal2()">+ Ajouter</button>
@@ -385,10 +389,12 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 
 <div id="toastContainer"></div>
 
+<script src="config.js"></script>
 <script>
 // ── CONFIG SUPABASE ──────────────────────────────────────────────────────────
-const SUPA_URL='https://hqumvrsvlhjitgahqila.supabase.co';
-const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxdW12cnN2bGhqaXRnYWhxaWxhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNzU1MzQsImV4cCI6MjA5ODY1MTUzNH0.0kiEH0-hMf2zfuncHsJqUHvCNWk7a16-s1Ql98wIM8Y';
+// Clé et URL centralisées dans config.js, plus de doublon en dur ici.
+const SUPA_URL=SUPABASE_URL;
+const SUPA_KEY=SUPABASE_ANON_KEY;
 const H={'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Prefer':'return=representation'};
 
 // ── API ──────────────────────────────────────────────────────────────────────
@@ -421,43 +427,6 @@ function connectRealtime(){
 function setStatus(ok){
   const d=document.getElementById('dot');
   if(d)d.className='dot'+(ok?'':' connecting');
-}
-
-// ── SEED ─────────────────────────────────────────────────────────────────────
-const SEED1=[
-  {ordre:'',jeu:'Metro Exodus',statut:'',lien:'https://store.steampowered.com/app/412020/',note_num:null,note:'',date_sortie:'🟢'},
-  {ordre:'',jeu:'Deus Ex Human Revolution',statut:'',lien:'https://store.steampowered.com/app/238010/',note_num:null,note:'',date_sortie:'🟢'},
-  {ordre:'',jeu:'Deus Ex Mankind Divided',statut:'',lien:'https://store.steampowered.com/app/337000/',note_num:null,note:'',date_sortie:'🟢'},
-  {ordre:'',jeu:'Ratchet & Clank Rift Apart',statut:'',lien:'https://store.steampowered.com/app/1895880/',note_num:null,note:'',date_sortie:'🟢'},
-  {ordre:'',jeu:'Ghost of Tsushima',statut:'',lien:'https://store.steampowered.com/app/2215430/',note_num:null,note:'',date_sortie:'🟢'},
-  {ordre:'',jeu:'Vampyr',statut:'',lien:'https://store.steampowered.com/app/427290/',note_num:null,note:'',date_sortie:'🟢'},
-  {ordre:'',jeu:"Dragon's Dogma 2",statut:'',lien:'https://store.steampowered.com/app/2054970/',note_num:null,note:'',date_sortie:'🟢'},
-  {ordre:'',jeu:'Divinity Original Sin',statut:'',lien:'https://store.steampowered.com/app/373420/',note_num:null,note:'',date_sortie:'🟢'},
-  {ordre:'',jeu:'Divinity Original Sin 2',statut:'',lien:'https://store.steampowered.com/app/435150/',note_num:null,note:'',date_sortie:'🟢'},
-  {ordre:'',jeu:'Final Fantasy VII Rebirth',statut:'',lien:'https://store.steampowered.com/app/2909400/',note_num:null,note:'',date_sortie:'🟢'},
-  {ordre:'',jeu:'Final Fantasy VII Remake',statut:'',lien:'https://store.steampowered.com/app/1462040/',note_num:null,note:'',date_sortie:'🟢'},
-  {ordre:'',jeu:'Mafia The Old Country',statut:'Attente/Bug',lien:'',note_num:null,note:'',date_sortie:'SORTIE'},
-  {ordre:'',jeu:'Dying Light',statut:'Attente/Bug',lien:'https://store.steampowered.com/app/239140/',note_num:null,note:'',date_sortie:'🟢'},
-  {ordre:'',jeu:'Resident Evil 6',statut:'',lien:'https://store.steampowered.com/app/221040/',note_num:null,note:'',date_sortie:'🟢'},
-  {ordre:'',jeu:'Onimusha: Warlords',statut:'',lien:'https://store.steampowered.com/app/779190/',note_num:null,note:'',date_sortie:'🟢'},
-];
-const SEED2=[
-  {jeu:'Mars War Logs',v369:'',sniikks:'',lien:'https://store.steampowered.com/app/232750/Mars_War_Logs/',note:'',date_sortie:'🟢'},
-  {jeu:'XIII',v369:'Oui',sniikks:'Oui',lien:'https://www.gog.com/fr/game/xiii',note:"L'ancienne version (mieux et beaucoup + opti)",date_sortie:'🟢'},
-  {jeu:'Wolfenstein The New Order',v369:'',sniikks:'',lien:'https://store.steampowered.com/app/201810/',note:'',date_sortie:'🟢'},
-  {jeu:'Remember Me',v369:'',sniikks:'Oui',lien:'https://store.steampowered.com/app/228300/',note:'',date_sortie:'🟢'},
-  {jeu:'Ground Zero',v369:'Oui',sniikks:'Oui',lien:'https://store.steampowered.com/app/2340130/',note:'',date_sortie:'🟢'},
-  {jeu:'007 First Light',v369:'Oui',sniikks:'Oui',lien:'https://store.steampowered.com/app/3768760/',note:'',date_sortie:'SORTIE'},
-  {jeu:'Resonance — A Plague Tale Legacy',v369:'Oui',sniikks:'Oui',lien:'',note:'',date_sortie:'2026'},
-  {jeu:'Fable Anniversary',v369:'Oui',sniikks:'Oui',lien:'https://store.steampowered.com/app/288470/',note:'',date_sortie:'🟢'},
-  {jeu:'ILL',v369:'Oui',sniikks:'Oui',lien:'https://store.steampowered.com/app/1757350/',note:'',date_sortie:'2027'},
-];
-
-async function seedIfEmpty(){
-  const[d1,d2]=await Promise.all([sbGet('jeux_a_faire'),sbGet('proposition')]);
-  if(!Array.isArray(d1)||!Array.isArray(d2))return;
-  if(!d1.length)for(const g of SEED1)await sbInsert('jeux_a_faire',g);
-  if(!d2.length)for(const g of SEED2)await sbInsert('proposition',g);
 }
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
