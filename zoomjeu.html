@@ -173,12 +173,17 @@
   .state-msg { color:var(--text2); font-size:.85rem; text-align:center; margin-top:2rem; }
 
   .archive-header {
-    display:flex; align-items:center; justify-content:center; gap:.5rem; margin-bottom:1rem;
+    display:flex; flex-direction:column; align-items:center; gap:.6rem; margin-bottom:1rem;
   }
+  .archive-header .archive-nav-row { display:flex; align-items:center; justify-content:center; gap:.5rem; }
   .archive-header .archive-month-label {
     font-family:'Sora',sans-serif; font-weight:700; font-size:1rem; color:var(--gold);
     min-width:180px; text-align:center; text-transform:capitalize;
   }
+  .names-toggle {
+    display:flex; align-items:center; gap:.4rem; font-size:.75rem; color:var(--text2); cursor:pointer; user-select:none;
+  }
+  .names-toggle input { accent-color:var(--gold); cursor:pointer; }
   .archive-grid {
     display:grid; grid-template-columns:repeat(7, 1fr); gap:.5rem;
   }
@@ -187,38 +192,42 @@
   }
   .archive-cell {
     aspect-ratio:1/1; border-radius:10px; overflow:hidden; position:relative;
-    background:var(--bg3); border:1px solid var(--border);
+    background:var(--bg3); border:2px solid var(--border);
     cursor:pointer;
   }
   .archive-cell.empty { visibility:hidden; cursor:default; }
-  .archive-cell.disabled { opacity:.25; cursor:default; pointer-events:none; }
+  .archive-cell.disabled { opacity:.25; cursor:default; pointer-events:none; border-color:var(--border); }
+  .archive-cell.status-green { border-color:var(--good); }
+  .archive-cell.status-red { border-color:var(--bad); }
+  .archive-cell.status-yellow { border-color:var(--gold); }
   .archive-cell img.cell-img {
     position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
   }
-  .archive-cell.finished::after {
-    content:''; position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.8), transparent 55%);
-    z-index:1;
-  }
-  .archive-cell:not(.finished):not(.disabled)::after {
-    content:''; position:absolute; inset:0; background:rgba(0,0,0,.15);
+  .archive-cell::after {
+    content:''; position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.75), transparent 50%);
     z-index:1;
   }
   .archive-cell .cell-day {
-    position:absolute; top:.3rem; left:.4rem; font-family:'Sora',sans-serif; font-size:.72rem; font-weight:700;
-    color:var(--text); z-index:2; text-shadow:0 1px 3px rgba(0,0,0,.8);
+    position:absolute; top:.3rem; left:.35rem; font-family:'Sora',sans-serif; font-size:.68rem; font-weight:700;
+    color:#151510; background:var(--text2); padding:1px 5px; border-radius:5px; z-index:2;
   }
-  .archive-cell.today .cell-day { color:var(--gold); }
+  .archive-cell.status-green .cell-day { background:var(--good); }
+  .archive-cell.status-red .cell-day { background:var(--bad); }
+  .archive-cell.status-yellow .cell-day { background:var(--gold); }
+  .cell-mini-guesses {
+    position:absolute; top:.35rem; right:.35rem; display:flex; gap:2px; z-index:2;
+  }
+  .cell-mini-guesses span { width:6px; height:6px; border-radius:1.5px; background:rgba(255,255,255,.25); }
+  .cell-mini-guesses span.correct { background:var(--good); }
+  .cell-mini-guesses span.wrong { background:var(--bad); }
+  .cell-mini-guesses span.skipped { background:var(--gold-dim); }
   .archive-cell .cell-name {
-    position:absolute; bottom:.9rem; left:.4rem; right:.4rem; z-index:2;
+    position:absolute; bottom:.35rem; left:.35rem; right:.35rem; z-index:2;
     font-size:9.5px; color:var(--text); font-weight:600; line-height:1.15;
     overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
   }
-  .cell-bar { position:absolute; bottom:0; left:0; right:0; display:flex; height:4px; z-index:2; }
-  .cell-bar span { flex:1; background:rgba(255,255,255,.12); }
-  .cell-bar span.correct { background:var(--good); }
-  .cell-bar span.wrong { background:var(--bad); }
-  .cell-bar span.skipped { background:var(--gold-dim); }
-  .archive-cell:hover:not(.disabled) { border-color:var(--gold-dim); }
+  .archive-grid.hide-names .cell-name { display:none; }
+  .archive-cell:hover:not(.disabled) { filter:brightness(1.15); }
 
   footer { margin-top:2rem; font-size:11px; color:var(--gold-dim); letter-spacing:.1em; }
   #dbStatus.db-ok { color:#5fbf86; }
@@ -641,6 +650,7 @@
 
   // ── Archives (vue calendrier) ──
   function monthPrefix(y, m) { return `zoomjeu_${y}-${String(m).padStart(2, '0')}-`; }
+  let showNames = true;
 
   async function renderArchive() {
     document.getElementById('cardEl').innerHTML = '<div class="state-msg">Chargement des archives…</div>';
@@ -666,35 +676,39 @@
       const p = puzzleByDate[dateStr];
       const isFuture = dateStr > todayStr;
       const isBeforeLaunch = dateStr < LAUNCH_DATE;
-      const isToday = dateStr === todayStr;
 
       if (!p || isFuture || isBeforeLaunch) {
-        cellsHtml += `<div class="archive-cell disabled${isToday ? ' today' : ''}"><div class="cell-day">${day}</div></div>`;
+        cellsHtml += `<div class="archive-cell disabled"><div class="cell-day">${day}</div></div>`;
         continue;
       }
 
       const s = p.session || { guesses: [] };
-      const finished = s.solved || s.gaveUp || (s.guesses && s.guesses.length >= MAX_ATTEMPTS);
+      const guesses = s.guesses || [];
+      const finished = s.solved || s.gaveUp || guesses.length >= MAX_ATTEMPTS;
 
-      let barHtml = '<div class="cell-bar">';
+      // Jaune = pas encore trouvé (en cours ou pas commencé) · Rouge = perdu · Vert = gagné
+      let status = 'yellow';
+      if (finished) status = s.solved ? 'green' : 'red';
+
+      let miniHtml = '<div class="cell-mini-guesses">';
       for (let i = 0; i < MAX_ATTEMPTS; i++) {
         let segCls = '';
-        if (s.guesses && i < s.guesses.length) {
-          const g = s.guesses[i];
+        if (i < guesses.length) {
+          const g = guesses[i];
           segCls = g.correct ? 'correct' : (g.skipped ? 'skipped' : 'wrong');
         }
-        barHtml += `<span class="${segCls}"></span>`;
+        miniHtml += `<span class="${segCls}"></span>`;
       }
-      barHtml += '</div>';
+      miniHtml += '</div>';
 
       // Terminé -> image complète (scale 1). Pas encore fini -> aperçu zoomé (ne spoile pas).
       const scale = finished ? 1 : ARCHIVE_PEEK_ZOOM;
       cellsHtml += `
-        <div class="archive-cell ${finished ? 'finished' : ''}${isToday ? ' today' : ''}" data-date="${dateStr}">
+        <div class="archive-cell status-${status}" data-date="${dateStr}">
           <img class="cell-img" src="${p.image}" style="transform-origin:${p.focus.x}% ${p.focus.y}%; transform:scale(${scale});">
           <div class="cell-day">${day}</div>
+          ${miniHtml}
           ${finished ? `<div class="cell-name">${escapeHtml(p.answer)}</div>` : ''}
-          ${barHtml}
         </div>
       `;
     }
@@ -705,14 +719,20 @@
 
     document.getElementById('cardEl').innerHTML = `
       <div class="archive-header">
-        <button id="archFirst" title="Premier mois" ${isFirstMonth ? 'disabled' : ''}>⏮</button>
-        <button id="archPrev" title="Mois précédent" ${isFirstMonth ? 'disabled' : ''}>◀</button>
-        <div class="archive-month-label">${monthLabel}</div>
-        <button id="archNext" title="Mois suivant" ${isLastMonth ? 'disabled' : ''}>▶</button>
-        <button id="archLast" title="Mois actuel" ${isLastMonth ? 'disabled' : ''}>⏭</button>
-        <button id="archClose" class="ghost" title="Retour au jeu">✕</button>
+        <div class="archive-nav-row">
+          <button id="archFirst" title="Premier mois" ${isFirstMonth ? 'disabled' : ''}>⏮</button>
+          <button id="archPrev" title="Mois précédent" ${isFirstMonth ? 'disabled' : ''}>◀</button>
+          <div class="archive-month-label">${monthLabel}</div>
+          <button id="archNext" title="Mois suivant" ${isLastMonth ? 'disabled' : ''}>▶</button>
+          <button id="archLast" title="Mois actuel" ${isLastMonth ? 'disabled' : ''}>⏭</button>
+          <button id="archClose" class="ghost" title="Retour au jeu">✕</button>
+        </div>
+        <label class="names-toggle">
+          <input type="checkbox" id="showNamesToggle" ${showNames ? 'checked' : ''}>
+          Afficher les noms
+        </label>
       </div>
-      <div class="archive-grid">
+      <div class="archive-grid${showNames ? '' : ' hide-names'}">
         ${WEEKDAYS_FR.map(w => `<div class="archive-weekday">${w}</div>`).join('')}
         ${cellsHtml}
       </div>
@@ -723,6 +743,10 @@
     document.getElementById('archPrev').addEventListener('click', () => { archiveMonth--; if (archiveMonth < 1) { archiveMonth = 12; archiveYear--; } renderArchive(); });
     document.getElementById('archNext').addEventListener('click', () => { archiveMonth++; if (archiveMonth > 12) { archiveMonth = 1; archiveYear++; } renderArchive(); });
     document.getElementById('archClose').addEventListener('click', () => { mode = 'play'; updateNavUI(); loadPuzzle(); });
+    document.getElementById('showNamesToggle').addEventListener('change', e => {
+      showNames = e.target.checked;
+      document.querySelector('.archive-grid').classList.toggle('hide-names', !showNames);
+    });
     document.querySelectorAll('.archive-cell[data-date]').forEach(el => {
       el.addEventListener('click', () => goToDate(el.getAttribute('data-date')));
     });
