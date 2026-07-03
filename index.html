@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Menu — Backlog Jeux</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=JetBrains+Mono:wght@400;700;800&display=swap');
+
+  :root {
+    --bg:#1a1a18; --bg2:#222220; --bg3:#2a2a27;
+    --gold:#c9a84c; --gold2:#a07830; --gold-dim:#6b5425;
+    --text:#ffffff; --text2:#999;
+    --border:#3a3830;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 50% -260px, rgba(201,168,76,.10), transparent 62%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Share Tech Mono','Courier New',monospace;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-height:100vh; padding:2rem 1.2rem;
+  }
+  .title {
+    font-family:'JetBrains Mono',monospace;
+    font-size:clamp(1.4rem,4vw,2.2rem);
+    letter-spacing:.18em;
+    color:var(--gold);
+    margin-bottom:.5rem;
+    text-transform:uppercase;
+  }
+  .subtitle { color:var(--text2); font-size:13px; margin-bottom:2.6rem; letter-spacing:.05em; }
+
+  .grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));
+    gap:1.2rem;
+    width:100%;
+    max-width:900px;
+  }
+
+  .tile {
+    position:relative;
+    background:var(--bg2);
+    border:1px solid var(--border);
+    border-radius:14px;
+    aspect-ratio:3/4;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:.9rem;
+    text-decoration:none;
+    color:var(--text);
+    overflow:hidden;
+    transition:transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+  }
+  .tile::before {
+    content:'';
+    position:absolute; inset:0;
+    background:radial-gradient(320px 220px at 50% 30%, rgba(201,168,76,.14), transparent 70%);
+    opacity:0; transition:opacity .25s ease;
+  }
+  .tile:not(.disabled):hover {
+    transform:translateY(-6px);
+    border-color:var(--gold-dim);
+    box-shadow:0 14px 34px rgba(0,0,0,.45);
+  }
+  .tile:not(.disabled):hover::before { opacity:1; }
+
+  .tile-icon {
+    font-size:2.6rem;
+    filter:drop-shadow(0 4px 10px rgba(0,0,0,.4));
+    z-index:1;
+  }
+  .tile-icon svg { width:52px; height:52px; }
+  .tile-label {
+    font-family:'JetBrains Mono',monospace;
+    font-size:.82rem;
+    letter-spacing:.08em;
+    text-align:center;
+    color:var(--gold);
+    z-index:1;
+    padding:0 .6rem;
+  }
+
+  .tile.disabled {
+    opacity:.4;
+    cursor:default;
+  }
+  .tile.disabled .tile-label { color:var(--text2); }
+  .tile-soon {
+    position:absolute; bottom:.7rem;
+    font-size:9px; letter-spacing:.12em; color:var(--text2);
+    z-index:1;
+  }
+
+  footer {
+    margin-top:1rem;
+    font-size:11px;
+    color:var(--gold-dim);
+    letter-spacing:.1em;
+  }
+</style>
+</head>
+<body>
+
+  <div class="title">PHX Site</div>
+  <div class="subtitle">Choisis un onglet</div>
+
+  <div class="grid">
+    <a class="tile" href="bracket-jeux.html">
+      <div class="tile-icon">🏆</div>
+      <div class="tile-label">Bracket<br>Jeux</div>
+    </a>
+
+    <a class="tile" href="proposition.html">
+      <div class="tile-icon">🎮</div>
+      <div class="tile-label">Proposition<br>Jeux</div>
+    </a>
+
+    <a class="tile" href="Sniikks_liste_de_jeux.html">
+      <div class="tile-icon">✋</div>
+      <div class="tile-label">Jeux finis<br>de Sniikks</div>
+      </a>
+
+    <a class="tile" href="369_liste_de_jeux.html">
+      <div class="tile-icon">✋🏿</div>
+      <div class="tile-label">Jeux finis<br>de 369</div>
+      </a>
+  </div>
+
+  <footer>PHX Site © 2026</footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="db.js"></script>
+  <script>
+    // Simple vérification de connexion Supabase sur la page de menu
+    RemoteStore.setStatusElement(document.getElementById('dbStatus'));
+    RemoteStore.init([]).then(() => {
+      // init([]) fait quand même l'appel réseau grâce au select ci-dessous
+    });
+    // Ping direct pour un statut fiable même sans clé à précharger
+    supabaseClient.from('app_data').select('id').limit(1).then(({ error }) => {
+      const el = document.getElementById('dbStatus');
+      if (error) { el.textContent = '● Base de données non configurée'; el.classList.add('db-error'); }
+      else { el.textContent = '● Connecté à Supabase'; el.classList.add('db-ok'); }
+    });
+  </script>
+</body>
+</html>

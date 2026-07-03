@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liste jeux vidéo</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="db.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=JetBrains+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg:#1a1a18; --bg2:#222220; --bg3:#2a2a27;
+    --gold:#c9a84c; --gold2:#a07830; --gold-dim:#6b5425;
+    --text:#ffffff; --border:#3a3830;
+    --done:#3a6a3a; --abandon:#6a3a3a; --red:#c94040;
+    --note-10:#c94040; --note-89:#c97c2a; --note-67:#c9b83a;
+    --note-5:#3a7caa; --note-34:#7a3aaa; --note-12:#3a8a3a;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html { scroll-behavior:smooth; }
+  *:focus-visible { outline:2px solid var(--gold); outline-offset:2px; border-radius:3px; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:var(--bg2); }
+  ::-webkit-scrollbar-thumb { background:var(--gold-dim); border-radius:8px; }
+  ::-webkit-scrollbar-thumb:hover { background:var(--gold2); }
+  body { background:radial-gradient(1100px 520px at 50% -240px, rgba(201,168,76,.10), transparent 62%), var(--bg); color:var(--text); font-family:'Share Tech Mono','Courier New',monospace; font-size:14px; line-height:1.5; min-height:100vh; }
+body{
+    overflow-x:clip;
+    max-width:100%;
+}
+
+*{
+    box-sizing:border-box;
+}
+  .page-header { position:relative; display:flex; align-items:center; justify-content:center; padding:1.1rem 1.4rem .9rem; max-width:1600px; margin:0 auto; }
+  .header-io { position:absolute; right:1.4rem; top:50%; transform:translateY(-50%); display:flex; gap:1.2rem; }
+  .brand { display:flex; align-items:center; gap:.7rem; }
+  .brand-icon { width:38px; height:38px; border-radius:9px; background:linear-gradient(145deg,#8a5fc9,#5a3a96); display:flex; align-items:center; justify-content:center; font-size:19px; box-shadow:0 2px 10px rgba(90,58,150,.45); flex-shrink:0; }
+  h1 { font-family:'JetBrains Mono',monospace; font-size:clamp(1.2rem,4vw,2rem); color:var(--gold); letter-spacing:.15em; font-weight:400; }
+  .inline-stats { display:flex; gap:1rem; align-items:center; flex-shrink:0; }
+  .top-stat { text-align:center; line-height:1.15; }
+  .top-stat-num { display:block; font-family:'JetBrains Mono',monospace; font-size:1.25rem; font-weight:700; color:var(--gold); }
+  .top-stat.is-done .top-stat-num { color:#fff; }
+  .top-stat-label { display:block; font-size:9px; letter-spacing:.12em; color:#999; }
+
+  .sticky-header { position:sticky; top:0; z-index:50; background:var(--bg); border-bottom:2px solid var(--border); padding:.6rem 1.4rem .5rem; transition:background-color .3s ease, box-shadow .3s ease, border-radius .3s ease, border-bottom-color .3s ease; }
+  .sticky-header.scrolled { background:rgba(26,26,24,.92); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); box-shadow:0 8px 22px rgba(0,0,0,.5); border-radius:0 0 16px 16px; border-bottom-color:transparent; }
+  .sticky-inner { max-width:1600px; margin:0 auto; }
+  .toolbar-row { display:flex; align-items:center; gap:1.1rem; flex-wrap:wrap; justify-content:center; }
+  .toolbar-row + .toolbar-row { margin-top:.55rem; }
+  .toolbar-row.split { justify-content:center; position:relative; }
+  .toolbar-block + .toolbar-row { margin-top:.55rem; }
+.row2-right{
+    display:flex;
+    flex-wrap:nowrap;
+    justify-content:flex-end;
+    gap:8px;
+}
+  .stats-years { display:flex; align-items:center; justify-content:center; gap:1.1rem; flex-wrap:wrap; }
+
+  .search-wrap { position:relative; flex-shrink:0; }
+  .search-wrap .search-icon { position:absolute; left:.6rem; top:50%; transform:translateY(-50%); font-size:12px; color:#888; pointer-events:none; }
+  .search-box { background:var(--bg3); border:1px solid var(--border); color:#fff; font-family:inherit; font-size:12px; padding:.4rem .7rem .4rem 1.7rem; outline:none; transition:all .2s ease; width:190px; border-radius:999px; }
+  .search-box:focus { border-color:var(--gold-dim); box-shadow:0 0 0 3px rgba(201,168,76,.15); }
+  .search-box::placeholder { color:#888; }
+
+  .status-pills { display:flex; align-items:center; justify-content:center; gap:.4rem; flex-wrap:wrap; }
+  .status-pill { background:transparent; border:none; color:#ccc; font-family:inherit; font-size:12.5px; padding:.35rem .8rem; cursor:pointer; letter-spacing:.02em; transition:all .2s ease; white-space:nowrap; border-radius:999px; }
+  .status-pill:hover { color:#fff; background:rgba(255,255,255,.06); transform:translateY(-1px); }
+  .status-pill .sp-count { font-size:11px; color:#888; margin-left:4px; }
+  .status-pill.active { background:var(--gold2); color:#fff; padding:.35rem .85rem; border-radius:999px; box-shadow:0 4px 14px rgba(160,120,48,.35); }
+  .status-pill.active:hover { transform:translateY(-1px); background:var(--gold2); }
+  .status-pill.active .sp-count { color:rgba(255,255,255,.8); }
+
+  .text-action-btn { background:transparent; border:none; color:#ccc; font-family:inherit; font-size:12.5px; cursor:pointer; transition:color .15s; padding:.3rem .6rem; border-radius:6px; }
+  .text-action-btn:hover { color:#fff; background:rgba(255,255,255,.06); }
+  .view-toggle { display:flex; gap:.3rem; }
+  .view-toggle button { background:transparent; border:1px solid var(--border); color:#999; width:28px; height:28px; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:7px; transition:all .18s ease; font-size:13px; }
+  .view-toggle button:hover { border-color:var(--gold-dim); color:#fff; transform:translateY(-1px); }
+  .view-toggle button.active { border-color:var(--gold); color:var(--gold); background:rgba(201,168,76,.1); }
+  .add-btn-main { background:linear-gradient(145deg,var(--gold2),var(--gold-dim)); border:1px solid var(--gold); color:#fff; font-family:inherit; font-size:12.5px; font-weight:700; padding:.42rem 1.05rem; cursor:pointer; transition:all .2s ease; letter-spacing:.03em; border-radius:8px; box-shadow:0 3px 10px rgba(0,0,0,.35); }
+  .add-btn-main:hover { background:linear-gradient(145deg,var(--gold),var(--gold2)); transform:translateY(-1px); box-shadow:0 6px 16px rgba(160,120,48,.35); }
+
+  .platform-row { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; justify-content:center; }
+
+  .filter-btn { background:transparent; border:1px solid var(--border); color:#fff; font-family:inherit; font-size:11px; padding:.28rem .65rem; cursor:pointer; transition:all .18s ease; letter-spacing:.04em; white-space:nowrap; border-radius:999px; }
+  .filter-btn:hover { border-color:var(--gold-dim); transform:translateY(-1px); }
+  .filter-btn.active { background:var(--gold2); border-color:var(--gold); color:#fff; box-shadow:0 3px 10px rgba(160,120,48,.3); }
+
+  .year-filters { display:flex; align-items:center; justify-content:center; gap:.55rem; flex-wrap:wrap; }
+  .yf-label { font-size:10px; letter-spacing:.14em; color:#888; margin-right:.15rem; }
+  .year-pill { background:transparent; border:none; color:#bbb; font-family:inherit; font-size:11.5px; padding:.22rem .6rem; cursor:pointer; display:inline-flex; align-items:baseline; gap:5px; border-radius:999px; transition:all .18s ease; }
+  .year-pill:hover { color:#fff; background:rgba(255,255,255,.06); transform:translateY(-1px); }
+  .year-pill .yp-count { color:#777; font-size:10px; }
+  .year-pill.active { background:var(--gold2); color:#fff; }
+  .year-pill.active .yp-count { color:rgba(255,255,255,.75); }
+  .year-pill.tous-pill { color:rgba(255,255,255,.75); border:1px solid var(--gold-dim); }
+  .year-pill.tous-pill.active { background:var(--gold2); border-color:var(--gold); }
+
+  .main-content { max-width:1600px; margin:0 auto; padding:.8rem 1rem 3rem; }
+
+  /* ── YEAR / STATUS SECTIONS ── */
+  .year-section { margin-bottom:1.6rem; }
+  .year-heading { display:flex; align-items:center; gap:.5rem; padding:.35rem .4rem; margin-bottom:.6rem; border-bottom:1px solid var(--border); cursor:pointer; user-select:none; border-radius:6px; transition:background-color .18s ease; }
+  .year-heading:hover { background:rgba(255,255,255,.04); }
+  .yh-dot { color:var(--gold); font-size:10px; flex-shrink:0; display:inline-block; transition:transform .2s; }
+  .year-heading.collapsed .yh-dot { transform:rotate(-90deg); }
+  .yh-year { font-family:'JetBrains Mono',monospace; font-size:1.05rem; color:#fff; font-weight:700; letter-spacing:.08em; flex-shrink:0; }
+  .yh-count { font-size:10px; color:#999; background:var(--bg3); padding:1px 7px; border-radius:9px; flex-shrink:0; }
+  .year-body { overflow:visible; transition:max-height .25s ease, opacity .2s ease; }
+  .year-body.collapsed { overflow:hidden; max-height:0 !important; opacity:0; }
+  .status-section { margin-bottom:1rem; }
+  .status-heading { font-size:10px; letter-spacing:.14em; color:#aaa; padding:.1rem 0 .3rem; display:flex; align-items:center; gap:.45rem; overflow:hidden; }
+  .status-heading::before { content:'●'; font-size:7px; }
+  .status-heading .sh-count { font-size:10px; color:#999; background:var(--bg3); padding:1px 7px; border-radius:9px; letter-spacing:0; }
+  .status-heading::after { content:''; flex:1; border-top:1px solid var(--border); min-width:0; }
+  .status-heading.sh-fini { color:#6ac96a; }
+  .status-heading.sh-fini::after { border-top-color:#3a6a3a; }
+  .status-heading.sh-abandonne { color:#c96a6a; }
+  .status-heading.sh-abandonne::after { border-top-color:#6a3a3a; }
+  .status-heading.sh-encours { color:#c9a05a; }
+  .status-heading.sh-encours::after { border-top-color:#9c7c3a; }
+  .status-heading.sh-attente { color:#6aaac9; }
+  .status-heading.sh-attente::after { border-top-color:#3a6a9c; }
+  .status-heading.sh-afaire { color:#ccc; }
+  .card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; }
+  .main-content.compact .card-grid { grid-template-columns:repeat(auto-fill,minmax(74px,1fr)); gap:6px; }
+  .main-content.compact .game-card .card-img-wrap { aspect-ratio:16/10; }
+  .main-content.compact .game-card .card-name { font-size:9px; height:24px; }
+  .empty-state { color:#aaa; font-size:13px; padding:1.5rem 0; }
+
+  /* ── GAME CARD (style tier list) ── */
+  .game-card {
+    width:100%;
+    cursor:pointer; border:1px solid var(--border); border-radius:7px; overflow:hidden;
+    transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+    position:relative; background:var(--bg2);
+    animation:cardIn .35s ease backwards;
+  }
+  .game-card:hover { transform:scale(1.06) translateY(-2px); border-color:var(--gold-dim); box-shadow:0 10px 26px rgba(0,0,0,.55), 0 0 0 1px rgba(201,168,76,.25); z-index:5; }
+  .game-card .card-img-wrap { position:relative; width:100%; aspect-ratio:16/10; overflow:hidden; }
+  .game-card .card-img-wrap img { transition:transform .3s ease; }
+  .game-card:hover .card-img-wrap img { transform:scale(1.09); }
+  @keyframes cardIn { from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
+  .game-card img { width:100%; height:100%; object-fit:cover; display:block; background:#2a2a27; }
+  .game-card .card-no-img {
+    width:100%; height:100%; display:flex; align-items:center; justify-content:center;
+    background:var(--bg3); font-size:36px; color:var(--gold-dim);
+  }
+  .game-card .card-name {
+    font-size:10px; text-align:center; padding:4px 4px 2px;
+    line-height:1.2; color:#bbb; overflow:hidden;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+    height:30px;
+  }
+  /* badges sur la carte */
+  .card-note {
+    position:absolute; top:3px; left:3px;
+    font-size:12px; font-family:'JetBrains Mono',monospace; font-weight:700;
+    padding:1px 4px; line-height:16px; background:rgba(0,0,0,.82); border-radius:4px;
+  }
+  .card-platform {
+    position:absolute; top:3px; right:3px; font-size:10px; line-height:1;
+    background:rgba(0,0,0,.82); border-radius:4px; padding:2px 3px;
+  }
+  .card-dlc {
+    position:absolute; bottom:30px; left:0; right:0;
+    font-size:8px; color:#fff; background:rgba(100,70,20,.9);
+    text-align:center; letter-spacing:.05em; padding:1px 0;
+  }
+
+  .cn-10{color:var(--note-10)} .cn-89{color:var(--note-89)} .cn-67{color:var(--note-67)}
+  .cn-5{color:var(--note-5)} .cn-34{color:var(--note-34)} .cn-12{color:var(--note-12)}
+
+  /* ══ OVERLAY ══ */
+  .overlay { display:none; position:fixed; inset:0; background:rgba(10,10,9,.72); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:200; align-items:center; justify-content:center; pointer-events:none; }
+  .overlay .modal { pointer-events:auto; }
+  .overlay.open { display:flex; pointer-events:auto; }
+  @keyframes modalIn { from{ opacity:0; transform:scale(.96) translateY(10px); } to{ opacity:1; transform:scale(1) translateY(0); } }
+
+  /* ── EDIT/ADD MODAL ── */
+  .modal { background:var(--bg2); border:1px solid var(--gold-dim); border-radius:14px; padding:1.4rem; width:min(500px,95vw); max-height:90vh; overflow-y:auto; box-shadow:0 20px 50px rgba(0,0,0,.55); animation:modalIn .22s ease; }
+  .modal h2 { font-family:'JetBrains Mono',monospace; color:var(--gold); font-size:1rem; font-weight:400; letter-spacing:.1em; margin-bottom:1.1rem; }
+  .form-row { margin-bottom:.75rem; }
+  .form-row label { display:block; font-size:11px; color:#ccc; letter-spacing:.1em; margin-bottom:.25rem; }
+  .form-row input,.form-row select,.form-row textarea { width:100%; background:var(--bg3); border:1px solid var(--border); color:#fff; font-family:inherit; font-size:13px; padding:.35rem .55rem; outline:none; transition:all .2s ease; border-radius:6px; }
+  .form-row input:focus,.form-row select:focus,.form-row textarea:focus { border-color:var(--gold-dim); box-shadow:0 0 0 3px rgba(201,168,76,.12); }
+  .form-row select option { background:var(--bg2); }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+  .note-hint { color:#888; font-weight:400; text-transform:none; letter-spacing:0; }
+  .note-bar-row { display:flex; align-items:center; gap:12px; margin-top:6px; }
+  .note-bar-wrap { position:relative; flex:1; height:15px; }
+  .note-bar-track { position:absolute; inset:0; background:var(--bg3); border-radius:8px; border:1px solid var(--border); }
+  .note-bar-fill { position:absolute; left:0; top:0; bottom:0; width:0%; border-radius:7px; background:var(--gold-dim); transition:width .12s ease, background-color .12s ease; }
+  .note-range-input { position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; -webkit-appearance:none; appearance:none; }
+  .note-slider-val { font-size:1.3rem; font-weight:700; min-width:34px; text-align:right; color:#fff; font-family:'JetBrains Mono',monospace; }
+  .note-stars-preview { font-size:13px; margin-top:8px; min-height:18px; }
+  .modal-actions { display:flex; gap:.5rem; justify-content:flex-end; margin-top:1.1rem; }
+  .btn-primary { background:linear-gradient(145deg,var(--gold2),var(--gold-dim)); border:1px solid var(--gold); color:#fff; font-family:inherit; font-size:12px; padding:.4rem 1.1rem; cursor:pointer; letter-spacing:.08em; transition:all .18s ease; border-radius:7px; }
+  .btn-primary:hover { background:linear-gradient(145deg,var(--gold),var(--gold2)); transform:translateY(-1px); box-shadow:0 5px 14px rgba(160,120,48,.35); }
+  .btn-cancel { background:transparent; border:1px solid var(--border); color:#ccc; font-family:inherit; font-size:12px; padding:.4rem 1.1rem; cursor:pointer; transition:all .18s ease; border-radius:7px; }
+  .btn-cancel:hover { border-color:#ccc; color:#fff; transform:translateY(-1px); }
+  .btn-danger { background:transparent; border:1px solid var(--abandon); color:#c96a6a; font-family:inherit; font-size:12px; padding:.4rem 1.1rem; cursor:pointer; transition:all .18s ease; border-radius:7px; }
+  .btn-danger:hover { background:var(--abandon); color:#fff; transform:translateY(-1px); }
+
+  /* image field */
+  .url-hint { font-size:10px; color:#888; margin-top:.2rem; }
+  .url-detect { font-size:10px; color:var(--gold); margin-top:.2rem; display:none; }
+  .img-preview-wrap { margin-top:.5rem; display:none; }
+  .img-preview-wrap img { width:120px; height:56px; object-fit:cover; border:1px solid var(--border); display:block; }
+
+  /* ── INFO POPUP ── */
+  .info-overlay { display:none; position:fixed; inset:0; background:rgba(10,10,9,.76); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:300; align-items:center; justify-content:center; pointer-events:none; }
+  .info-overlay .info-modal { pointer-events:auto; }
+  .info-overlay.open { display:flex; pointer-events:auto; }
+  .info-modal { background:var(--bg2); border:1px solid var(--gold-dim); border-radius:14px; width:min(460px,95vw); max-height:88vh; overflow-y:auto; position:relative; box-shadow:0 20px 50px rgba(0,0,0,.55); animation:modalIn .22s ease; }
+  .info-img-wrap { position:relative; width:100%; height:160px; overflow:hidden; }
+  .info-img-wrap img { width:100%; height:100%; object-fit:cover; display:block; }
+  .info-no-img { width:100%; height:160px; display:flex; align-items:center; justify-content:center; font-size:52px; background:var(--bg3); }
+  .info-img-overlay { position:absolute; inset:0; background:linear-gradient(to bottom, rgba(0,0,0,.05) 0%, rgba(20,20,18,.95) 100%); }
+  .info-title-block { position:absolute; bottom:.8rem; left:1rem; right:3rem; }
+  .info-title { font-family:'JetBrains Mono',monospace; font-size:1.05rem; color:#fff; font-weight:700; line-height:1.2; }
+  .info-close { position:absolute; top:.6rem; right:.7rem; background:rgba(0,0,0,.6); border:1px solid var(--border); color:#fff; font-family:inherit; font-size:16px; width:26px; height:26px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .18s ease; line-height:1; z-index:5; border-radius:8px; }
+  .info-close:hover { border-color:var(--gold); color:var(--gold); transform:translateY(-1px); }
+  .info-body { padding:1rem 1.2rem 1.4rem; }
+  .info-row { display:flex; align-items:flex-start; gap:.6rem; margin-bottom:.65rem; font-size:12px; }
+  .info-label { color:#888; min-width:80px; font-size:11px; letter-spacing:.08em; padding-top:1px; }
+  .info-val { color:#fff; flex:1; word-break:break-word; }
+  .info-actions { display:flex; gap:.5rem; margin-top:1rem; justify-content:flex-end; }
+
+  /* status badges */
+  .status-badge { font-size:11px; padding:2px 8px; border:1px solid; white-space:nowrap; display:inline-block; border-radius:999px; }
+  .status-afaire    { border-color:var(--border); color:#fff; }
+  .status-encours   { border-color:#9c7c3a; color:#c9a05a; }
+  .status-fini      { border-color:var(--done); color:#6ac96a; }
+  .status-abandonne { border-color:var(--abandon); color:#c96a6a; }
+  .status-attente   { border-color:#3a6a9c; color:#6aaac9; }
+
+  /* stars */
+  .stars-wrap { display:inline-flex; align-items:center; gap:1px; }
+  .star-pair { position:relative; display:inline-block; width:11px; height:14px; font-size:12px; }
+  .star-pair .s-empty { color:var(--border); position:absolute; left:0; top:0; }
+  .star-pair .s-full  { color:inherit; position:absolute; left:0; top:0; overflow:hidden; white-space:nowrap; }
+  .star-val { font-size:11px; color:#fff; margin-left:5px; }
+  .note-10{color:var(--note-10)} .note-89{color:var(--note-89)} .note-67{color:var(--note-67)}
+  .note-5{color:var(--note-5)} .note-34{color:var(--note-34)} .note-12{color:var(--note-12)}
+
+  input[type="file"] { display:none; }
+
+  .platform-icon { display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; }
+  .platform-icon svg { width:100%; height:100%; }
+  .platform-emoji { vertical-align:middle; }
+
+  @media (max-width:640px) {
+    .page-header{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:12px;
+}
+.brand{
+    order:1;
+}
+    .header-io{
+    order:2;
+    position:static;
+    width:100%;
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+}
+
+    .sticky-header { padding:.6rem .8rem .5rem; }
+    .toolbar-row, .toolbar-row.split { flex-direction:column; align-items:stretch; justify-content:flex-start; gap:.55rem; }
+    .toolbar-row.split { position:static; }
+
+    .row2-right { position:static; transform:none; width:100%; justify-content:center; }
+    .toolbar-row.split .search-wrap { position:relative; transform:none; width:100%; }
+    .search-wrap{
+    flex:1;
+}
+
+.search-box{
+    width:100%;
+}
+
+    .status-pills { justify-content:flex-start; padding-bottom:4px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+    .status-pills::-webkit-scrollbar { display:none; }
+    .status-pill { flex-shrink:0; }
+
+    .stats-years { flex-direction:column; align-items:center; gap:.5rem; }
+    .year-filters, .platform-row {
+      justify-content:flex-start;
+      -webkit-overflow-scrolling:touch; scrollbar-width:none; width:100%;
+    }
+    .status-pills,
+.year-filters,
+.platform-row{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    overflow:visible;
+    gap:6px;
+}
+    .year-filters::-webkit-scrollbar, .platform-row::-webkit-scrollbar { display:none; }
+    .year-pill, .filter-btn { flex-shrink:0; }
+
+    .add-btn-main {     width:auto;
+    min-width:120px;; padding:.6rem 1rem; }
+
+    .main-content { padding:.6rem .6rem 2.5rem; }
+.card-grid{
+    grid-template-columns:repeat(auto-fill,minmax(82px,82px));
+    justify-content:center;
+    gap:8px;
+}
+    .main-content.compact .card-grid { grid-template-columns:repeat(auto-fill,minmax(64px,1fr)); gap:5px; }
+    .game-card .card-name { font-size:9px; height:26px; padding:3px 3px 2px; }
+
+    .modal { padding:1rem; }
+    .form-grid { grid-template-columns:1fr; }
+    .info-img-wrap, .info-no-img { height:130px; }
+  }
+
+/* CHATGPT RESPONSIVE FIX */
+@media (max-width:768px){
+html,body{overflow-x:clip;width:100%;max-width:100%}
+body{padding:0}
+*{max-width:100%}
+.status-pills,.year-filters,.platform-row,.toolbar-row,.toolbar-row.split,.row2-right{flex-wrap:wrap!important;overflow-x:visible!important;white-space:normal!important}
+.search-wrap,.search-box,.add-btn-main{width:100%!important}
+.game-card{min-width:0!important}
+}
+
+  @media (max-width:640px) {
+    .overlay, .info-overlay { backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
+    .sticky-header.scrolled { backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+    .game-card:hover { transform:scale(1.04) translateY(-1px); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration:.001ms !important; animation-iteration-count:1 !important;
+      transition-duration:.001ms !important; scroll-behavior:auto !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<a href="index.html" class="btn" style="text-decoration:none; color:var(--gold);">← Menu</a>
+<div class="page-header">
+  <div class="header-io">
+    <button class="text-action-btn" id="exportBtn">Exporter</button>
+    <button class="text-action-btn" id="importBtn">Importer</button>
+  </div>
+  <div class="brand">
+    <span class="brand-icon">🎮</span>
+    <h1>Liste jeux vidéo</h1>
+  </div>
+  <div id="dbStatus" style="position:absolute;left:1.4rem;top:50%;transform:translateY(-50%);font-size:9px;letter-spacing:.08em;color:#999;">● Connexion…</div>
+</div>
+
+<div class="sticky-header">
+  <div class="sticky-inner">
+    <div class="toolbar-block">
+      <div class="toolbar-row split">
+        <div class="status-pills">
+          <button class="status-pill active" data-filter="tous">Tous <span class="sp-count" id="cnt-tous"></span></button>
+          <button class="status-pill" data-filter="fini">Terminés <span class="sp-count" id="cnt-fini"></span></button>
+          <button class="status-pill" data-filter="encours">En cours <span class="sp-count" id="cnt-encours"></span></button>
+          <button class="status-pill" data-filter="abandonne">Abandonnés <span class="sp-count" id="cnt-abandonne"></span></button>
+          <button class="status-pill" data-filter="attente">En attente / Bug <span class="sp-count" id="cnt-attente"></span></button>
+          <button class="status-pill" data-filter="afaire">À faire <span class="sp-count" id="cnt-afaire"></span></button>
+        </div>
+        <div class="row2-right">
+          <div class="view-toggle">
+            <button id="viewListBtn" title="Vue compacte">☰</button>
+            <button id="viewGridBtn" class="active" title="Vue grille">⊞</button>
+            <button class="view-btn" onclick="collapseAllYears()" title="Tout fermer">
+    ⯆
+</button>
+
+<button class="view-btn" onclick="expandAllYears()" title="Tout ouvrir">
+    ⯅
+</button>
+          </div>
+          <button class="add-btn-main" id="addBtnTop">+ Ajouter</button>
+        </div>
+        <input type="file" id="importFile" accept=".json">
+      </div>
+      <div class="toolbar-row split">
+        <div class="stats-years">
+          <div class="inline-stats">
+            <div class="top-stat"><span class="top-stat-num" id="statTotal">0</span><span class="top-stat-label">JEUX</span></div>
+            <div class="top-stat is-done"><span class="top-stat-num" id="statDone">0</span><span class="top-stat-label">TERMINÉS</span></div>
+          </div>
+          <div class="year-filters" id="yearFilters"></div>
+        </div>
+        <div class="search-wrap">
+          <span class="search-icon">⌕</span>
+          <input class="search-box" type="text" id="search" placeholder="Rechercher un jeu...">
+        </div>
+      </div>
+    </div>
+    <div class="toolbar-row">
+      <div class="platform-row">
+        <button class="filter-btn active" data-platform="tous">Toutes</button>
+        <button class="filter-btn" data-platform="steam">Steam</button>
+        <button class="filter-btn" data-platform="gog">GOG</button>
+        <button class="filter-btn" data-platform="epic">Epic</button>
+        <button class="filter-btn" data-platform="pirate">Pirate</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="main-content" id="mainContent"></div>
+
+<!-- EDIT / ADD MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle">// AJOUTER UN JEU</h2>
+    <div class="form-grid">
+      <div class="form-row"><label>JEU *</label><input type="text" id="f-name" placeholder="Nom du jeu"></div>
+      <div class="form-row"><label>ANNÉE</label><input type="number" id="f-annee" placeholder="2025" min="1990" max="2099"></div>
+      <div class="form-row">
+        <label>PLATEFORME</label>
+        <select id="f-platform">
+          <option value="steam">Steam</option>
+          <option value="gog">GOG</option>
+          <option value="epic">Epic Games</option>
+          <option value="pirate">Pirate 🏴‍☠️</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>SUPPORT</label>
+        <select id="f-support">
+          <option value="">—</option>
+          <option value="DLC">DLC</option>
+          <option value="Famille">Famille</option>
+          <option value="Famille DLC">Famille DLC</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>STATUT</label>
+        <select id="f-status">
+          <option value="afaire">À faire</option>
+          <option value="encours">En cours</option>
+          <option value="fini">Terminé</option>
+          <option value="attente">En attente / Bug</option>
+          <option value="abandonne">Abandonné</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:.4rem">
+      <label>NOTE /10 <span class="note-hint">(0 = pas de note)</span></label>
+      <div class="note-bar-row">
+        <div class="note-bar-wrap">
+          <div class="note-bar-track"></div>
+          <div class="note-bar-fill" id="f-note-fill"></div>
+          <input type="range" id="f-note" class="note-range-input" min="0" max="10" step="0.5" value="0">
+        </div>
+        <span class="note-slider-val" id="f-note-val">—</span>
+      </div>
+      <div class="note-stars-preview" id="f-note-preview"></div>
+    </div>
+    <!-- IMAGE FIELD -->
+    <div class="form-row">
+      <label>IMAGE — lien Steam ou URL directe</label>
+      <input type="text" id="f-img" placeholder="https://store.steampowered.com/app/..." oninput="onImgInput()">
+      <div class="url-hint" id="imgHint">💡 Colle le lien de la page Steam → image + nom auto-détectés</div>
+      <div class="url-detect" id="imgDetect"></div>
+      <div class="img-preview-wrap" id="imgPreviewWrap"><img id="imgPreview" alt="preview"></div>
+    </div>
+    <div class="form-row"><label>NOTE PERSO</label><textarea id="f-notepersonne" rows="2" placeholder="Impressions rapides..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="cancelBtn">Annuler</button>
+      <button class="btn-primary" id="saveBtn">Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+<!-- INFO POPUP -->
+<div class="info-overlay" id="infoOverlay">
+  <div class="info-modal" id="infoModal">
+    <div id="infoImgWrap"></div>
+    <button class="info-close" id="infoClose">✕</button>
+    <div class="info-body" id="infoBody"></div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'backlog_jeux_v4';
+let games = [];
+let editingId = null;
+let filterStatus = 'tous';
+let filterPlatform = 'tous';
+let filterYear = 'tous';
+let resolvedImgSrc = '';
+let urlTimer = null;
+
+// ── PLATFORM LOGOS ──
+const STEAM_SVG = `<svg viewBox="0 0 496 512" xmlns="http://www.w3.org/2000/svg"><path fill="#c9c5b8" d="M496 256c0 137-111.2 248-248.4 248-113.8 0-209.7-76.2-239-180.4l95.2 39.3c6.4 18.1 23.8 31.1 44.2 31.1 26 0 47.2-21.4 47.2-47.7l84.7-60.3c51.8 2.3 93.4-40 93.4-92.5 0-51.1-41.8-92.5-93-92.5s-93 41.4-93 92.5v1.2L180.3 279c-15.3-.2-29.1 7.4-37.5 19.4L7.7 245.7C28.1 100.3 152.7 0 248 0 385.2 0 496 114.9 496 256zM155.7 384l-30-12.4c6.7 13.2 19.7 22.4 35.2 23.4 30.7 2.1 51.1-31.6 36.5-58.4-8.1-15-24.4-24.8-42-23.4-13.7 1.1-25.4 8.1-33.1 18.5l30.7 12.7c16.8 7 24.7 26.2 17.8 43.1zm215.7-229.1c0-34.3-27.8-62.1-62.1-62.1-34.3 0-62.1 27.8-62.1 62.1s27.8 62.1 62.1 62.1c34.3 0 62.1-27.8 62.1-62.1zm-109.3.1c0-26 21.2-47.1 47.1-47.1s47.1 21.1 47.1 47.1-21.2 47.1-47.1 47.1-47.1-21.1-47.1-47.1z"/></svg>`;
+const GOG_SVG = `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="15" fill="#6c2d8e"/><text x="16" y="20.5" font-family="'Arial Black',Arial,sans-serif" font-size="10.5" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="0.5">GOG</text></svg>`;
+const EPIC_SVG = `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="15" fill="#2a2a2a"/><text x="16" y="22" font-family="'Arial Black',Arial,sans-serif" font-size="9" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="-0.3">EPIC</text><path d="M10 8 L10 14 L22 14 L22 11.5 L12.5 11.5 L12.5 9.5 L22 9.5 L22 8 Z" fill="#ffffff"/></svg>`;
+
+function platformHtml(p, sz=14) {
+  if (p==='steam')  return `<span class="platform-icon" style="width:${sz}px;height:${sz}px" title="Steam">${STEAM_SVG}</span>`;
+  if (p==='gog')    return `<span class="platform-icon" style="width:${sz}px;height:${sz}px" title="GOG">${GOG_SVG}</span>`;
+  if (p==='epic')   return `<span class="platform-icon" style="width:${sz}px;height:${sz}px" title="Epic">${EPIC_SVG}</span>`;
+  if (p==='pirate') return `<span class="platform-emoji" style="font-size:${sz}px" title="Pirate">🏴‍☠️</span>`;
+  return '';
+}
+function platformName(p) { return {steam:'Steam',gog:'GOG',epic:'Epic Games',pirate:'Pirate 🏴‍☠️'}[p]||p; }
+
+// ── STEAM IMAGE DETECTION (même logique que tier list) ──
+function extractSteamAppId(url) {
+  const m = url.match(/store\.steampowered\.com(?:\/agecheck)?\/app\/(\d+)/i);
+  return m ? m[1] : null;
+}
+function buildSteamUrl(appId) {
+  return `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`;
+}
+function steamFallback(appId) {
+  return `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`;
+}
+
+function onImgInput() {
+  clearTimeout(urlTimer);
+  const url = document.getElementById('f-img').value.trim();
+  const hint   = document.getElementById('imgHint');
+  const detect = document.getElementById('imgDetect');
+  const wrap   = document.getElementById('imgPreviewWrap');
+  const prev   = document.getElementById('imgPreview');
+  resolvedImgSrc = '';
+
+  if (!url) {
+    hint.style.display='block'; detect.style.display='none'; wrap.style.display='none'; return;
+  }
+
+  urlTimer = setTimeout(() => {
+    const appId = extractSteamAppId(url);
+    if (appId) {
+      const imgUrl = buildSteamUrl(appId);
+      resolvedImgSrc = imgUrl;
+      prev.src = imgUrl;
+      wrap.style.display = 'block';
+      prev.onload = () => {
+        hint.style.display='none';
+        detect.textContent='✅ Image Steam détectée !';
+        detect.style.display='block';
+      };
+      prev.onerror = () => {
+        const fb = steamFallback(appId);
+        resolvedImgSrc = fb; prev.src = fb;
+        prev.onload = () => { hint.style.display='none'; detect.textContent='✅ Image Steam (fallback)'; detect.style.display='block'; };
+        prev.onerror = () => { detect.textContent='⚠ Image non chargée — colle une URL directe (.jpg/.png)'; detect.style.display='block'; hint.style.display='none'; };
+      };
+      // Auto-remplir le nom si vide
+      const nameField = document.getElementById('f-name');
+      if (!nameField.value.trim()) {
+        const parts = url.split('/').filter(Boolean);
+        const slug  = parts[parts.length-1];
+        if (slug && isNaN(slug)) {
+          let name = slug;
+          try { name = decodeURIComponent(slug); } catch(e) {}
+          name = name.replace(/_/g,' ').replace(/(?:^|\s)\S/g, c=>c.toUpperCase());
+          nameField.value = name;
+        }
+      }
+    } else {
+      // URL directe d'image
+      resolvedImgSrc = url;
+      prev.src = url;
+      wrap.style.display = 'block';
+      hint.style.display = 'none';
+      detect.style.display = 'none';
+    }
+  }, 350);
+}
+
+function resetImgField() {
+  document.getElementById('f-img').value = '';
+  document.getElementById('imgHint').style.display = 'block';
+  document.getElementById('imgDetect').style.display = 'none';
+  document.getElementById('imgPreviewWrap').style.display = 'none';
+  document.getElementById('imgPreview').src = '';
+  resolvedImgSrc = '';
+}
+
+// ── NOTES / STARS ──
+function noteClass(n) {
+  if (!n||n<=0) return '';
+  if (n===10) return 'note-10';
+  if (n>=8)   return 'note-89';
+  if (n>=6)   return 'note-67';
+  if (n===5)  return 'note-5';
+  if (n>=3)   return 'note-34';
+  return 'note-12';
+}
+function noteClassCard(n) { return noteClass(n).replace('note-','cn-'); }
+function noteColor(n) {
+  if (!n||n<=0) return '';
+  if (n===10) return 'var(--note-10)';
+  if (n>=8)   return 'var(--note-89)';
+  if (n>=6)   return 'var(--note-67)';
+  if (n===5)  return 'var(--note-5)';
+  if (n>=3)   return 'var(--note-34)';
+  return 'var(--note-12)';
+}
+function starsHtml(note) {
+  if (note===null||note===undefined||note<=0) return '<span style="color:var(--border)">—</span>';
+  const cls=noteClass(note);
+  let html=`<span class="stars-wrap ${cls}">`;
+  for(let i=1;i<=10;i++){
+    const pct=Math.round(Math.min(1,Math.max(0,note-(i-1)))*100);
+    html+=`<span class="star-pair"><span class="s-empty">★</span><span class="s-full" style="width:${pct}%">★</span></span>`;
+  }
+  html+=`<span class="star-val">${note}</span></span>`;
+  return html;
+}
+function statusBadge(status) {
+  const labels={afaire:'À faire',encours:'En cours',fini:'Terminé',abandonne:'Abandonné',attente:'En attente / Bug'};
+  return `<span class="status-badge status-${status}">${labels[status]||status}</span>`;
+}
+function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── DATA ──
+const EXCEL_DATA = [{"id": "xe92ocsb", "name": "A way out", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "rxtxsz0x", "name": "Bayonetta", "platform": "gog", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "55eq4446", "name": "Bayonetta 2", "platform": "pirate", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "riepa0ip", "name": "Bioshock infinite", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 8.0, "noteperso": "", "img": ""}, {"id": "u060g74i", "name": "Bioshock infinite burial at sea", "platform": "steam", "annee": 2026, "support": "DLC", "status": "fini", "note": 8.0, "noteperso": "", "img": ""}, {"id": "m1wlsxo5", "name": "Contrast", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "d12o5n6y", "name": "Dead space remake", "platform": "pirate", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "fqwsgksx", "name": "Devil may cry 4", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "cvwg0uwn", "name": "Devil may cry 5", "platform": "gog", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "sejusgy3", "name": "Dungeon tycoon", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "pyxv35ts", "name": "Farcry 5", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "0e1mory4", "name": "Halo 3 ODST", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "9icplq1l", "name": "Halo 4", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "uy0g309g", "name": "Haven", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "7r6upbtj", "name": "Inazuma eleven victory road", "platform": "gog", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "l7144dq8", "name": "Invincible atom eve", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "bv4jp3jf", "name": "L.A noire", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "p2slowwt", "name": "Looking up i see only a ceiling", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 3.0, "noteperso": "", "img": ""}, {"id": "ool9vjad", "name": "Lords of the fallen", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "dy22ynrc", "name": "Mass effect 1", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "q8w672l7", "name": "Max payne 3", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "j9d0h9tw", "name": "Metro 2033 redux", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "wr9tmsa0", "name": "Metro last light redux", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "jcg58z53", "name": "Middle earth shadow of mordor", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "5sklyt90", "name": "Middle earth shadow of war", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "vgeo83wu", "name": "Mirrors Edge", "platform": "pirate", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "q693z5bp", "name": "Mirrors edge catalyst", "platform": "pirate", "annee": 2026, "support": "", "status": "abandonne", "note": null, "noteperso": "", "img": ""}, {"id": "mrrycmri", "name": "Mixtape", "platform": "gog", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "8iqaqc2y", "name": "Overcome your fears - caretaker", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 3.0, "noteperso": "", "img": ""}, {"id": "oqjk6tmc", "name": "Pragmata", "platform": "gog", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "fn7f7mq6", "name": "Project homecoming haven", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "foiluoz5", "name": "Replaced", "platform": "pirate", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "7ry596bp", "name": "Resident evil", "platform": "gog", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "osunmxvf", "name": "Resident evil 0", "platform": "gog", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "10aznao0", "name": "Resident evil 2", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 8.0, "noteperso": "", "img": ""}, {"id": "u5zig53z", "name": "Resident evil 3", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "2z4bzfpl", "name": "Resident evil 4", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 9.0, "noteperso": "", "img": ""}, {"id": "fdcyulrw", "name": "Resident evil 5", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "26xpgpsg", "name": "Resident evil 7", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "qeirrv6f", "name": "Resident evil op\u00e9ration raccoon city", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 4.0, "noteperso": "", "img": ""}, {"id": "5td3uhti", "name": "Resident evil requiem", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 9.0, "noteperso": "", "img": ""}, {"id": "is5cj3z6", "name": "Resident evil revelation", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 3.0, "noteperso": "", "img": ""}, {"id": "p4wjmc2o", "name": "Resident evil revelation 2", "platform": "gog", "annee": 2026, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "lctviewc", "name": "Resident evil village", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "tr4fa1ga", "name": "Ryse son of rome", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "dl162isq", "name": "Sackboy a big adventure", "platform": "pirate", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "g9x1gi2f", "name": "Samsara room", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "t1vndxbs", "name": "Scritchy scratchy", "platform": "pirate", "annee": 2026, "support": "", "status": "fini", "note": null, "noteperso": "", "img": ""}, {"id": "tkdqsju9", "name": "Silent hill 2", "platform": "pirate", "annee": 2026, "support": "", "status": "fini", "note": 8.0, "noteperso": "", "img": ""}, {"id": "x67uh9e6", "name": "Silent hill f", "platform": "pirate", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "73yb7446", "name": "Sleeping dogs", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "fdqdxygj", "name": "Spec ops the line", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "ez5y26ml", "name": "Star wars jedi fallen order", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "ncx2kpio", "name": "Star wars jedi survivor", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "wzmnvhqc", "name": "Stellar blade", "platform": "gog", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "sslbcyi2", "name": "Stray gods the roleplaying musical", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "nrypgig0", "name": "Street of rage 4", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "vh15507z", "name": "The dark pictures anthology: house of ashes", "platform": "gog", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "j1d00rp6", "name": "The dark pictures anthology: little hope", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "okooc0fu", "name": "The dark pictures anthology: man of medan", "platform": "gog", "annee": 2026, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "4tr1ggxb", "name": "The dark pictures anthology: the devil in me", "platform": "gog", "annee": 2026, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "dapexctb", "name": "The exit 8", "platform": "gog", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "p3slv8kv", "name": "The stanley parable", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "z2klxvni", "name": "Tiny tina's wonderlands", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 3.0, "noteperso": "", "img": ""}, {"id": "3lywkra9", "name": "Totally accurate battle simulator", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "6tz3b81k", "name": "Uncharted the lost legacy", "platform": "steam", "annee": 2026, "support": "DLC", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "nc4za967", "name": "Viewfinder", "platform": "steam", "annee": 2026, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "2dgt4qzk", "name": "A plague tale: innocence", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 8.0, "noteperso": "", "img": ""}, {"id": "dgg7lk9p", "name": "A plague tale: requiem", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 9.0, "noteperso": "", "img": ""}, {"id": "1zbo3pon", "name": "Abiotic Factor", "platform": "steam", "annee": 2025, "support": "", "status": "attente", "note": 7.0, "noteperso": "", "img": ""}, {"id": "tm9he590", "name": "Banyu lintar angin - little storm", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "jc3vs6eq", "name": "Bioshock 2 minerva's den remastered", "platform": "steam", "annee": 2025, "support": "DLC", "status": "fini", "note": 8.0, "noteperso": "", "img": ""}, {"id": "gyjjb2jw", "name": "Bioshock 2 remastered", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 8.0, "noteperso": "", "img": ""}, {"id": "vkpgm93c", "name": "Bioshock remastered", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "wrheng3l", "name": "Biped", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "wikw58dv", "name": "Catherine classic", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "d6yncbe6", "name": "Clair obscur expedition 33", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 10.0, "noteperso": "", "img": ""}, {"id": "lny17bhj", "name": "Cyberpunk 2077", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 10.0, "noteperso": "", "img": ""}, {"id": "iz38j3mo", "name": "Dark soul remastered", "platform": "steam", "annee": 2025, "support": "", "status": "abandonne", "note": 7.0, "noteperso": "", "img": ""}, {"id": "3a6pu6yy", "name": "Devil in me", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "fmfvfgzz", "name": "Doki doki literature club", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "fa0jyg7p", "name": "Enshourded", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "85o1eilv", "name": "Escape room - the sick colleague", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "im7dadd3", "name": "Escape the backrooms", "platform": "steam", "annee": 2025, "support": "", "status": "abandonne", "note": 3.0, "noteperso": "", "img": ""}, {"id": "v4x0apje", "name": "Eternights", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "g8j4qqf4", "name": "Freedom fighter", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "3xeyvbcw", "name": "Gone home", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "3hdhe0oj", "name": "Gris", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "pacgczwk", "name": "Halo 2", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "nnypsows", "name": "Halo 3", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "2gko9fxp", "name": "Halo CE", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 3.0, "noteperso": "", "img": ""}, {"id": "i5ehgmly", "name": "Halo reach", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "z2kgemom", "name": "Hellblade: senua's sacrifice", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 4.0, "noteperso": "", "img": ""}, {"id": "cuqpp31e", "name": "Hogwarts legacy", "platform": "steam", "annee": 2025, "support": "", "status": "abandonne", "note": 3.0, "noteperso": "", "img": ""}, {"id": "67w4x8k5", "name": "Inside", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "wueqeng9", "name": "Last seen online", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "nflhoyxo", "name": "Little Nightmares", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "1v9vsmg7", "name": "Little Nightmares II", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "elwjpn9j", "name": "Mafia definitive edition", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "us1p6kdj", "name": "Mafia II definitive edition", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 4.0, "noteperso": "", "img": ""}, {"id": "g4m3unl6", "name": "Magdalena", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 1.0, "noteperso": "", "img": ""}, {"id": "ptx30h5y", "name": "Mizi NO!", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "56mcy1w1", "name": "Mouthwashing", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "kwisjyr9", "name": "NieR:Automata", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 8.0, "noteperso": "", "img": ""}, {"id": "cyd92qm4", "name": "No, i'm not a human", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 4.0, "noteperso": "", "img": ""}, {"id": "qk7zqxqw", "name": "Operation tango", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "o7a76y6x", "name": "Outer wilds", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 10.0, "noteperso": "", "img": ""}, {"id": "fuuhatdi", "name": "Persona 3 reload", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "ac3ig8a5", "name": "Press any button", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "s4kizaaz", "name": "Ready or not", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 8.0, "noteperso": "", "img": ""}, {"id": "3353d3qg", "name": "Saints row IV re-elected", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 4.0, "noteperso": "", "img": ""}, {"id": "q898ou36", "name": "Saints row the third", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 4.0, "noteperso": "", "img": ""}, {"id": "bc1ejoyy", "name": "Sifu", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "ecn4pkop", "name": "Slay the princess", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "o4ci1ks7", "name": "Split fiction", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 8.0, "noteperso": "", "img": ""}, {"id": "qmxm4j4y", "name": "The elder scrolls IV: oblivion remastered", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "gv45djic", "name": "The forest", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "rwkapkml", "name": "The last of us I", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 10.0, "noteperso": "", "img": ""}, {"id": "gz6pm4jb", "name": "The last of us II", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 10.0, "noteperso": "", "img": ""}, {"id": "6zfq7gjq", "name": "The new flesh", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 2.0, "noteperso": "", "img": ""}, {"id": "ik2wwobs", "name": "The outlast trials", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "8h3hq82d", "name": "The room", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "38ni4wh4", "name": "The room three", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 4.0, "noteperso": "", "img": ""}, {"id": "54fttz6u", "name": "The room two", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 4.0, "noteperso": "", "img": ""}, {"id": "53stiien", "name": "Unboxing the cryptic killer", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "ohp0xu0a", "name": "Uncharted 4 a thief's end", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "mt0hqyvd", "name": "Zort", "platform": "steam", "annee": 2025, "support": "", "status": "fini", "note": 3.0, "noteperso": "", "img": ""}, {"id": "eyijwn9n", "name": "A raven monologue", "platform": "steam", "annee": 2024, "support": "", "status": "fini", "note": null, "noteperso": "", "img": ""}, {"id": "zt5tr89r", "name": "Baldur's gate 3", "platform": "steam", "annee": 2024, "support": "", "status": "fini", "note": 10.0, "noteperso": "", "img": ""}, {"id": "e6ln18f2", "name": "Dead island 2", "platform": "steam", "annee": 2024, "support": "", "status": "fini", "note": 4.0, "noteperso": "", "img": ""}, {"id": "ac61emvt", "name": "Dungeons of sundaria", "platform": "steam", "annee": 2024, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "3lcbituh", "name": "Palworld", "platform": "steam", "annee": 2024, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "ksckskp5", "name": "Payday 3", "platform": "steam", "annee": 2024, "support": "", "status": "fini", "note": 4.0, "noteperso": "", "img": ""}, {"id": "nldvd5lg", "name": "The walking dead michonne", "platform": "steam", "annee": 2023, "support": "", "status": "fini", "note": 7.0, "noteperso": "", "img": ""}, {"id": "1uz5yjnh", "name": "The walking dead the final season", "platform": "steam", "annee": 2023, "support": "", "status": "fini", "note": 9.0, "noteperso": "", "img": ""}, {"id": "2c7gfdmk", "name": "Blacksad", "platform": "steam", "annee": 2022, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "kkdbm80e", "name": "Devour", "platform": "steam", "annee": 2022, "support": "", "status": "fini", "note": 5.0, "noteperso": "", "img": ""}, {"id": "wnhizfge", "name": "It takes two", "platform": "steam", "annee": 2022, "support": "", "status": "fini", "note": 8.0, "noteperso": "", "img": ""}, {"id": "3sfp4xxh", "name": "Journey to the savage planet", "platform": "steam", "annee": 2022, "support": "", "status": "fini", "note": 6.0, "noteperso": "", "img": ""}, {"id": "43q78iva", "name": "Labyrinthine", "platform": "steam", "annee": 2022, "support": "", "status": "fini", "note": 4.0, "noteperso": "", "img": ""}, {"id": "7lv9256c", "name": "Alice madness returns", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "vadkgwwx", "name": "Banishers: ghosts of new eden", "platform": "gog", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "56n2vkfk", "name": "Batman: arkham asylum goty", "platform": "gog", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "p5lvmyff", "name": "Batman: arkham city goty", "platform": "gog", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "jq5e0d6o", "name": "Batman: arkham knight", "platform": "gog", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "7bob8rhx", "name": "Batman: arkham origins", "platform": "gog", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "i125refj", "name": "Before your eyes", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "78cs01jz", "name": "Deus ex human mankind divided", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "1ce5wi3g", "name": "Deus ex human revolution", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "xqhzldmn", "name": "Digimon story time stanger", "platform": "gog", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "8u2qn7cf", "name": "Disco Elysium", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "mzrp36mv", "name": "Dispatch", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "qtfmsn95", "name": "Divinity original sin", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "zcnoyp0q", "name": "Divinity original sin 2", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "qcfkhbq5", "name": "Dying light", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "ndslsr7b", "name": "Final fantasy 7 rebirth", "platform": "pirate", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "hxqxtp8q", "name": "Final fantasy 7 remake", "platform": "pirate", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "n97intov", "name": "Ghost of tsushima", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "vcym14gp", "name": "God of war", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "o74db2gc", "name": "God of war ragnar\u00f6k", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "ax52m64x", "name": "Kane and lynch dead men", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "94v0u2hj", "name": "Limbo", "platform": "steam", "annee": null, "support": "", "status": "attente", "note": null, "noteperso": "", "img": ""}, {"id": "pfpyhxr2", "name": "Mass effect 2", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "hhryta7o", "name": "Mass effect 3", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "psm6dgz1", "name": "Metro exodus", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "y08lufwq", "name": "Nier replicant", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "7x43sap7", "name": "Ori and the blind forest: definite edition", "platform": "gog", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "z9syzu77", "name": "Oxenfree", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "brlmj48u", "name": "Persona 5", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "0pfetrol", "name": "Ratchet & clank rift apart", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "5mj0hh6p", "name": "Read dead redemption 2", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "js6yzky0", "name": "Remember me", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "525vpih9", "name": "Remnant from the ashes", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "3pazs9zl", "name": "Resident evil 4 classique", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "hvj9sbvi", "name": "Road 96", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "jerd3cqh", "name": "Scarlet nexus", "platform": "gog", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "9h94k6i8", "name": "Steins;gate", "platform": "steam", "annee": null, "support": "", "status": "attente", "note": null, "noteperso": "", "img": ""}, {"id": "jsvs3nwz", "name": "Tales of arise", "platform": "gog", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "jl6jkosi", "name": "The coffin of andy and leyley", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "j32g2xut", "name": "The evil within", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "fdddnqhz", "name": "The evil within 2", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "070w7oxx", "name": "Thief", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "nq8y762z", "name": "Twin mirror", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "tqlqfkcq", "name": "Until then", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "l7djd4qq", "name": "Vampyr", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}, {"id": "8fxvvy55", "name": "XIII classic", "platform": "steam", "annee": null, "support": "", "status": "afaire", "note": null, "noteperso": "", "img": ""}];
+
+async function load() {
+  RemoteStore.setStatusElement(document.getElementById('dbStatus'));
+  await RemoteStore.init([STORAGE_KEY]);
+  try {
+    let remote = RemoteStore.get(STORAGE_KEY, null);
+    if (remote && Array.isArray(remote)) {
+      games = remote;
+    } else {
+      // Rien en base : migration depuis un éventuel ancien localStorage, sinon jeu de données par défaut
+      const old = localStorage.getItem('backlog_jeux_v3') || localStorage.getItem('backlog_jeux_v4');
+      if (old) {
+        const parsed = JSON.parse(old);
+        games = parsed.map(g => ({ img:'', ...g }));
+      } else {
+        games = EXCEL_DATA.map(g=>({...g}));
+      }
+      save();
+    }
+    // S'assurer que tous les jeux ont le champ img
+    games = games.map(g => ({ img:'', ...g }));
+  } catch(e) { console.error(e); games = EXCEL_DATA.map(g=>({...g})); }
+}
+function save() { RemoteStore.set(STORAGE_KEY, games); }
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+// ── CARD RENDERING ──
+function cardImgHtml(g) {
+  const src = g.img || '';
+  if (src) return `<div class="card-img-wrap"><img src="${escHtml(src)}" alt="${escHtml(g.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="card-no-img" style="display:none">🎮</div></div>`;
+  return `<div class="card-img-wrap"><div class="card-no-img">🎮</div></div>`;
+}
+
+function cardHtml(g) {
+  const nc = noteClassCard(g.note);
+  const noteLabel = (g.note!=null&&g.note>0) ? `<span class="card-note ${nc}">${g.note}</span>` : '';
+  const platHtml  = `<span class="card-platform">${platformHtml(g.platform,16)}</span>`;
+  const dlcHtml   = g.support ? `<span class="card-dlc">${escHtml(g.support)}</span>` : '';
+  return `<div class="game-card" data-id="${g.id}" onclick="openInfo('${g.id}')" title="${escHtml(g.name)}">
+    ${cardImgHtml(g)}
+    ${noteLabel}${platHtml}${dlcHtml}
+    <div class="card-name">${escHtml(g.name)}</div>
+  </div>`;
+}
+
+// ── STATS ──
+function renderStats(list) {
+  document.getElementById('statTotal').textContent = games.length;
+  document.getElementById('statDone').textContent = games.filter(g=>g.status==='fini').length;
+  renderYearFilters();
+  renderStatusCounts();
+}
+
+function renderStatusCounts() {
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  const base = games.filter(g=>{
+    const mq=!q||g.name.toLowerCase().includes(q);
+    const mp=filterPlatform==='tous'||g.platform===filterPlatform;
+    const my=filterYear==='tous'||g.annee===filterYear;
+    return mq&&mp&&my;
+  });
+  document.getElementById('cnt-tous').textContent = base.length;
+  document.getElementById('cnt-fini').textContent = base.filter(g=>g.status==='fini').length;
+  document.getElementById('cnt-encours').textContent = base.filter(g=>g.status==='encours').length;
+  document.getElementById('cnt-abandonne').textContent = base.filter(g=>g.status==='abandonne').length;
+  document.getElementById('cnt-attente').textContent = base.filter(g=>g.status==='attente').length;
+  document.getElementById('cnt-afaire').textContent = base.filter(g=>g.status==='afaire').length;
+}
+
+function renderYearFilters() {
+  // base list: respects status/platform/search filters but ignores the year filter itself
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  const base = games.filter(g=>{
+    const mq=!q||g.name.toLowerCase().includes(q);
+    const ms=filterStatus==='tous'||
+      (filterStatus==='afaire'&&g.status==='afaire')||(filterStatus==='encours'&&g.status==='encours')||
+      (filterStatus==='fini'&&(g.status==='fini'))||(filterStatus==='attente'&&g.status==='attente')||
+      (filterStatus==='abandonne'&&g.status==='abandonne');
+    const mp=filterPlatform==='tous'||g.platform===filterPlatform;
+    return mq&&ms&&mp;
+  });
+  const years=[...new Set(base.map(g=>g.annee))].filter(y=>y!=null).sort((a,b)=>b-a);
+  let html=`<button class="year-pill tous-pill${filterYear==='tous'?' active':''}" onclick="setYearFilter('tous')">Toutes</button>`;
+  years.forEach(y=>{
+    const c=base.filter(g=>g.annee===y).length;
+    html+=`<button class="year-pill${filterYear===y?' active':''}" onclick="setYearFilter(${y})">${y} <span class="yp-count">${c}</span></button>`;
+  });
+  document.getElementById('yearFilters').innerHTML=html;
+}
+function setYearFilter(y){ filterYear=y; renderGrid(); }
+
+// ── FILTER ──
+function getFiltered() {
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  return games.filter(g=>{
+    const mq=!q||g.name.toLowerCase().includes(q);
+    const ms=filterStatus==='tous'||
+      (filterStatus==='afaire'&&g.status==='afaire')||(filterStatus==='encours'&&g.status==='encours')||
+      (filterStatus==='fini'&&(g.status==='fini'))||(filterStatus==='attente'&&g.status==='attente')||
+      (filterStatus==='abandonne'&&g.status==='abandonne');
+    const mp=filterPlatform==='tous'||g.platform===filterPlatform;
+    const my=filterYear==='tous'||g.annee===filterYear;
+    return mq&&ms&&mp&&my;
+  });
+}
+
+const STATUS_GROUPS=[
+  {key:'encours',label:'EN COURS',statuses:['encours']},
+  {key:'attente',label:'EN ATTENTE / BUG',statuses:['attente']},
+  {key:'fini',label:'TERMINÉS',statuses:['fini']},
+  {key:'abandonne',label:'ABANDONNÉS',statuses:['abandonne']},
+  {key:'afaire',label:'À FAIRE',statuses:['afaire']},
+];
+
+function renderGrid() {
+  const filtered=getFiltered(); renderStats(filtered);
+  const years=[...new Set(games.map(g=>g.annee))].sort((a,b)=>{if(a===null&&b===null)return 0;if(a===null)return 1;if(b===null)return-1;return b-a;});
+  let html='';
+  for(const yr of years){
+    const yg=filtered.filter(g=>g.annee===yr); if(!yg.length) continue;
+    const yrKey=yr===null?'null':yr;
+    const isCollapsed=collapsedYears.has(String(yrKey));
+    const yearLabel = yr===null?'JEUX À FAIRE':String(yr);
+    html+=`<div class="year-section"><div class="year-heading${isCollapsed?' collapsed':''}" onclick="toggleYear('${yrKey}')"><span class="yh-dot">▾</span><span class="yh-year">${yearLabel}</span><span class="yh-count">${yg.length}</span></div><div class="year-body${isCollapsed?' collapsed':''}" id="yr-body-${yrKey}" style="max-height:${isCollapsed?'0':'9999px'}">`;
+    for(const grp of STATUS_GROUPS){
+      const rows=yg.filter(g=>grp.statuses.includes(g.status)).sort((a,b)=>{const na=a.note??-1,nb=b.note??-1;if(nb!==na)return nb-na;return(a.name||'').localeCompare(b.name||'');});
+      if(!rows.length) continue;
+      html+=`<div class="status-section"><div class="status-heading sh-${grp.key}">${grp.label}<span class="sh-count">${rows.length}</span></div><div class="card-grid">`;
+      rows.forEach(g=>{html+=cardHtml(g);});
+      html+=`</div></div>`;
+    }
+    html+=`</div></div>`;
+  }
+  if(!html) html=`<div class="empty-state">Aucun jeu trouvé.</div>`;
+  document.getElementById('mainContent').innerHTML=html;
+}
+
+// ── INFO POPUP ──
+function openInfo(id) {
+  if(document.getElementById('overlay').classList.contains('open')) return;
+  const g=games.find(x=>x.id===id); if(!g) return;
+  const imgWrap=document.getElementById('infoImgWrap');
+  if(g.img){
+    imgWrap.innerHTML=`<div class="info-img-wrap"><img src="${escHtml(g.img)}" onerror="this.parentNode.innerHTML='<div class=\\'info-no-img\\'>🎮</div>'"><div class="info-img-overlay"></div><div class="info-title-block"><div class="info-title">${escHtml(g.name)}</div></div></div>`;
+  } else {
+    imgWrap.innerHTML=`<div style="position:relative"><div class="info-no-img">🎮</div><div class="info-img-overlay"></div><div class="info-title-block"><div class="info-title">${escHtml(g.name)}</div></div></div>`;
+  }
+  document.getElementById('infoBody').innerHTML=`
+    <div class="info-row"><span class="info-label">STATUT</span><span class="info-val">${statusBadge(g.status)}</span></div>
+    <div class="info-row"><span class="info-label">NOTE</span><span class="info-val">${starsHtml(g.note)}</span></div>
+    <div class="info-row"><span class="info-label">PLATEFORME</span><span class="info-val">${platformHtml(g.platform,16)} ${platformName(g.platform)}</span></div>
+    ${g.support?`<div class="info-row"><span class="info-label">SUPPORT</span><span class="info-val">${escHtml(g.support)}</span></div>`:''}
+    ${g.annee?`<div class="info-row"><span class="info-label">ANNÉE</span><span class="info-val">${g.annee}</span></div>`:''}
+    ${g.noteperso?`<div class="info-row" style="flex-direction:column;gap:.3rem"><span class="info-label">NOTE PERSO</span><div style="background:var(--bg3);border-left:2px solid var(--border);padding:.4rem .6rem;font-size:12px;color:#ccc;font-style:italic;white-space:pre-wrap">${escHtml(g.noteperso)}</div></div>`:''}
+    <div class="info-actions">
+      <button class="btn-cancel" onclick="closeInfo()">Fermer</button>
+      <button class="btn-danger" onclick="closeInfo();delGame('${g.id}')">✕ Supprimer</button>
+      <button class="btn-primary" onclick="closeInfo();editGame('${g.id}')">✎ Modifier</button>
+    </div>`;
+  document.getElementById('infoOverlay').classList.add('open');
+}
+function closeInfo(){ document.getElementById('infoOverlay').classList.remove('open'); }
+
+// ── EDIT MODAL ──
+const slider=document.getElementById('f-note');
+const sliderVal=document.getElementById('f-note-val');
+const sliderPrev=document.getElementById('f-note-preview');
+const sliderFill=document.getElementById('f-note-fill');
+function updateSliderUI(){
+  const v=parseFloat(slider.value);
+  const pct=(v/10)*100;
+  if(v===0){
+    sliderVal.textContent='—';sliderVal.className='note-slider-val';sliderPrev.innerHTML='';
+    sliderFill.style.width='0%';sliderFill.style.background='var(--gold-dim)';
+  } else {
+    sliderVal.textContent=v;sliderVal.className='note-slider-val '+noteClass(v);sliderPrev.innerHTML=starsHtml(v);
+    sliderFill.style.width=pct+'%';sliderFill.style.background=noteColor(v);
+  }
+}
+slider.addEventListener('input',updateSliderUI);
+
+function openModal(game){
+  editingId=game?game.id:null;
+  document.getElementById('modalTitle').textContent=game?'// ÉDITER':'// AJOUTER UN JEU';
+  document.getElementById('f-name').value=game?.name||'';
+  document.getElementById('f-annee').value=game?.annee||'';
+  document.getElementById('f-platform').value=game?.platform||'steam';
+  document.getElementById('f-support').value=game?.support||'';
+  document.getElementById('f-status').value=game?.status||'afaire';
+  slider.value=(game?.note!=null&&game.note>0)?game.note:0;
+  document.getElementById('f-notepersonne').value=game?.noteperso||'';
+  // Image field
+  resetImgField();
+  const existingImg=game?.img||'';
+  if(existingImg){
+    document.getElementById('f-img').value=existingImg;
+    resolvedImgSrc=existingImg;
+    const prev=document.getElementById('imgPreview');
+    prev.src=existingImg;
+    document.getElementById('imgPreviewWrap').style.display='block';
+    document.getElementById('imgHint').style.display='none';
+  }
+  updateSliderUI();
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('f-name').focus();
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('open'); editingId=null; }
+function saveGame(){
+  const name=document.getElementById('f-name').value.trim(); if(!name){document.getElementById('f-name').focus();return;}
+  const dup=games.find(x=>x.id!==editingId && x.name.trim().toLowerCase()===name.toLowerCase());
+  if(dup){ alert(`"${name}" existe déjà dans la liste.`); document.getElementById('f-name').focus(); return; }
+  const sv=parseFloat(slider.value);
+  // Priorité : resolvedImgSrc (détecté depuis URL) ou valeur brute du champ
+  const imgVal=resolvedImgSrc||document.getElementById('f-img').value.trim();
+  const g={
+    id:editingId||uid(), name,
+    annee:parseInt(document.getElementById('f-annee').value)||null,
+    platform:document.getElementById('f-platform').value,
+    support:document.getElementById('f-support').value,
+    status:document.getElementById('f-status').value,
+    note:sv>0?sv:null,
+    img:imgVal,
+    noteperso:document.getElementById('f-notepersonne').value.trim(),
+  };
+  if(editingId){const idx=games.findIndex(x=>x.id===editingId);if(idx!==-1)games[idx]=g;}
+  else{games.push(g);}
+  save();closeModal();renderGrid();
+}
+function editGame(id){const g=games.find(x=>x.id===id);if(g)openModal(g);}
+function delGame(id){if(!confirm('Supprimer ce jeu ?'))return;games=games.filter(x=>x.id!==id);save();renderGrid();}
+function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── FILTERS ──
+document.querySelectorAll('[data-filter]').forEach(btn=>{btn.addEventListener('click',()=>{document.querySelectorAll('[data-filter]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');filterStatus=btn.dataset.filter;renderGrid();});});
+document.querySelectorAll('[data-platform]').forEach(btn=>{btn.addEventListener('click',()=>{document.querySelectorAll('[data-platform]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');filterPlatform=btn.dataset.platform;renderGrid();});});
+document.getElementById('search').addEventListener('input',renderGrid);
+document.getElementById('addBtnTop').addEventListener('click',()=>openModal(null));
+document.getElementById('viewGridBtn').addEventListener('click',()=>{document.getElementById('mainContent').classList.remove('compact');document.getElementById('viewGridBtn').classList.add('active');document.getElementById('viewListBtn').classList.remove('active');});
+document.getElementById('viewListBtn').addEventListener('click',()=>{document.getElementById('mainContent').classList.add('compact');document.getElementById('viewListBtn').classList.add('active');document.getElementById('viewGridBtn').classList.remove('active');});
+function collapseAllYears(){
+
+    collapsedYears.clear();
+
+    const years=[...new Set(games.map(g=>g.annee))];
+
+    years.forEach(y=>{
+        collapsedYears.add(String(y===null ? "null" : y));
+    });
+
+    renderGrid();
+}
+
+function expandAllYears(){
+
+    collapsedYears.clear();
+
+    renderGrid();
+}
+document.getElementById('cancelBtn').addEventListener('click',closeModal);
+document.getElementById('saveBtn').addEventListener('click',saveGame);
+// Le formulaire ne se ferme PAS en cliquant sur le fond — utiliser la croix ou le bouton Annuler
+document.getElementById('infoClose').addEventListener('click',closeInfo);
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeInfo();} // Échap ferme uniquement la fiche info, pas le formulaire
+  if(e.key==='Enter'&&document.getElementById('overlay').classList.contains('open')){if(document.activeElement?.tagName!=='TEXTAREA')saveGame();}
+});
+
+document.getElementById('exportBtn').addEventListener('click',()=>{const b=new Blob([JSON.stringify(games,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='listejeuxréalisés.json';a.click();});
+document.getElementById('importBtn').addEventListener('click',()=>document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change',e=>{
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();r.onload=ev=>{try{const imp=JSON.parse(ev.target.result);if(!Array.isArray(imp))throw new Error();if(!confirm(`Importer ${imp.length} jeux ? Ça remplacera les données actuelles.`))return;games=imp.map(g=>({img:'',...g}));save();renderGrid();}catch{alert('Fichier JSON invalide.');}};
+  r.readAsText(file);e.target.value='';
+});
+
+const COLLAPSED_KEY = 'backlog_collapsed_years';
+const collapsedYears = new Set(JSON.parse(localStorage.getItem(COLLAPSED_KEY)||'[]'));
+function toggleYear(yrKey) {
+  if(collapsedYears.has(String(yrKey))) {
+    collapsedYears.delete(String(yrKey));
+  } else {
+    collapsedYears.add(String(yrKey));
+  }
+  localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...collapsedYears]));
+  renderGrid();
+}
+
+// ── HEADER FLOTTANT AU SCROLL ──
+(function(){
+  const header=document.querySelector('.sticky-header');
+  function onScroll(){
+    if(window.scrollY>10) header.classList.add('scrolled');
+    else header.classList.remove('scrolled');
+  }
+  window.addEventListener('scroll',onScroll,{passive:true});
+  onScroll();
+})();
+
+// ── ÉVITER LE ROGNAGE DES CARTES EN BORD D'ÉCRAN (survol/tap) ──
+(function(){
+  const EDGE = 40; // marge de sécurité en px
+  function adjustOrigin(card){
+    const r = card.getBoundingClientRect();
+    if(r.left < EDGE) card.style.transformOrigin = 'left center';
+    else if(window.innerWidth - r.right < EDGE) card.style.transformOrigin = 'right center';
+    else card.style.transformOrigin = 'center center';
+  }
+  document.addEventListener('pointerover', e=>{
+    const card = e.target.closest('.game-card');
+    if(card) adjustOrigin(card);
+  });
+  document.addEventListener('touchstart', e=>{
+    const card = e.target.closest('.game-card');
+    if(card) adjustOrigin(card);
+  }, {passive:true});
+})();
+
+load().then(renderGrid);
+</script>
+</body>
+</html>

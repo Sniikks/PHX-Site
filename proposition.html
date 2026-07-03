@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Tracker – 369 &amp; Sniikks</title>
+<link rel="shortcut icon" href="https://cdn.discordapp.com/icons/1030553621252821053/2e7356a5d822245ad7953afdb143581a.webp?size=160&quality=lossless">
+<meta property="og:type" content="website"/>
+<meta property="og:url" content="https://gametracker369sniikks.netlify.app/"/>
+<meta property="og:title" content="Game Tracker – 369 &amp; Sniikks"/>
+<meta property="og:description" content="Backlog de jeux vidéo — suivi des statuts, notes et plateformes."/>
+<meta property="og:image" content="https://gametracker369sniikks.netlify.app/preview2.png"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta name="theme-color" content="#c9a84c"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<!-- Fix flash: set active tab before paint -->
+<script>try{window._GT_TAB=localStorage.getItem('gt_active_tab')||'tab1';}catch(e){window._GT_TAB='tab1';}</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+:root{
+  --bg:#0e0f13;--surface:#161820;--surface2:#1e2028;--border:#2a2d3a;
+  --gold:#c9a84c;--gold-light:#e0c068;--gold-dim:rgba(201,168,76,0.15);--gold-glow:rgba(201,168,76,0.10);
+  --text:#d4d6e0;--text-dim:#7a7d8e;
+  --green:#4caf78;--green-bg:rgba(76,175,120,0.12);
+  --orange:#e8a030;--orange-bg:rgba(232,160,48,0.12);
+  --red:#e05050;--red-bg:rgba(224,80,80,0.12);
+  --blue:#5090e0;--blue-bg:rgba(80,144,224,0.12);
+  --radius:6px;
+  --note-10:#8b5cf6;--note-89:#4caf78;--note-67:#8bc34a;
+  --note-5:#fdd835;--note-34:#e8a030;--note-12:#e05050;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;min-height:100vh;}
+
+/* ── HEADER ── */
+.sticky-top{position:sticky;top:0;z-index:50;background:rgba(14,15,19,0.97);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
+.sh-inner{max-width:1400px;margin:0 auto;padding:0 28px;}
+.sh-title{display:flex;align-items:center;justify-content:space-between;padding:12px 0 10px;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap;}
+.logo{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;letter-spacing:2px;color:var(--gold);white-space:nowrap;}
+.logo span{color:var(--text-dim);font-weight:400;}
+.tabs{display:flex;align-items:center;gap:2px;}
+.tab-btn{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);background:none;border:none;border-bottom:2px solid transparent;padding:6px 16px;cursor:pointer;transition:color .2s,border-color .2s;}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+.header-actions{display:flex;gap:8px;align-items:center;}
+.btn-io{background:transparent;border:1px solid var(--border);color:var(--text-dim);font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;border-radius:var(--radius);padding:6px 12px;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.btn-io:hover{border-color:var(--gold);color:var(--gold);}
+#file-import{display:none;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;}
+.dot.connecting{background:var(--orange);animation:pulse 1.2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── FILTER ROWS ── */
+.sh-row{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;padding:7px 0;}
+/* Hidden by default — JS shows the right one immediately */
+#filterRow1,#filterRow2{display:none;}
+.sh-search{background:var(--surface);border:1px solid var(--border);color:#fff;padding:5px 14px;font-family:'Inter',sans-serif;font-size:12px;outline:none;border-radius:4px;width:200px;transition:all .2s;flex-shrink:0;}
+.sh-search:focus{border-color:rgba(201,168,76,0.4);width:240px;}
+.sh-search::placeholder{color:rgba(255,255,255,.3);}
+.filter-btn{background:transparent;border:none;color:rgba(255,255,255,.4);padding:4px 10px;font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;border-radius:20px;white-space:nowrap;letter-spacing:.5px;}
+.filter-btn:hover{color:#fff;background:rgba(255,255,255,.06);}
+.filter-btn.active{color:var(--gold);background:var(--gold-glow);box-shadow:0 0 10px rgba(201,168,76,0.18);}
+.btn-add-main{background:var(--gold);border:none;color:#0e0f13;padding:5px 14px;font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;cursor:pointer;border-radius:20px;white-space:nowrap;transition:all .2s;letter-spacing:1px;}
+.btn-add-main:hover{background:var(--gold-light);transform:translateY(-1px);}
+
+/* ── TABS ── */
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+.main-content{max-width:1400px;margin:0 auto;padding:20px 28px 60px;}
+
+/* ── STATUS SECTIONS ── */
+.status-section{margin-bottom:1.4rem;}
+.status-heading{font-size:9px;letter-spacing:.14em;color:rgba(255,255,255,.28);padding:4px 0 8px;display:flex;align-items:center;gap:.5rem;text-transform:uppercase;font-weight:600;}
+.status-heading::after{content:'';flex:1;border-top:1px solid var(--border);}
+.sh-encours .status-heading{color:var(--blue);}
+.sh-encours .status-heading::after{border-top-color:rgba(80,144,224,.3);}
+.sh-attentebugs .status-heading{color:var(--orange);}
+.sh-attentebugs .status-heading::after{border-top-color:rgba(232,160,48,.3);}
+.sh-prop-both .status-heading{color:var(--green);}
+.sh-prop-both .status-heading::after{border-top-color:rgba(76,175,120,.3);}
+.card-grid{display:flex;flex-wrap:wrap;gap:10px;}
+
+/* ── COLLAPSIBLE DISPO SUBGROUPS ── */
+.dispo-group{margin-bottom:10px;}
+.dispo-group:last-child{margin-bottom:0;}
+.dispo-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 4px;user-select:none;border-radius:4px;transition:background .15s;}
+.dispo-toggle:hover{background:rgba(255,255,255,.03);}
+.dispo-chevron{font-size:10px;color:var(--text-dim);transition:transform .2s;flex-shrink:0;width:10px;}
+.dispo-group.collapsed .dispo-chevron{transform:rotate(-90deg);}
+.dispo-label{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);display:flex;align-items:center;gap:6px;}
+.dispo-count{font-size:10px;color:var(--text-dim);font-weight:400;background:var(--surface2);padding:1px 7px;border-radius:10px;}
+.dispo-body{overflow:hidden;max-height:2000px;transition:max-height .25s ease;}
+.dispo-group.collapsed .dispo-body{max-height:0;}
+
+/* ── GAME CARD ── */
+.game-card{width:120px;height:160px;flex-shrink:0;cursor:pointer;border:1px solid var(--border);transition:transform .12s,border-color .12s,box-shadow .12s;position:relative;background:var(--surface);border-radius:4px;overflow:hidden;}
+.game-card:hover{transform:scale(1.06);border-color:rgba(201,168,76,0.5);box-shadow:0 4px 18px rgba(0,0,0,.6);z-index:5;}
+.game-card img{width:100%;height:122px;object-fit:cover;display:block;background:var(--surface2);}
+.card-no-img{width:100%;height:122px;display:flex;align-items:center;justify-content:center;background:var(--surface2);font-size:32px;color:rgba(201,168,76,0.3);}
+.card-name{font-size:9px;text-align:center;padding:4px 4px 2px;line-height:1.2;color:rgba(255,255,255,.6);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;height:30px;}
+/* badges top-left */
+.card-note{position:absolute;top:3px;left:3px;font-size:11px;font-family:'Rajdhani',sans-serif;font-weight:700;padding:1px 5px;line-height:16px;background:rgba(0,0,0,.85);border-radius:3px;}
+.card-order{position:absolute;top:3px;left:3px;font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;padding:1px 5px;line-height:16px;background:rgba(0,0,0,.85);border-radius:3px;color:var(--gold);}
+/* dispo top-right (tab1) */
+.card-dispo{position:absolute;top:3px;right:3px;font-size:11px;line-height:1;background:rgba(0,0,0,.75);border-radius:3px;padding:2px 4px;}
+.card-released{position:absolute;top:3px;right:3px;font-size:8px;font-family:'Rajdhani',sans-serif;font-weight:700;line-height:1;background:rgba(201,168,76,0.85);border-radius:3px;padding:2px 4px;color:#0e0f13;letter-spacing:.5px;}
+/* ordre badge bottom-right (tab1) */
+.card-ordre{position:absolute;bottom:32px;right:3px;font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;padding:1px 5px;line-height:16px;background:rgba(0,0,0,.85);border-radius:3px;color:var(--gold);}
+/* yn dots bottom-right (tab2) — with black bg for visibility */
+.card-yn{position:absolute;bottom:32px;right:4px;display:flex;flex-direction:column;gap:3px;align-items:center;background:rgba(0,0,0,.80);border-radius:4px;padding:3px 4px;}
+.yn-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.yn-oui{background:#4caf78;box-shadow:0 0 5px rgba(76,175,120,0.8);}
+.yn-non{background:#e05050;box-shadow:0 0 5px rgba(224,80,80,0.6);}
+.yn-vide{background:rgba(122,125,142,0.5);}
+/* note colors */
+.cn-10{color:var(--note-10)}.cn-89{color:var(--note-89)}.cn-67{color:var(--note-67)}
+.cn-5{color:var(--note-5)}.cn-34{color:var(--note-34)}.cn-12{color:var(--note-12)}
+
+/* ── INFO POPUP ── */
+.info-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center;}
+.info-overlay.open{display:flex;}
+.info-modal{background:var(--surface);border:1px solid var(--border);width:min(460px,95vw);max-height:90vh;overflow-y:auto;position:relative;border-radius:12px;}
+.info-img-wrap{position:relative;width:100%;height:180px;overflow:hidden;}
+.info-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
+.info-no-img{width:100%;height:180px;display:flex;align-items:center;justify-content:center;font-size:52px;background:var(--surface2);}
+.info-img-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.05) 0%,rgba(14,15,19,.95) 100%);}
+.info-title-block{position:absolute;bottom:.8rem;left:1rem;right:3rem;}
+.info-title{font-size:1rem;color:#fff;font-weight:700;line-height:1.2;font-family:'Rajdhani',sans-serif;letter-spacing:1px;}
+.info-close{position:absolute;top:.6rem;right:.7rem;background:rgba(0,0,0,.6);border:1px solid var(--border);color:#fff;font-family:inherit;font-size:16px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:border-color .15s;z-index:5;}
+.info-close:hover{border-color:var(--gold);color:var(--gold);}
+.info-body{padding:1rem 1.2rem 1.4rem;}
+.info-row{display:flex;align-items:flex-start;gap:.6rem;margin-bottom:.65rem;font-size:12px;}
+.info-label{color:var(--text-dim);min-width:80px;font-size:10px;letter-spacing:.08em;padding-top:2px;text-transform:uppercase;font-family:'Rajdhani',sans-serif;}
+.info-val{color:var(--text);flex:1;word-break:break-word;}
+.info-actions{display:flex;gap:.5rem;margin-top:1rem;justify-content:flex-end;}
+.status-badge{font-size:10px;padding:2px 8px;border-radius:3px;white-space:nowrap;display:inline-block;font-weight:600;letter-spacing:.4px;text-transform:uppercase;font-family:'Rajdhani',sans-serif;}
+.badge-afaire{color:rgba(255,255,255,.3);background:var(--surface2);}
+.badge-encours{color:var(--blue);background:var(--blue-bg);}
+.badge-attentebugs{color:var(--orange);background:var(--orange-bg);}
+.badge-oui{color:var(--green);background:var(--green-bg);}
+.badge-non{color:var(--red);background:var(--red-bg);}
+.stars-wrap{display:inline-flex;align-items:center;gap:1px;}
+.star-w{position:relative;width:11px;height:12px;font-size:11px;line-height:1;flex-shrink:0;display:inline-block;}
+.s-bg{color:#333;position:absolute;left:0;top:0;user-select:none;}
+.s-fill{position:absolute;left:0;top:0;overflow:hidden;white-space:nowrap;user-select:none;}
+.s-fill.half{width:50%;}.s-fill.full{width:100%;}
+.note-val{font-size:13px;font-weight:700;margin-left:6px;}
+
+/* ── MODALS ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:300;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--gold);padding:28px 32px;width:480px;max-width:96vw;border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.7);max-height:90vh;overflow-y:auto;}
+.modal-header{display:flex;align-items:center;gap:10px;margin-bottom:24px;}
+.modal-header .slash{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:var(--text-dim);}
+.modal-title{font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--gold);letter-spacing:3px;text-transform:uppercase;}
+.form-group{margin-bottom:16px;}
+.form-group label{display:block;font-family:'Rajdhani',sans-serif;font-weight:600;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;}
+.form-group label .req{color:var(--gold);margin-left:2px;}
+.form-group input,.form-group select,.form-group textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;transition:border-color .2s;appearance:none;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--gold);}
+.form-group textarea{resize:vertical;min-height:80px;}
+.form-group select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237a7d8e'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer;}
+.form-group select option{background:#1e2028;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;padding-top:16px;border-top:1px solid var(--border);}
+.btn-cancel-modal{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'Rajdhani',sans-serif;font-weight:600;font-size:13px;letter-spacing:1px;text-transform:uppercase;border-radius:var(--radius);padding:9px 20px;cursor:pointer;transition:all .2s;}
+.btn-cancel-modal:hover{border-color:var(--text-dim);color:var(--text);}
+.btn-save{background:var(--gold);color:#0e0f13;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase;border:none;border-radius:var(--radius);padding:9px 24px;cursor:pointer;transition:background .2s;}
+.btn-save:hover{background:var(--gold-light);}
+.btn-danger{background:transparent;border:1px solid rgba(224,80,80,.4);color:rgba(224,80,80,.7);padding:9px 16px;font-family:'Rajdhani',sans-serif;font-size:13px;cursor:pointer;border-radius:var(--radius);transition:all .15s;}
+.btn-danger:hover{color:var(--red);border-color:var(--red);background:var(--red-bg);}
+.modal-slider-wrap{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.modal-slider{-webkit-appearance:none;appearance:none;flex:1;height:4px;outline:none;cursor:pointer;background:var(--surface2);border-radius:2px;}
+.modal-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--mthumb,#888);cursor:pointer;}
+.modal-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--mthumb,#888);cursor:pointer;border:none;}
+.modal-note-val{font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;min-width:40px;text-align:right;line-height:1;align-self:center;}
+/* autofill hint */
+.autofill-hint{font-size:10px;color:var(--gold);margin-top:4px;display:none;}
+.autofill-hint.visible{display:block;}
+/* image preview in modal */
+.img-preview-wrap{margin-top:8px;display:none;border-radius:6px;overflow:hidden;height:80px;background:var(--surface2);}
+.img-preview-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
+.img-detect{font-size:10px;margin-top:4px;display:none;}
+.img-detect.ok{color:var(--green);}
+.img-detect.warn{color:var(--orange);}
+
+/* ── CONFIRM DELETE ── */
+.confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:400;align-items:center;justify-content:center;}
+.confirm-overlay.open{display:flex;}
+.confirm-box{background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--red);padding:28px 32px;width:360px;max-width:92vw;border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.7);}
+.confirm-box h2{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--red);letter-spacing:3px;margin-bottom:20px;text-transform:uppercase;}
+.confirm-box p{font-size:14px;color:var(--text);margin-bottom:6px;}
+.confirm-box p strong{color:#fff;}
+.confirm-box small{font-size:11px;color:var(--text-dim);}
+.confirm-actions{display:flex;gap:10px;margin-top:22px;}
+.btn-confirm-del{flex:1;background:var(--red);border:none;color:#fff;padding:10px;font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;cursor:pointer;border-radius:var(--radius);letter-spacing:1px;text-transform:uppercase;transition:all .2s;}
+.btn-confirm-del:hover{background:#e86060;}
+.btn-cancel-del{flex:1;background:transparent;border:1px solid var(--border);color:var(--text-dim);padding:10px;font-family:'Rajdhani',sans-serif;font-size:12px;cursor:pointer;border-radius:var(--radius);transition:all .15s;text-transform:uppercase;letter-spacing:1px;}
+.btn-cancel-del:hover{color:var(--text);border-color:#444;}
+
+/* ── TOAST ── */
+#toastContainer{position:fixed;bottom:24px;right:24px;z-index:500;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+.toast{background:var(--surface);border:1px solid rgba(201,168,76,0.4);color:var(--text);padding:10px 18px;border-radius:10px;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:.5px;box-shadow:0 0 14px rgba(201,168,76,0.2),0 8px 24px rgba(0,0,0,.6);opacity:0;transform:translateY(10px);transition:opacity .25s,transform .25s;}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast.green{border-color:rgba(76,175,120,0.4);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:640px){
+  .sh-inner{padding:0 14px;}
+  .main-content{padding:16px 14px 60px;}
+  .game-card{width:90px;height:122px;}
+  .game-card img,.card-no-img{height:90px;}
+}
+@media(max-width:480px){
+  .modal-overlay{align-items:flex-end;}
+  .modal{width:100%;max-width:100%;border-radius:16px 16px 0 0;padding:20px 14px;max-height:92vh;}
+  .form-row{grid-template-columns:1fr;}
+  .info-overlay{align-items:flex-end;}
+  .info-modal{width:100%;max-width:100%;border-radius:16px 16px 0 0;}
+}
+</style>
+</head>
+<body>
+
+<!-- STICKY HEADER -->
+<div class="sticky-top">
+<div class="sh-inner">
+  <div class="sh-title">
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <a href="index.html" class="btn" style="text-decoration:none; color:var(--gold);">← Menu</a>
+      <div class="logo">// <span>GAME</span>TRACKER</div>
+      <div class="tabs">
+        <button class="tab-btn" id="tabBtn1" onclick="switchTab('tab1',this)">Jeux à faire</button>
+        <button class="tab-btn" id="tabBtn2" onclick="switchTab('tab2',this)">Proposition</button>
+      </div>
+    </div>
+    <div class="header-actions">
+      <input type="file" id="file-import" accept=".json" onchange="importJSON(event)">
+      <button class="btn-io" onclick="document.getElementById('file-import').click()">⬆ Import</button>
+      <button class="btn-io" onclick="exportJSON()">⬇ Export</button>
+    </div>
+  </div>
+  <div class="sh-row" id="filterRow1">
+    <input type="text" id="searchInput1" class="sh-search" placeholder="Rechercher un jeu...">
+    <button class="filter-btn active" data-filter1="Tous">Tous</button>
+    <button class="filter-btn" data-filter1="A faire">À faire</button>
+    <button class="filter-btn" data-filter1="En cours">En cours</button>
+    <button class="filter-btn" data-filter1="Attente/Bug">Attente/Bug</button>
+    <button class="btn-add-main" onclick="openModal1()">+ Ajouter</button>
+  </div>
+  <div class="sh-row" id="filterRow2">
+    <input type="text" id="searchInput2" class="sh-search" placeholder="Rechercher une proposition...">
+    <button class="filter-btn active" data-filter2="Tous">Tous</button>
+    <button class="filter-btn" data-filter2="Oui-Oui">✅ Les deux</button>
+    <button class="filter-btn" data-filter2="369">369 Oui</button>
+    <button class="filter-btn" data-filter2="Sniikks">Sniikks Oui</button>
+    <button class="btn-add-main" onclick="openModal2()">+ Ajouter</button>
+  </div>
+</div>
+</div>
+
+<!-- TAB 1 : JEUX À FAIRE -->
+<div id="tab1" class="tab-panel">
+  <div class="main-content" id="mainContent1"></div>
+</div>
+
+<!-- TAB 2 : PROPOSITION -->
+<div id="tab2" class="tab-panel">
+  <div class="main-content" id="mainContent2"></div>
+</div>
+
+<!-- INFO POPUP TAB 1 -->
+<div class="info-overlay" id="infoOverlay1">
+  <div class="info-modal">
+    <div id="infoImgWrap1"></div>
+    <button class="info-close" onclick="closeInfo(1)">✕</button>
+    <div class="info-body" id="infoBody1"></div>
+  </div>
+</div>
+
+<!-- INFO POPUP TAB 2 -->
+<div class="info-overlay" id="infoOverlay2">
+  <div class="info-modal">
+    <div id="infoImgWrap2"></div>
+    <button class="info-close" onclick="closeInfo(2)">✕</button>
+    <div class="info-body" id="infoBody2"></div>
+  </div>
+</div>
+
+<!-- MODAL 1 : Jeux à faire -->
+<div class="modal-overlay" id="modal1">
+  <div class="modal">
+    <div class="modal-header"><span class="slash">//</span><span class="modal-title" id="modal1-title">AJOUTER</span></div>
+    <input type="hidden" id="edit-id1">
+    <div class="form-row">
+      <div class="form-group"><label>Ordre</label><input type="number" id="f1-ordre" placeholder="1, 2, 3…" min="1"></div>
+      <div class="form-group"><label>Statut</label>
+        <select id="f1-statut">
+          <option value="">À faire</option>
+          <option value="En cours">En cours</option>
+          <option value="Attente/Bug">Attente/Bug</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Jeu <span class="req">*</span></label>
+      <input type="text" id="f1-jeu" placeholder="Nom du jeu…">
+    </div>
+    <div class="form-group"><label>Dispo</label>
+      <select id="f1-date">
+        <option value="">-</option>
+        <option value="🟢">🟢 Disponible</option>
+        <option value="🟠">🟠 Partiel</option>
+        <option value="🔴">🔴 Non dispo</option>
+        <option value="SORTIE">🆕 Vient de sortir</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Lien Steam <span style="color:var(--text-dim);font-size:10px;">(le nom sera rempli automatiquement)</span></label>
+      <input type="url" id="f1-lien" placeholder="https://store.steampowered.com/app/…">
+      <div class="img-detect" id="f1-img-detect"></div>
+      <div class="img-preview-wrap" id="f1-img-preview-wrap"><img id="f1-img-preview" alt="preview"></div>
+    </div>
+    <div class="form-group"><label>Note perso</label><textarea id="f1-note-perso" placeholder="Impressions rapides…"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn-cancel-modal" onclick="closeModal(1)">Annuler</button>
+      <button class="btn-save" onclick="saveGame1()">Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 2 : Proposition -->
+<div class="modal-overlay" id="modal2">
+  <div class="modal">
+    <div class="modal-header"><span class="slash">//</span><span class="modal-title" id="modal2-title">AJOUTER</span></div>
+    <input type="hidden" id="edit-id2">
+    <div class="form-group">
+      <label>Jeu <span class="req">*</span></label>
+      <input type="text" id="f2-jeu" placeholder="Nom du jeu…">
+    </div>
+    <div class="form-group">
+      <label>Lien Steam <span style="color:var(--text-dim);font-size:10px;">(le nom sera rempli automatiquement)</span></label>
+      <input type="url" id="f2-lien" placeholder="https://store.steampowered.com/app/…">
+      <div class="img-detect" id="f2-img-detect"></div>
+      <div class="img-preview-wrap" id="f2-img-preview-wrap"><img id="f2-img-preview" alt="preview"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>369</label>
+        <select id="f2-369"><option value="">-</option><option value="Oui">Oui</option><option value="Non">Non</option></select>
+      </div>
+      <div class="form-group"><label>Sniikks</label>
+        <select id="f2-sniikks"><option value="">-</option><option value="Oui">Oui</option><option value="Non">Non</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label>Dispo</label>
+      <select id="f2-date">
+        <option value="">-</option>
+        <option value="🟢">🟢 Disponible</option>
+        <option value="🟠">🟠 Partiel</option>
+        <option value="🔴">🔴 Non dispo</option>
+        <option value="SORTIE">🆕 Vient de sortir</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Note perso</label><textarea id="f2-note" placeholder="Impressions rapides…"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn-cancel-modal" onclick="closeModal(2)">Annuler</button>
+      <button class="btn-save" onclick="saveGame2()">Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM SUPPRESSION -->
+<div class="confirm-overlay" id="modal-confirm">
+  <div class="confirm-box">
+    <h2>// Supprimer</h2>
+    <p>Supprimer <strong id="confirm-game-name"></strong> ?</p>
+    <small>Cette action est irréversible.</small>
+    <div class="confirm-actions">
+      <button class="btn-cancel-del" onclick="closeConfirm()">Annuler</button>
+      <button class="btn-confirm-del" onclick="confirmDelete()">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<script>
+// ── CONFIG SUPABASE ──────────────────────────────────────────────────────────
+const SUPA_URL='https://bvflkwudutxcjylsgmva.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2Zmxrd3VkdXR4Y2p5bHNnbXZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMDI4MjcsImV4cCI6MjA5NjY3ODgyN30.qU2N7eZ3S7qAVytF3W4eo8gHGrBDAcCRwoYgZFWL4as';
+const H={'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Prefer':'return=representation'};
+
+// ── API ──────────────────────────────────────────────────────────────────────
+async function sbGet(t){try{const r=await fetch(`${SUPA_URL}/rest/v1/${t}?order=inserted_at.asc,id.asc`,{headers:H});return await r.json();}catch(e){return[];}}
+async function sbInsert(t,o){try{const r=await fetch(`${SUPA_URL}/rest/v1/${t}`,{method:'POST',headers:H,body:JSON.stringify({...o,inserted_at:new Date().toISOString()})});return await r.json();}catch(e){return null;}}
+async function sbUpdate(t,id,o){try{const{inserted_at,...d}=o;await fetch(`${SUPA_URL}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:H,body:JSON.stringify(d)});}catch(e){}}
+async function sbDelete(t,id){try{await fetch(`${SUPA_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:H});}catch(e){}}
+
+// ── REALTIME ─────────────────────────────────────────────────────────────────
+function connectRealtime(){
+  try{
+    const ws=new WebSocket(SUPA_URL.replace('https://','wss://')+'/realtime/v1/websocket?apikey='+SUPA_KEY+'&vsn=1.0.0');
+    ws.onopen=()=>{
+      setStatus(true);
+      ['jeux_a_faire','proposition'].forEach(t=>ws.send(JSON.stringify({topic:`realtime:public:${t}`,event:'phx_join',payload:{},ref:t})));
+    };
+    ws.onmessage=e=>{
+      try{const m=JSON.parse(e.data);
+        if(['INSERT','UPDATE','DELETE'].includes(m.event)){
+          if(m.topic.includes('jeux_a_faire'))loadTab1();
+          if(m.topic.includes('proposition'))loadTab2();
+        }
+      }catch(e){}
+    };
+    ws.onclose=()=>{setStatus(false);setTimeout(connectRealtime,3000);};
+    ws.onerror=()=>ws.close();
+    setInterval(()=>{if(ws.readyState===1)ws.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:null}));},30000);
+  }catch(e){setStatus(false);setTimeout(connectRealtime,5000);}
+}
+function setStatus(ok){
+  const d=document.getElementById('dot');
+  if(d)d.className='dot'+(ok?'':' connecting');
+}
+
+// ── SEED ─────────────────────────────────────────────────────────────────────
+const SEED1=[
+  {ordre:'',jeu:'Metro Exodus',statut:'',lien:'https://store.steampowered.com/app/412020/',note_num:null,note:'',date_sortie:'🟢'},
+  {ordre:'',jeu:'Deus Ex Human Revolution',statut:'',lien:'https://store.steampowered.com/app/238010/',note_num:null,note:'',date_sortie:'🟢'},
+  {ordre:'',jeu:'Deus Ex Mankind Divided',statut:'',lien:'https://store.steampowered.com/app/337000/',note_num:null,note:'',date_sortie:'🟢'},
+  {ordre:'',jeu:'Ratchet & Clank Rift Apart',statut:'',lien:'https://store.steampowered.com/app/1895880/',note_num:null,note:'',date_sortie:'🟢'},
+  {ordre:'',jeu:'Ghost of Tsushima',statut:'',lien:'https://store.steampowered.com/app/2215430/',note_num:null,note:'',date_sortie:'🟢'},
+  {ordre:'',jeu:'Vampyr',statut:'',lien:'https://store.steampowered.com/app/427290/',note_num:null,note:'',date_sortie:'🟢'},
+  {ordre:'',jeu:"Dragon's Dogma 2",statut:'',lien:'https://store.steampowered.com/app/2054970/',note_num:null,note:'',date_sortie:'🟢'},
+  {ordre:'',jeu:'Divinity Original Sin',statut:'',lien:'https://store.steampowered.com/app/373420/',note_num:null,note:'',date_sortie:'🟢'},
+  {ordre:'',jeu:'Divinity Original Sin 2',statut:'',lien:'https://store.steampowered.com/app/435150/',note_num:null,note:'',date_sortie:'🟢'},
+  {ordre:'',jeu:'Final Fantasy VII Rebirth',statut:'',lien:'https://store.steampowered.com/app/2909400/',note_num:null,note:'',date_sortie:'🟢'},
+  {ordre:'',jeu:'Final Fantasy VII Remake',statut:'',lien:'https://store.steampowered.com/app/1462040/',note_num:null,note:'',date_sortie:'🟢'},
+  {ordre:'',jeu:'Mafia The Old Country',statut:'Attente/Bug',lien:'',note_num:null,note:'',date_sortie:'SORTIE'},
+  {ordre:'',jeu:'Dying Light',statut:'Attente/Bug',lien:'https://store.steampowered.com/app/239140/',note_num:null,note:'',date_sortie:'🟢'},
+  {ordre:'',jeu:'Resident Evil 6',statut:'',lien:'https://store.steampowered.com/app/221040/',note_num:null,note:'',date_sortie:'🟢'},
+  {ordre:'',jeu:'Onimusha: Warlords',statut:'',lien:'https://store.steampowered.com/app/779190/',note_num:null,note:'',date_sortie:'🟢'},
+];
+const SEED2=[
+  {jeu:'Mars War Logs',v369:'',sniikks:'',lien:'https://store.steampowered.com/app/232750/Mars_War_Logs/',note:'',date_sortie:'🟢'},
+  {jeu:'XIII',v369:'Oui',sniikks:'Oui',lien:'https://www.gog.com/fr/game/xiii',note:"L'ancienne version (mieux et beaucoup + opti)",date_sortie:'🟢'},
+  {jeu:'Wolfenstein The New Order',v369:'',sniikks:'',lien:'https://store.steampowered.com/app/201810/',note:'',date_sortie:'🟢'},
+  {jeu:'Remember Me',v369:'',sniikks:'Oui',lien:'https://store.steampowered.com/app/228300/',note:'',date_sortie:'🟢'},
+  {jeu:'Ground Zero',v369:'Oui',sniikks:'Oui',lien:'https://store.steampowered.com/app/2340130/',note:'',date_sortie:'🟢'},
+  {jeu:'007 First Light',v369:'Oui',sniikks:'Oui',lien:'https://store.steampowered.com/app/3768760/',note:'',date_sortie:'SORTIE'},
+  {jeu:'Resonance — A Plague Tale Legacy',v369:'Oui',sniikks:'Oui',lien:'',note:'',date_sortie:'2026'},
+  {jeu:'Fable Anniversary',v369:'Oui',sniikks:'Oui',lien:'https://store.steampowered.com/app/288470/',note:'',date_sortie:'🟢'},
+  {jeu:'ILL',v369:'Oui',sniikks:'Oui',lien:'https://store.steampowered.com/app/1757350/',note:'',date_sortie:'2027'},
+];
+
+async function seedIfEmpty(){
+  const[d1,d2]=await Promise.all([sbGet('jeux_a_faire'),sbGet('proposition')]);
+  if(!Array.isArray(d1)||!Array.isArray(d2))return;
+  if(!d1.length)for(const g of SEED1)await sbInsert('jeux_a_faire',g);
+  if(!d2.length)for(const g of SEED2)await sbInsert('proposition',g);
+}
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let _g1=[],_g2=[];
+let _f1='Tous',_s1='',_f2='Tous',_s2='';
+let _pending=null;
+
+// ── TABS ─────────────────────────────────────────────────────────────────────
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  document.getElementById('filterRow1').style.display=(id==='tab1')?'flex':'none';
+  document.getElementById('filterRow2').style.display=(id==='tab2')?'flex':'none';
+  try{localStorage.setItem('gt_active_tab',id);}catch(e){}
+}
+
+// Run immediately to restore tab without flash
+(()=>{
+  const isTab2=window._GT_TAB==='tab2';
+  const activeId=isTab2?'tab2':'tab1';
+  document.getElementById(activeId).classList.add('active');
+  document.getElementById(isTab2?'tabBtn2':'tabBtn1').classList.add('active');
+  document.getElementById('filterRow1').style.display=isTab2?'none':'flex';
+  document.getElementById('filterRow2').style.display=isTab2?'flex':'none';
+})();
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function showToast(msg,green=false){
+  const c=document.getElementById('toastContainer');
+  const t=document.createElement('div');t.className='toast'+(green?' green':'');t.textContent=msg;c.appendChild(t);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add('show')));
+  setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300);},2800);
+}
+function dateBadge(d){
+  if(!d||d==='')return'<span style="color:var(--text-dim)">—</span>';
+  if(d==='🟢')return'<span style="color:#4caf78;font-weight:700">🟢</span>';
+  if(d==='🟠')return'<span style="color:#e8a030;font-weight:700">🟠</span>';
+  if(d==='🔴')return'<span style="color:#e05050;font-weight:700">🔴</span>';
+  if(d==='SORTIE')return'<span style="color:var(--gold);font-family:Rajdhani,sans-serif;font-weight:700;font-size:12px;background:var(--gold-glow);padding:2px 8px;border-radius:4px;">🆕 SORTIE</span>';
+  return`<span style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--text-dim)">${esc(d)}</span>`;
+}
+function ynBadge(v){
+  if(v==='Oui')return'<span class="status-badge badge-oui">OUI</span>';
+  if(v==='Non')return'<span class="status-badge badge-non">NON</span>';
+  return'<span style="color:var(--text-dim)">—</span>';
+}
+
+// ── NOTE UTILS ────────────────────────────────────────────────────────────────
+function noteClass(n){if(n>=10)return'note-10';if(n>=8)return'note-89';if(n>=6)return'note-67';if(n>=5)return'note-5';if(n>=3)return'note-34';return'note-12';}
+function noteColor(n){if(n>=10)return'#8b5cf6';if(n>=8)return'#4caf78';if(n>=6)return'#8bc34a';if(n>=5)return'#fdd835';if(n>=3)return'#e8a030';return'#e05050';}
+function noteCardCls(n){if(!n||n<=0)return'';return noteClass(n).replace('note-','cn-');}
+function renderStars(note){
+  if(!note||note<=0)return'<span style="color:#333">—</span>';
+  const c=noteColor(note),cls=noteClass(note);
+  let h='<span class="stars-wrap">';
+  for(let i=1;i<=10;i++){const f=note>=i?'full':(note>=i-.5?'half':'');h+=`<span class="star-w"><span class="s-bg">★</span>${f?`<span class="s-fill ${f}" style="color:${c}">★</span>`:''}</span>`;}
+  return h+`<span class="note-val ${cls}" style="color:${c}">${note}</span></span>`;
+}
+function updateSlider(v){
+  const s=document.getElementById('f1-note-slider'),l=document.getElementById('f1-note-val');
+  if(!s||!l)return;
+  const c=v>0?noteColor(v):'#888',p=(v/10)*100;
+  s.style.background=v>0?`linear-gradient(to right,${c} ${p}%,#1e2028 ${p}%)`:'#1e2028';
+  s.style.setProperty('--mthumb',c);l.textContent=v>0?v:'—';l.style.color=v>0?c:'#555';
+}
+
+// ── STEAM IMAGE ───────────────────────────────────────────────────────────────
+function steamAppId(url){
+  if(!url)return null;
+  const m=url.match(/store\.steampowered\.com(?:\/agecheck)?\/app\/(\d+)/i);
+  return m?m[1]:null;
+}
+function isDirectImg(url){
+  if(!url)return false;
+  if(/\.(jpg|jpeg|png|webp|gif)(\?|\/|$)/i.test(url))return true;
+  if(url.includes('steamstatic.com/store_item_assets'))return true;
+  if(url.includes('steamstatic.com/steam/apps'))return true;
+  return false;
+}
+// Returns {type:'direct',src} or {type:'steam',appId} or null
+function getImgData(lien){
+  if(!lien)return null;
+  if(isDirectImg(lien))return{type:'direct',src:lien};
+  const appId=steamAppId(lien);
+  if(appId)return{type:'steam',appId};
+  return null;
+}
+function steamFallbacks(id){
+  return[
+    `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${id}/header.jpg`,
+    `https://cdn.akamai.steamstatic.com/steam/apps/${id}/header.jpg`,
+    `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${id}/capsule_616x353.jpg`,
+    `https://cdn.akamai.steamstatic.com/steam/apps/${id}/capsule_616x353.jpg`,
+    `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${id}/library_600x900_2x.jpg`,
+  ];
+}
+function loadImg(imgEl,urls,fbHtml){
+  if(!urls||!urls.length){replaceWith(imgEl,fbHtml);return;}
+  const[first,...rest]=urls;
+  imgEl.src=first;
+  imgEl.onerror=()=>rest.length?loadImg(imgEl,rest,fbHtml):replaceWith(imgEl,fbHtml);
+}
+function replaceWith(el,html){const d=document.createElement('div');d.innerHTML=html;if(d.firstChild)el.replaceWith(d.firstChild);}
+function initImages(container){
+  container.querySelectorAll('img[data-appid]').forEach(img=>{
+    loadImg(img,steamFallbacks(img.dataset.appid),'<div class="card-no-img">🎮</div>');
+  });
+  container.querySelectorAll('img[data-directsrc]').forEach(img=>{
+    img.src=img.dataset.directsrc;
+    img.onerror=()=>replaceWith(img,'<div class="card-no-img">🎮</div>');
+  });
+}
+
+// ── STEAM NAME + IMAGE AUTOFILL ───────────────────────────────────────────────
+const _urlTimers={};
+
+function slugToName(url){
+  // Exact same logic as reference: take last non-numeric path segment, decode, replace _ with space
+  const parts=url.split('/').filter(Boolean);
+  const slug=parts[parts.length-1];
+  if(!slug||!isNaN(slug))return'';
+  let name=slug;
+  try{name=decodeURIComponent(slug);}catch(e){}
+  // Only replace underscores with spaces — preserve ALL other characters as-is (™ ® & - : etc.)
+  name=name.replace(/_/g,' ').trim();
+  return name;
+}
+
+function onLienInput(modalNum){
+  const prefix=`f${modalNum}`;
+  clearTimeout(_urlTimers[modalNum]);
+  const url=document.getElementById(`${prefix}-lien`).value.trim();
+  const detect=document.getElementById(`${prefix}-img-detect`);
+  const wrap=document.getElementById(`${prefix}-img-preview-wrap`);
+  const prev=document.getElementById(`${prefix}-img-preview`);
+  const nameField=document.getElementById(`${prefix}-jeu`);
+
+  detect.className='img-detect';detect.style.display='none';
+  wrap.style.display='none';prev.src='';
+
+  if(!url)return;
+
+  _urlTimers[modalNum]=setTimeout(()=>{
+    const appId=steamAppId(url);
+
+    // Autofill name from slug — only if field is empty
+    if(nameField&&!nameField.value.trim()){
+      const name=slugToName(url);
+      if(name)nameField.value=name;
+    }
+
+    if(appId){
+      // Try fastly first, then akamai fallback (same as reference)
+      const imgUrl=`https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`;
+      const fbUrl=`https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`;
+      prev.src=imgUrl;
+      wrap.style.display='block';
+      prev.onload=()=>{detect.textContent='✓ Image Steam détectée';detect.className='img-detect ok';detect.style.display='block';};
+      prev.onerror=()=>{
+        prev.src=fbUrl;
+        prev.onload=()=>{detect.textContent='✓ Image Steam (fallback)';detect.className='img-detect ok';detect.style.display='block';};
+        prev.onerror=()=>{wrap.style.display='none';detect.textContent='⚠ Image non trouvée — colle une URL directe';detect.className='img-detect warn';detect.style.display='block';};
+      };
+    } else if(isDirectImg(url)){
+      prev.src=url;
+      wrap.style.display='block';
+      prev.onload=()=>{detect.textContent='✓ Image détectée';detect.className='img-detect ok';detect.style.display='block';};
+      prev.onerror=()=>{wrap.style.display='none';detect.textContent='⚠ Image non chargée';detect.className='img-detect warn';detect.style.display='block';};
+    }
+  },350);
+}
+
+function resetLienField(modalNum){
+  const prefix=`f${modalNum}`;
+  document.getElementById(`${prefix}-lien`).value='';
+  const detect=document.getElementById(`${prefix}-img-detect`);
+  const wrap=document.getElementById(`${prefix}-img-preview-wrap`);
+  const prev=document.getElementById(`${prefix}-img-preview`);
+  detect.style.display='none';wrap.style.display='none';prev.src='';
+}
+
+// ── CARD HTML TAB 1 ───────────────────────────────────────────────────────────
+function cardHtml1(g){
+  const appId=steamAppId(g.lien);
+  const direct=isDirectImg(g.lien);
+  let dispoBadge='';
+  if(g.date_sortie==='SORTIE')dispoBadge='<span class="card-released">NEW</span>';
+  else if(g.date_sortie)dispoBadge=`<span class="card-dispo">${esc(g.date_sortie)}</span>`;
+  const ordreBadge=g.ordre?`<span class="card-ordre">#${esc(g.ordre)}</span>`:'';
+  let imgHtml;
+  if(direct)imgHtml=`<img src="${esc(g.lien)}" alt="${esc(g.jeu)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="card-no-img" style="display:none">🎮</div>`;
+  else if(appId)imgHtml=`<img data-appid="${appId}" alt="${esc(g.jeu)}" loading="lazy"><div class="card-no-img" style="display:none">🎮</div>`;
+  else imgHtml='<div class="card-no-img">🎮</div>';
+  return`<div class="game-card" onclick="openInfo(1,'${g.id}')" title="${esc(g.jeu)}">${imgHtml}${dispoBadge}${ordreBadge}<div class="card-name">${esc(g.jeu)}</div></div>`;
+}
+
+// ── CARD HTML TAB 2 ───────────────────────────────────────────────────────────
+function ynDot(v){
+  if(v==='Oui')return'<span class="yn-dot yn-oui"></span>';
+  if(v==='Non')return'<span class="yn-dot yn-non"></span>';
+  return'<span class="yn-dot yn-vide"></span>';
+}
+function cardHtml2(g){
+  const appId=steamAppId(g.lien);
+  const direct=isDirectImg(g.lien);
+  let dispoBadge='';
+  if(g.date_sortie==='SORTIE')dispoBadge='<span class="card-released">NEW</span>';
+  else if(g.date_sortie&&g.date_sortie!=='🟢'&&g.date_sortie!=='🟠'&&g.date_sortie!=='🔴')
+    dispoBadge=`<span class="card-dispo" style="font-size:8px;padding:1px 3px">${esc(g.date_sortie)}</span>`;
+  else if(g.date_sortie)dispoBadge=`<span class="card-dispo">${esc(g.date_sortie)}</span>`;
+  const ynHtml=`<div class="card-yn">${ynDot(g.v369)}${ynDot(g.sniikks)}</div>`;
+  let imgHtml;
+  if(direct)imgHtml=`<img src="${esc(g.lien)}" alt="${esc(g.jeu)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="card-no-img" style="display:none">🕹️</div>`;
+  else if(appId)imgHtml=`<img data-appid="${appId}" alt="${esc(g.jeu)}" loading="lazy"><div class="card-no-img" style="display:none">🕹️</div>`;
+  else imgHtml='<div class="card-no-img">🕹️</div>';
+  return`<div class="game-card" onclick="openInfo(2,'${g.id}')" title="${esc(g.jeu)}">${imgHtml}${dispoBadge}${ynHtml}<div class="card-name">${esc(g.jeu)}</div></div>`;
+}
+
+// ── DISPO GROUPING HELPERS ────────────────────────────────────────────────────
+const DISPO_DEFS=[
+  {key:'🟢',label:'🟢 Disponible'},
+  {key:'🟠',label:'🟠 Partiellement disponible'},
+  {key:'🔴',label:'🔴 Non disponible'},
+  {key:'SORTIE',label:'🆕 Vient de sortir'},
+];
+function dispoGroupLabel(d){
+  const found=DISPO_DEFS.find(x=>x.key===d);
+  if(found)return found.label;
+  if(d)return esc(d); // ex: '2026', '2027' or custom text
+  return'Sans info';
+}
+function dispoSortIndex(d){
+  const order=['🟢','🟠','🔴','SORTIE'];
+  const i=order.indexOf(d);
+  if(i>=0)return i;
+  if(!d)return 99; // "Sans info" last
+  return 50; // custom dates (years etc.) before "sans info", after known statuses
+}
+let _collapsedDispoGroups=new Set();
+try{
+  const saved=JSON.parse(localStorage.getItem('gt_collapsed_dispo')||'[]');
+  _collapsedDispoGroups=new Set(saved);
+}catch(e){}
+function toggleDispoGroup(groupId){
+  const el=document.querySelector(`[data-dispo-group="${groupId}"]`);
+  if(!el)return;
+  el.classList.toggle('collapsed');
+  if(el.classList.contains('collapsed'))_collapsedDispoGroups.add(groupId);
+  else _collapsedDispoGroups.delete(groupId);
+  try{localStorage.setItem('gt_collapsed_dispo',JSON.stringify([..._collapsedDispoGroups]));}catch(e){}
+}
+
+// ── RENDER TAB 1 ──────────────────────────────────────────────────────────────
+function renderTab1(){
+  const c=document.getElementById('mainContent1');
+  let list=[..._g1];
+  if(_s1){const q=_s1.toLowerCase();list=list.filter(g=>g.jeu.toLowerCase().includes(q));}
+  if(_f1==='A faire')list=list.filter(g=>!g.statut||g.statut==='');
+  else if(_f1==='En cours')list=list.filter(g=>g.statut==='En cours');
+  else if(_f1==='Attente/Bug')list=list.filter(g=>g.statut==='Attente/Bug');
+  if(!list.length){c.innerHTML='<div style="text-align:center;padding:60px;color:var(--text-dim)">Aucun jeu trouvé.</div>';return;}
+
+  const GROUPS=[
+    {key:'En cours',label:'EN COURS',css:'sh-encours'},
+    {key:'Attente/Bug',label:'ATTENTE / BUG',css:'sh-attentebugs'},
+    {key:'',label:'À FAIRE',css:'sh-afaire'},
+  ];
+  const srt=arr=>arr.sort((a,b)=>{
+    const oa=parseInt(a.ordre)||0, ob=parseInt(b.ordre)||0;
+    if(oa>0&&ob>0)return oa-ob;
+    if(oa>0)return -1;
+    if(ob>0)return 1;
+    return (a.inserted_at||'').localeCompare(b.inserted_at||'');
+  });
+
+  let html='';
+  for(const grp of GROUPS){
+    const rows=srt(list.filter(g=>(g.statut||'')===(grp.key)));
+    if(!rows.length)continue;
+    html+=`<div class="status-section ${grp.css}"><div class="status-heading">${grp.label}</div>`;
+
+    if(grp.key==='Attente/Bug'){
+      // No dispo subgrouping for Attente/Bug — flat grid
+      html+=`<div class="card-grid">`;
+      rows.forEach(g=>{html+=cardHtml1(g);});
+      html+=`</div>`;
+    } else {
+      // Sub-group by date_sortie within this status
+      const byDispo={};
+      rows.forEach(g=>{
+        const k=g.date_sortie||'';
+        if(!byDispo[k])byDispo[k]=[];
+        byDispo[k].push(g);
+      });
+      const dispoKeys=Object.keys(byDispo).sort((a,b)=>dispoSortIndex(a)-dispoSortIndex(b));
+
+      dispoKeys.forEach(dk=>{
+        const groupId=`${grp.key||'afaire'}__${dk||'none'}`.replace(/\s+/g,'_');
+        const isCollapsed=_collapsedDispoGroups.has(groupId);
+        const items=byDispo[dk];
+        html+=`<div class="dispo-group${isCollapsed?' collapsed':''}" data-dispo-group="${groupId}">
+          <div class="dispo-toggle" onclick="toggleDispoGroup('${groupId}')">
+            <span class="dispo-chevron">▾</span>
+            <span class="dispo-label">${dispoGroupLabel(dk)}<span class="dispo-count">${items.length}</span></span>
+          </div>
+          <div class="dispo-body"><div class="card-grid">`;
+        items.forEach(g=>{html+=cardHtml1(g);});
+        html+=`</div></div></div>`;
+      });
+    }
+
+    html+=`</div>`;
+  }
+  c.innerHTML=html;initImages(c);
+}
+
+// ── RENDER TAB 2 ──────────────────────────────────────────────────────────────
+function renderTab2(){
+  const c=document.getElementById('mainContent2');
+  let list=[..._g2];
+  if(_s2){const q=_s2.toLowerCase();list=list.filter(g=>g.jeu.toLowerCase().includes(q));}
+  if(_f2==='Oui-Oui')list=list.filter(g=>g.v369==='Oui'&&g.sniikks==='Oui');
+  else if(_f2==='369')list=list.filter(g=>g.v369==='Oui');
+  else if(_f2==='Sniikks')list=list.filter(g=>g.sniikks==='Oui');
+  // Sort by inserted_at ascending — oldest first, newest last
+  list.sort((a,b)=>(a.inserted_at||'').localeCompare(b.inserted_at||''));
+  if(!list.length){c.innerHTML='<div style="text-align:center;padding:60px;color:var(--text-dim)">Aucune proposition trouvée.</div>';return;}
+
+  const both=list.filter(g=>g.v369==='Oui'&&g.sniikks==='Oui');
+  const other=list.filter(g=>!(g.v369==='Oui'&&g.sniikks==='Oui'));
+  let html='';
+  if(both.length){
+    html+=`<div class="status-section sh-prop-both"><div class="status-heading">369 &amp; SNIIKKS — À FAIRE</div><div class="card-grid">`;
+    both.forEach(g=>{html+=cardHtml2(g);});html+=`</div></div>`;
+  }
+  if(other.length){
+    html+=`<div class="status-section sh-afaire"><div class="status-heading">PROPOSITIONS</div><div class="card-grid">`;
+    other.forEach(g=>{html+=cardHtml2(g);});html+=`</div></div>`;
+  }
+  c.innerHTML=html;initImages(c);
+}
+
+// ── LOAD ─────────────────────────────────────────────────────────────────────
+async function loadTab1(){const d=await sbGet('jeux_a_faire');if(Array.isArray(d)){_g1=d;renderTab1();}}
+async function loadTab2(){const d=await sbGet('proposition');if(Array.isArray(d)){_g2=d;renderTab2();}}
+
+// ── AUTO TRANSFER ─────────────────────────────────────────────────────────────
+async function checkAndTransfer(obj,id){
+  if(obj.v369!=='Oui'||obj.sniikks!=='Oui')return false;
+  // Insert into jeux_a_faire (without note_num to avoid column errors)
+  const newGame={ordre:'',jeu:obj.jeu,statut:'',lien:obj.lien||'',note:obj.note||'',note_num:null,date_sortie:obj.date_sortie||''};
+  const res=await sbInsert('jeux_a_faire',newGame);
+  if(!res||res.code||res.error){
+    // Try without optional fields
+    const res2=await sbInsert('jeux_a_faire',{jeu:obj.jeu,statut:'',lien:obj.lien||''});
+    if(!res2||res2.code){showToast('⚠️ Erreur lors du transfert');return false;}
+  }
+  await sbDelete('proposition',id);
+  await Promise.all([loadTab1(),loadTab2()]);
+  showToast(`"${obj.jeu}" transféré dans Jeux à faire !`,true);
+  return true;
+}
+
+// ── INFO POPUP ────────────────────────────────────────────────────────────────
+function buildImgWrap(g,appId,noImg){
+  const W=document.createElement('div');
+  const direct=isDirectImg(g.lien);
+  if(direct||appId){
+    const img=document.createElement('img');img.alt=g.jeu;
+    const wrap=document.createElement('div');wrap.className='info-img-wrap';
+    wrap.appendChild(img);
+    const ov=document.createElement('div');ov.className='info-img-overlay';wrap.appendChild(ov);
+    const tb=document.createElement('div');tb.className='info-title-block';
+    tb.innerHTML=`<div class="info-title">${esc(g.jeu)}</div>`;wrap.appendChild(tb);
+    W.appendChild(wrap);
+    if(direct){img.src=g.lien;img.onerror=()=>{img.replaceWith(document.createElement('div'));wrap.querySelector('.info-img-overlay').previousElementSibling||'';};}
+    else loadImg(img,steamFallbacks(appId),noImg);
+  } else {
+    W.innerHTML=`<div style="position:relative"><div class="info-no-img">${noImg.includes('🕹')?' 🕹️':'🎮'}</div><div class="info-img-overlay"></div><div class="info-title-block"><div class="info-title">${esc(g.jeu)}</div></div></div>`;
+  }
+  return W;
+}
+
+function openInfo(tab,id){
+  const games=tab===1?_g1:_g2;
+  const g=games.find(x=>String(x.id)===String(id));if(!g)return;
+  const appId=steamAppId(g.lien);
+  const overlayId=`infoOverlay${tab}`;
+  const wrapId=`infoImgWrap${tab}`;
+  const bodyId=`infoBody${tab}`;
+  const W=document.getElementById(wrapId);
+  W.innerHTML='';
+  const built=buildImgWrap(g,appId,tab===1?'<div class="card-no-img">🎮</div>':'<div class="card-no-img">🕹️</div>');
+  while(built.firstChild)W.appendChild(built.firstChild);
+
+  if(tab===1){
+    const sc=g.statut==='En cours'?'badge-encours':g.statut==='Attente/Bug'?'badge-attentebugs':'badge-afaire';
+    document.getElementById(bodyId).innerHTML=`
+      <div class="info-row"><span class="info-label">Statut</span><span class="info-val"><span class="status-badge ${sc}">${esc(g.statut||'À faire')}</span></span></div>
+      ${g.note_num!=null&&g.note_num>0?`<div class="info-row"><span class="info-label">Note</span><span class="info-val">${renderStars(g.note_num)}</span></div>`:''}      ${g.ordre?`<div class="info-row"><span class="info-label">Ordre</span><span class="info-val" style="color:var(--gold);font-family:Rajdhani,sans-serif;font-weight:700">#${esc(g.ordre)}</span></div>`:''}
+      ${g.date_sortie?`<div class="info-row"><span class="info-label">Dispo</span><span class="info-val">${dateBadge(g.date_sortie)}</span></div>`:''}
+      ${g.lien?`<div class="info-row"><span class="info-label">Steam</span><span class="info-val"><a href="${esc(g.lien)}" target="_blank" style="color:var(--gold);text-decoration:none;font-size:11px">Voir sur Steam ↗</a></span></div>`:''}
+      ${g.note?`<div class="info-row" style="flex-direction:column;gap:.3rem"><span class="info-label">Note perso</span><div style="background:var(--surface2);border-left:2px solid rgba(201,168,76,0.3);padding:.4rem .6rem;font-size:12px;color:#aaa;font-style:italic;white-space:pre-wrap;margin-top:4px">${esc(g.note)}</div></div>`:''}
+      <div class="info-actions">
+        <button class="btn-cancel-modal" onclick="closeInfo(1)">Fermer</button>
+        <button class="btn-danger" onclick="closeInfo(1);deleteGame(1,'${g.id}')">✕ Supprimer</button>
+        <button class="btn-save" style="flex:1" onclick="closeInfo(1);editGame(1,'${g.id}')">✎ Modifier</button>
+      </div>`;
+  } else {
+    document.getElementById(bodyId).innerHTML=`
+      <div class="info-row"><span class="info-label">369</span><span class="info-val">${ynBadge(g.v369)}</span></div>
+      <div class="info-row"><span class="info-label">Sniikks</span><span class="info-val">${ynBadge(g.sniikks)}</span></div>
+      ${g.date_sortie?`<div class="info-row"><span class="info-label">Dispo</span><span class="info-val">${dateBadge(g.date_sortie)}</span></div>`:''}
+      ${g.lien?`<div class="info-row"><span class="info-label">Steam</span><span class="info-val"><a href="${esc(g.lien)}" target="_blank" style="color:var(--gold);text-decoration:none;font-size:11px">Voir sur Steam ↗</a></span></div>`:''}
+      ${g.note?`<div class="info-row" style="flex-direction:column;gap:.3rem"><span class="info-label">Note perso</span><div style="background:var(--surface2);border-left:2px solid rgba(201,168,76,0.3);padding:.4rem .6rem;font-size:12px;color:#aaa;font-style:italic;white-space:pre-wrap;margin-top:4px">${esc(g.note)}</div></div>`:''}
+      <div class="info-actions">
+        <button class="btn-cancel-modal" onclick="closeInfo(2)">Fermer</button>
+        <button class="btn-danger" onclick="closeInfo(2);deleteGame(2,'${g.id}')">✕ Supprimer</button>
+        <button class="btn-save" style="flex:1" onclick="closeInfo(2);editGame(2,'${g.id}')">✎ Modifier</button>
+      </div>`;
+  }
+  document.getElementById(overlayId).classList.add('open');
+}
+function closeInfo(tab){document.getElementById(`infoOverlay${tab}`).classList.remove('open');}
+
+// ── MODAL 1 ──────────────────────────────────────────────────────────────────
+function openModal(n,id){document.getElementById(`modal${n}-title`).textContent=id?'ÉDITER':'AJOUTER';document.getElementById(`edit-id${n}`).value=id||'';document.getElementById(`modal${n}`).classList.add('open');}
+function closeModal(n){document.getElementById(`modal${n}`).classList.remove('open');}
+
+function openModal1(id){
+  openModal(1,id);
+  if(!id){
+    ['f1-ordre','f1-jeu','f1-lien','f1-note-perso'].forEach(x=>document.getElementById(x).value='');
+    document.getElementById('f1-statut').value='';document.getElementById('f1-date').value='';
+    resetLienField(1);
+  }
+  setTimeout(()=>document.getElementById('f1-lien').focus(),50);
+}
+async function saveGame1(){
+  const jeu=document.getElementById('f1-jeu').value.trim();if(!jeu){showToast('⚠️ Le nom est obligatoire.');return;}
+  const id=document.getElementById('edit-id1').value;
+  const obj={ordre:document.getElementById('f1-ordre').value.trim(),jeu,statut:document.getElementById('f1-statut').value,date_sortie:document.getElementById('f1-date').value,lien:document.getElementById('f1-lien').value.trim(),note:document.getElementById('f1-note-perso').value.trim()};
+  closeModal(1);
+  if(id)await sbUpdate('jeux_a_faire',id,obj);else await sbInsert('jeux_a_faire',obj);
+  await loadTab1();showToast(id?'Jeu modifié':'Jeu ajouté',!id);
+}
+function editGame1Populate(id){
+  const g=_g1.find(x=>String(x.id)===String(id));if(!g)return;
+  document.getElementById('f1-ordre').value=g.ordre||'';
+  document.getElementById('f1-jeu').value=g.jeu;
+  document.getElementById('f1-statut').value=g.statut||'';
+  document.getElementById('f1-date').value=g.date_sortie||'';
+  document.getElementById('f1-lien').value=g.lien||'';
+  document.getElementById('f1-note-perso').value=g.note||'';
+}
+
+// ── MODAL 2 ──────────────────────────────────────────────────────────────────
+function openModal2(id){
+  openModal(2,id);
+  if(!id){
+    ['f2-jeu','f2-lien','f2-note'].forEach(x=>document.getElementById(x).value='');
+    ['f2-369','f2-sniikks','f2-date'].forEach(x=>document.getElementById(x).value='');
+    resetLienField(2);
+  }
+  setTimeout(()=>document.getElementById('f2-lien').focus(),50);
+}
+async function saveGame2(){
+  const jeu=document.getElementById('f2-jeu').value.trim();if(!jeu){showToast('⚠️ Le nom est obligatoire.');return;}
+  const id=document.getElementById('edit-id2').value;
+  const obj={jeu,v369:document.getElementById('f2-369').value,sniikks:document.getElementById('f2-sniikks').value,date_sortie:document.getElementById('f2-date').value,lien:document.getElementById('f2-lien').value.trim(),note:document.getElementById('f2-note').value.trim()};
+  closeModal(2);
+  if(id){
+    const transferred=await checkAndTransfer(obj,id);
+    if(!transferred){await sbUpdate('proposition',id,obj);await loadTab2();showToast('Jeu modifié');}
+  } else {
+    const res=await sbInsert('proposition',obj);
+    const newId=Array.isArray(res)?res[0]?.id:res?.id;
+    if(newId){const transferred=await checkAndTransfer(obj,newId);if(!transferred){await loadTab2();showToast('Jeu ajouté',true);}}
+    else{await loadTab2();showToast('Jeu ajouté',true);}
+  }
+}
+function editGame2Populate(id){
+  const g=_g2.find(x=>String(x.id)===String(id));if(!g)return;
+  document.getElementById('f2-jeu').value=g.jeu;
+  document.getElementById('f2-369').value=g.v369||'';
+  document.getElementById('f2-sniikks').value=g.sniikks||'';
+  document.getElementById('f2-date').value=g.date_sortie||'';
+  document.getElementById('f2-lien').value=g.lien||'';
+  document.getElementById('f2-note').value=g.note||'';
+}
+
+// ── EDIT / DELETE (unified) ───────────────────────────────────────────────────
+function editGame(tab,id){
+  if(tab===1){editGame1Populate(id);openModal1(id);}
+  else{editGame2Populate(id);openModal2(id);}
+}
+function deleteGame(tab,id){
+  const games=tab===1?_g1:_g2;
+  const g=games.find(x=>String(x.id)===String(id));
+  _pending={table:tab===1?'jeux_a_faire':'proposition',id,tab};
+  document.getElementById('confirm-game-name').textContent=g?g.jeu:'?';
+  document.getElementById('modal-confirm').classList.add('open');
+}
+function closeConfirm(){document.getElementById('modal-confirm').classList.remove('open');_pending=null;}
+async function confirmDelete(){
+  if(!_pending)return;
+  const{table,id,tab}=_pending;closeConfirm();
+  await sbDelete(table,id);
+  if(tab===1)await loadTab1();else await loadTab2();
+  showToast('Jeu supprimé');
+}
+
+// ── IMPORT / EXPORT ───────────────────────────────────────────────────────────
+function exportJSON(){
+  const data={jeux_a_faire:_g1.map(g=>{const{inserted_at,...d}=g;return d;}),proposition:_g2.map(g=>{const{inserted_at,...d}=g;return d;})};
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download='gametracker-export.json';document.body.appendChild(a);a.click();document.body.removeChild(a);
+  showToast('Export téléchargé !',true);
+}
+async function importJSON(event){
+  const file=event.target.files[0];if(!file)return;
+  try{
+    const data=JSON.parse(await file.text());
+    if(!data.jeux_a_faire&&!data.proposition){showToast('⚠️ Format JSON invalide.');return;}
+    if(!confirm('⚠️ Cela remplacera toutes les données actuelles. Continuer ?'))return;
+    for(const g of _g1)await sbDelete('jeux_a_faire',g.id);
+    for(const g of _g2)await sbDelete('proposition',g.id);
+    if(data.jeux_a_faire?.length)for(const g of data.jeux_a_faire){const{id,...c}=g;await sbInsert('jeux_a_faire',c);}
+    if(data.proposition?.length)for(const g of data.proposition){const{id,...c}=g;await sbInsert('proposition',c);}
+    await Promise.all([loadTab1(),loadTab2()]);showToast('Import réussi !',true);
+  }catch{showToast('⚠️ Erreur lors de l\'import.');}
+  event.target.value='';
+}
+
+// ── EVENTS ───────────────────────────────────────────────────────────────────
+document.getElementById('searchInput1').addEventListener('input',e=>{_s1=e.target.value.trim();renderTab1();});
+document.getElementById('searchInput2').addEventListener('input',e=>{_s2=e.target.value.trim();renderTab2();});
+
+document.querySelectorAll('.filter-btn[data-filter1]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.filter-btn[data-filter1]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');_f1=btn.dataset.filter1;renderTab1();
+  });
+});
+document.querySelectorAll('.filter-btn[data-filter2]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.filter-btn[data-filter2]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');_f2=btn.dataset.filter2;renderTab2();
+  });
+});
+
+// Autofill + image preview from Steam URL
+document.getElementById('f1-lien').addEventListener('input',()=>onLienInput(1));
+document.getElementById('f2-lien').addEventListener('input',()=>onLienInput(2));
+
+// Click outside no longer closes modals/popups — only ✕/Fermer/Annuler buttons or Escape
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeInfo(1);closeInfo(2);closeModal(1);closeModal(2);closeConfirm();}
+});
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+(async()=>{
+  await seedIfEmpty();
+  await Promise.all([loadTab1(),loadTab2()]);
+  connectRealtime();
+})();
+</script>
+</body>
+</html>
