@@ -249,7 +249,6 @@
   footer { margin-top:2rem; font-size:11px; color:var(--gold-dim); letter-spacing:.1em; }
   #dbStatus.db-ok { color:#5fbf86; }
   #dbStatus.db-error { color:#e2685f; }
-  
 
   @media (max-width:760px) {
     .game-layout { flex-direction:column; }
@@ -281,6 +280,8 @@
   <div class="card" id="cardEl">
     <div class="state-msg" id="loadingMsg">Chargement du puzzle…</div>
   </div>
+
+  <footer>PHX © 2026 <span id="dbStatus" style="margin-left:.6rem;"></span></footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
@@ -451,33 +452,40 @@
     document.getElementById('cardEl').innerHTML = '<div class="state-msg">Chargement du puzzle…</div>';
     if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
 
-    // Cache local pour un affichage instantané, écrasé dès que Supabase répond
-    const cached = loadLocalCache(viewingDate);
-    if (isValidPuzzle(cached)) {
-      puzzle = cached;
+    try {
+      // Cache local pour un affichage instantané, écrasé dès que Supabase répond
+      const cached = loadLocalCache(viewingDate);
+      if (isValidPuzzle(cached)) {
+        puzzle = cached;
+        state = puzzle.session || { guesses: [], solved: false, gaveUp: false };
+        renderGame();
+      }
+
+      const { data: row, error } = await supabaseClient.from('app_data').select('data').eq('id', 'zoomjeu_' + viewingDate).maybeSingle();
+      setDbStatus(error);
+      if (error) throw error;
+
+      if (!isValidPuzzle(row?.data)) {
+        puzzle = null;
+        document.getElementById('cardEl').innerHTML = `<div class="state-msg">Aucun puzzle pour cette date.${viewingDate === todayStr ? '<br>Reviens un peu plus tard 🙂' : ''}</div>`;
+        return;
+      }
+
+      puzzle = row.data;
       state = puzzle.session || { guesses: [], solved: false, gaveUp: false };
+      puzzle.session = state;
+      saveLocalCache(viewingDate, puzzle);
       renderGame();
+      subscribeRealtime();
+    } catch (e) {
+      console.error('Erreur chargement ZoomJeu:', e);
+      document.getElementById('cardEl').innerHTML = `<div class="state-msg">Erreur de chargement : ${escapeHtml(e.message || String(e))}<br>Ouvre la console (F12) pour plus de détails.</div>`;
     }
-
-    const { data: row, error } = await supabaseClient.from('app_data').select('data').eq('id', 'zoomjeu_' + viewingDate).maybeSingle();
-    setDbStatus(error);
-
-    if (!isValidPuzzle(row?.data)) {
-      puzzle = null;
-      document.getElementById('cardEl').innerHTML = `<div class="state-msg">Aucun puzzle pour cette date.${viewingDate === todayStr ? '<br>Reviens un peu plus tard 🙂' : ''}</div>`;
-      return;
-    }
-
-    puzzle = row.data;
-    state = puzzle.session || { guesses: [], solved: false, gaveUp: false };
-    puzzle.session = state;
-    saveLocalCache(viewingDate, puzzle);
-    renderGame();
-    subscribeRealtime();
   }
 
   function setDbStatus(error) {
     const dbEl = document.getElementById('dbStatus');
+    if (!dbEl) return; // élément optionnel (footer) — ne doit jamais bloquer le reste du jeu
     if (error) { dbEl.textContent = '● Base de données non configurée'; dbEl.className = 'db-error'; }
     else { dbEl.textContent = '● Connecté à Supabase'; dbEl.className = 'db-ok'; }
   }
@@ -685,101 +693,107 @@
   async function renderArchive() {
     document.getElementById('cardEl').innerHTML = '<div class="state-msg">Chargement des archives…</div>';
 
-    const prefix = monthPrefix(archiveYear, archiveMonth);
-    const { data: rows, error } = await supabaseClient.from('app_data').select('id,data').ilike('id', prefix + '%');
-    setDbStatus(error);
+    try {
+      const prefix = monthPrefix(archiveYear, archiveMonth);
+      const { data: rows, error } = await supabaseClient.from('app_data').select('id,data').ilike('id', prefix + '%');
+      setDbStatus(error);
+      if (error) throw error;
 
-    const puzzleByDate = {};
-    (rows || []).forEach(r => {
-      const d = r.id.replace('zoomjeu_', '');
-      if (isValidPuzzle(r.data)) puzzleByDate[d] = r.data;
-    });
+      const puzzleByDate = {};
+      (rows || []).forEach(r => {
+        const d = r.id.replace('zoomjeu_', '');
+        if (isValidPuzzle(r.data)) puzzleByDate[d] = r.data;
+      });
 
-    const daysInMonth = new Date(Date.UTC(archiveYear, archiveMonth, 0)).getUTCDate();
-    const firstWeekday = (new Date(Date.UTC(archiveYear, archiveMonth - 1, 1)).getUTCDay() + 6) % 7; // 0 = lundi
+      const daysInMonth = new Date(Date.UTC(archiveYear, archiveMonth, 0)).getUTCDate();
+      const firstWeekday = (new Date(Date.UTC(archiveYear, archiveMonth - 1, 1)).getUTCDay() + 6) % 7; // 0 = lundi
 
-    let cellsHtml = '';
-    for (let i = 0; i < firstWeekday; i++) cellsHtml += '<div class="archive-cell empty"></div>';
+      let cellsHtml = '';
+      for (let i = 0; i < firstWeekday; i++) cellsHtml += '<div class="archive-cell empty"></div>';
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = `${archiveYear}-${String(archiveMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const p = puzzleByDate[dateStr];
-      const isFuture = dateStr > todayStr;
-      const isBeforeLaunch = dateStr < LAUNCH_DATE;
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${archiveYear}-${String(archiveMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const p = puzzleByDate[dateStr];
+        const isFuture = dateStr > todayStr;
+        const isBeforeLaunch = dateStr < LAUNCH_DATE;
 
-      if (!p || isFuture || isBeforeLaunch) {
-        cellsHtml += `<div class="archive-cell disabled"><div class="cell-day">${day}</div></div>`;
-        continue;
-      }
-
-      const s = p.session || { guesses: [] };
-      const guesses = s.guesses || [];
-      const finished = s.solved || s.gaveUp || guesses.length >= MAX_ATTEMPTS;
-
-      // Jaune = pas encore trouvé (en cours ou pas commencé) · Rouge = perdu · Vert = gagné
-      let status = 'yellow';
-      if (finished) status = s.solved ? 'green' : 'red';
-
-      let miniHtml = '<div class="cell-mini-guesses">';
-      for (let i = 0; i < MAX_ATTEMPTS; i++) {
-        let segCls = '';
-        if (i < guesses.length) {
-          const g = guesses[i];
-          segCls = g.correct ? 'correct' : (g.skipped ? 'skipped' : 'wrong');
+        if (!p || isFuture || isBeforeLaunch) {
+          cellsHtml += `<div class="archive-cell disabled"><div class="cell-day">${day}</div></div>`;
+          continue;
         }
-        miniHtml += `<span class="${segCls}"></span>`;
-      }
-      miniHtml += '</div>';
 
-      // Terminé -> image complète (scale 1). Pas encore fini -> aperçu zoomé (ne spoile pas).
-      const scale = finished ? 1 : ARCHIVE_PEEK_ZOOM;
-      cellsHtml += `
-        <div class="archive-cell status-${status}" data-date="${dateStr}">
-          <img class="cell-img" src="${p.image}" style="transform-origin:${p.focus.x}% ${p.focus.y}%; transform:scale(${scale});">
-          <div class="cell-day">${day}</div>
-          ${miniHtml}
-          ${finished ? `<div class="cell-name">${escapeHtml(p.answer)}</div>` : ''}
+        const s = p.session || { guesses: [] };
+        const guesses = s.guesses || [];
+        const finished = s.solved || s.gaveUp || guesses.length >= MAX_ATTEMPTS;
+
+        // Jaune = pas encore trouvé (en cours ou pas commencé) · Rouge = perdu · Vert = gagné
+        let status = 'yellow';
+        if (finished) status = s.solved ? 'green' : 'red';
+
+        let miniHtml = '<div class="cell-mini-guesses">';
+        for (let i = 0; i < MAX_ATTEMPTS; i++) {
+          let segCls = '';
+          if (i < guesses.length) {
+            const g = guesses[i];
+            segCls = g.correct ? 'correct' : (g.skipped ? 'skipped' : 'wrong');
+          }
+          miniHtml += `<span class="${segCls}"></span>`;
+        }
+        miniHtml += '</div>';
+
+        // Terminé -> image complète (scale 1). Pas encore fini -> aperçu zoomé (ne spoile pas).
+        const scale = finished ? 1 : ARCHIVE_PEEK_ZOOM;
+        cellsHtml += `
+          <div class="archive-cell status-${status}" data-date="${dateStr}">
+            <img class="cell-img" src="${p.image}" style="transform-origin:${p.focus.x}% ${p.focus.y}%; transform:scale(${scale});">
+            <div class="cell-day">${day}</div>
+            ${miniHtml}
+            ${finished ? `<div class="cell-name">${escapeHtml(p.answer)}</div>` : ''}
+          </div>
+        `;
+      }
+
+      const monthLabel = `${MONTHS_FR[archiveMonth - 1]} ${archiveYear}`;
+      const isFirstMonth = archiveYear < parseInt(LAUNCH_DATE.slice(0,4)) || (archiveYear === parseInt(LAUNCH_DATE.slice(0,4)) && archiveMonth <= parseInt(LAUNCH_DATE.slice(5,7)));
+      const isLastMonth = archiveYear > parseInt(todayStr.slice(0,4)) || (archiveYear === parseInt(todayStr.slice(0,4)) && archiveMonth >= parseInt(todayStr.slice(5,7)));
+
+      document.getElementById('cardEl').innerHTML = `
+        <div class="archive-header">
+          <div class="archive-nav-row">
+            <button id="archFirst" title="Premier mois" ${isFirstMonth ? 'disabled' : ''}>⏮</button>
+            <button id="archPrev" title="Mois précédent" ${isFirstMonth ? 'disabled' : ''}>◀</button>
+            <div class="archive-month-label">${monthLabel}</div>
+            <button id="archNext" title="Mois suivant" ${isLastMonth ? 'disabled' : ''}>▶</button>
+            <button id="archLast" title="Mois actuel" ${isLastMonth ? 'disabled' : ''}>⏭</button>
+            <button id="archClose" class="ghost" title="Retour au jeu">✕</button>
+          </div>
+          <label class="names-toggle">
+            <input type="checkbox" id="showNamesToggle" ${showNames ? 'checked' : ''}>
+            Afficher les noms
+          </label>
+        </div>
+        <div class="archive-grid${showNames ? '' : ' hide-names'}">
+          ${WEEKDAYS_FR.map(w => `<div class="archive-weekday">${w}</div>`).join('')}
+          ${cellsHtml}
         </div>
       `;
+
+      document.getElementById('archFirst').addEventListener('click', () => { archiveYear = parseInt(LAUNCH_DATE.slice(0,4)); archiveMonth = parseInt(LAUNCH_DATE.slice(5,7)); renderArchive(); });
+      document.getElementById('archLast').addEventListener('click', () => { archiveYear = parseInt(todayStr.slice(0,4)); archiveMonth = parseInt(todayStr.slice(5,7)); renderArchive(); });
+      document.getElementById('archPrev').addEventListener('click', () => { archiveMonth--; if (archiveMonth < 1) { archiveMonth = 12; archiveYear--; } renderArchive(); });
+      document.getElementById('archNext').addEventListener('click', () => { archiveMonth++; if (archiveMonth > 12) { archiveMonth = 1; archiveYear++; } renderArchive(); });
+      document.getElementById('archClose').addEventListener('click', () => { mode = 'play'; updateNavUI(); loadPuzzle(); });
+      document.getElementById('showNamesToggle').addEventListener('change', e => {
+        showNames = e.target.checked;
+        document.querySelector('.archive-grid').classList.toggle('hide-names', !showNames);
+      });
+      document.querySelectorAll('.archive-cell[data-date]').forEach(el => {
+        el.addEventListener('click', () => goToDate(el.getAttribute('data-date')));
+      });
+    } catch (e) {
+      console.error('Erreur chargement archives ZoomJeu:', e);
+      document.getElementById('cardEl').innerHTML = `<div class="state-msg">Erreur de chargement : ${escapeHtml(e.message || String(e))}<br>Ouvre la console (F12) pour plus de détails.</div>`;
     }
-
-    const monthLabel = `${MONTHS_FR[archiveMonth - 1]} ${archiveYear}`;
-    const isFirstMonth = archiveYear < parseInt(LAUNCH_DATE.slice(0,4)) || (archiveYear === parseInt(LAUNCH_DATE.slice(0,4)) && archiveMonth <= parseInt(LAUNCH_DATE.slice(5,7)));
-    const isLastMonth = archiveYear > parseInt(todayStr.slice(0,4)) || (archiveYear === parseInt(todayStr.slice(0,4)) && archiveMonth >= parseInt(todayStr.slice(5,7)));
-
-    document.getElementById('cardEl').innerHTML = `
-      <div class="archive-header">
-        <div class="archive-nav-row">
-          <button id="archFirst" title="Premier mois" ${isFirstMonth ? 'disabled' : ''}>⏮</button>
-          <button id="archPrev" title="Mois précédent" ${isFirstMonth ? 'disabled' : ''}>◀</button>
-          <div class="archive-month-label">${monthLabel}</div>
-          <button id="archNext" title="Mois suivant" ${isLastMonth ? 'disabled' : ''}>▶</button>
-          <button id="archLast" title="Mois actuel" ${isLastMonth ? 'disabled' : ''}>⏭</button>
-          <button id="archClose" class="ghost" title="Retour au jeu">✕</button>
-        </div>
-        <label class="names-toggle">
-          <input type="checkbox" id="showNamesToggle" ${showNames ? 'checked' : ''}>
-          Afficher les noms
-        </label>
-      </div>
-      <div class="archive-grid${showNames ? '' : ' hide-names'}">
-        ${WEEKDAYS_FR.map(w => `<div class="archive-weekday">${w}</div>`).join('')}
-        ${cellsHtml}
-      </div>
-    `;
-
-    document.getElementById('archFirst').addEventListener('click', () => { archiveYear = parseInt(LAUNCH_DATE.slice(0,4)); archiveMonth = parseInt(LAUNCH_DATE.slice(5,7)); renderArchive(); });
-    document.getElementById('archLast').addEventListener('click', () => { archiveYear = parseInt(todayStr.slice(0,4)); archiveMonth = parseInt(todayStr.slice(5,7)); renderArchive(); });
-    document.getElementById('archPrev').addEventListener('click', () => { archiveMonth--; if (archiveMonth < 1) { archiveMonth = 12; archiveYear--; } renderArchive(); });
-    document.getElementById('archNext').addEventListener('click', () => { archiveMonth++; if (archiveMonth > 12) { archiveMonth = 1; archiveYear++; } renderArchive(); });
-    document.getElementById('archClose').addEventListener('click', () => { mode = 'play'; updateNavUI(); loadPuzzle(); });
-    document.getElementById('showNamesToggle').addEventListener('change', e => {
-      showNames = e.target.checked;
-      document.querySelector('.archive-grid').classList.toggle('hide-names', !showNames);
-    });
-    document.querySelectorAll('.archive-cell[data-date]').forEach(el => {
-      el.addEventListener('click', () => goToDate(el.getAttribute('data-date')));
-    });
   }
 
   loadPuzzle();
