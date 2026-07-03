@@ -281,7 +281,8 @@ body{
     gap:8px;
 }
 
-    .sticky-header { padding:.6rem .8rem .5rem; }
+    .sticky-header { padding:.6rem .8rem .5rem; transition:background-color .3s ease, box-shadow .3s ease, border-radius .3s ease, border-bottom-color .3s ease, padding-top .2s ease; }
+    .sticky-header.scrolled { padding-top:3.4rem; }
     .toolbar-row, .toolbar-row.split { flex-direction:column; align-items:stretch; justify-content:flex-start; gap:.55rem; }
     .toolbar-row.split { position:static; }
 
