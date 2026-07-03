@@ -30,13 +30,16 @@
 
   a.back {
     align-self:flex-start;
-    color:var(--text2);
+    display:inline-flex; align-items:center; gap:.4rem;
     text-decoration:none;
-    font-size:12px;
-    letter-spacing:.05em;
+    font-family:'Sora',sans-serif; font-weight:600; font-size:.72rem; letter-spacing:.03em;
+    color:var(--text2);
+    background:var(--bg2); border:1px solid var(--border); border-radius:9px;
+    padding:.5rem .9rem;
     margin-bottom:1rem;
+    cursor:pointer; transition:background .2s ease, color .2s ease;
   }
-  a.back:hover { color:var(--gold); }
+  a.back:hover { border-color:var(--gold-dim); color:var(--gold); background:var(--bg3); }
 
   .title {
     font-family:'Sora',sans-serif;
@@ -264,7 +267,7 @@
 </head>
 <body>
 
-  <a class="back" href="index.html">← Retour</a>
+  <a class="back" href="index.html">☰ Menu</a>
   <div class="title">ZoomJeu</div>
   <div class="subtitle" id="subtitleEl">Devine le jeu à partir d'un screenshot zoomé.</div>
 
@@ -280,8 +283,6 @@
   <div class="card" id="cardEl">
     <div class="state-msg" id="loadingMsg">Chargement du puzzle…</div>
   </div>
-
-  <footer>PHX © 2026 <span id="dbStatus" style="margin-left:.6rem;"></span></footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
