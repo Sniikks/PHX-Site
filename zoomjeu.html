@@ -73,7 +73,7 @@
   }
 
   .card {
-    width:100%; max-width:920px;
+    width:100%; max-width:1180px;
     background:var(--bg2);
     border:1px solid var(--border);
     border-radius:18px;
@@ -101,6 +101,23 @@
     will-change:transform;
   }
 
+  @keyframes shakeX {
+    0%,100% { transform:translateX(0); }
+    20% { transform:translateX(-7px); }
+    40% { transform:translateX(6px); }
+    60% { transform:translateX(-4px); }
+    80% { transform:translateX(2px); }
+  }
+  @keyframes flashRing {
+    0% { box-shadow:inset 0 0 0 0 rgba(226,104,95,0); }
+    18% { box-shadow:inset 0 0 0 5px var(--flash-color, rgba(226,104,95,.85)); }
+    100% { box-shadow:inset 0 0 0 0 rgba(226,104,95,0); }
+  }
+  .zoom-frame.flash-bad { animation:shakeX .5s ease, flashRing .7s ease; --flash-color:rgba(226,104,95,.85); }
+  .zoom-frame.flash-close { animation:shakeX .4s ease, flashRing .7s ease; --flash-color:rgba(232,184,75,.85); }
+  .zoom-frame.flash-skip { animation:flashRing .7s ease; --flash-color:rgba(156,125,51,.7); }
+  .zoom-frame.flash-good { animation:flashRing .8s ease; --flash-color:rgba(95,191,134,.9); }
+
   .attempts-tabs {
     display:flex; margin-top:.7rem; border-radius:10px; overflow:hidden;
     border:1px solid var(--border);
@@ -115,6 +132,7 @@
   .attempt-tab.active { background:var(--bg2); color:var(--gold); box-shadow:inset 0 -2px 0 var(--gold); }
   .attempt-tab.correct { background:rgba(95,191,134,.15); color:var(--good); }
   .attempt-tab.wrong { background:rgba(226,104,95,.15); color:var(--bad); }
+  .attempt-tab.close { background:rgba(232,184,75,.15); color:var(--gold); }
   .attempt-tab.skipped { background:rgba(156,125,51,.15); color:var(--gold-dim); }
 
   .guess-list { margin-top:.7rem; display:flex; flex-direction:column; gap:.4rem; }
@@ -123,6 +141,7 @@
     background:var(--bg3); border:1px solid var(--border); color:var(--text2);
   }
   .guess-item.wrong { color:var(--bad); border-color:rgba(226,104,95,.3); }
+  .guess-item.close { color:var(--gold); border-color:rgba(232,184,75,.35); }
   .guess-item.skipped { color:var(--gold-dim); border-color:rgba(156,125,51,.3); font-style:italic; }
 
   form.guess-form { position:relative; }
@@ -240,6 +259,7 @@
   .cell-mini-guesses span { width:6px; height:6px; border-radius:1.5px; background:rgba(255,255,255,.25); }
   .cell-mini-guesses span.correct { background:var(--good); }
   .cell-mini-guesses span.wrong { background:var(--bad); }
+  .cell-mini-guesses span.close { background:var(--gold); }
   .cell-mini-guesses span.skipped { background:var(--gold-dim); }
   .archive-cell .cell-name {
     position:absolute; bottom:.35rem; left:.35rem; right:.35rem; z-index:2;
@@ -364,6 +384,25 @@
     return false;
   }
 
+  // Détecte une réponse "proche" : bonne licence/franchise, mais pas le bon épisode/édition
+  // (ex: répondre "Counter-Strike 2" pour "Counter-Strike: Source").
+  const STOP_WORDS = new Set(['the','of','a','an','and','edition','goty','remastered','definitive']);
+  function significantTokens(tokens) {
+    return tokens.filter(t => t.length >= 3 && !STOP_WORDS.has(t));
+  }
+  function isCloseGuess(guessRaw, gameName) {
+    const cleanName = gameName.replace(/\s*\(\d{4}\)\s*$/, '');
+    const guessTokens = significantTokens(normalize(guessRaw).split(' ').filter(Boolean));
+    const baseTokens = significantTokens(normalize(cleanName).split(' ').filter(Boolean));
+    if (guessTokens.length === 0 || baseTokens.length === 0) return false;
+
+    let matches = 0;
+    guessTokens.forEach(gt => { if (baseTokens.some(bt => tokensMatch(gt, bt))) matches++; });
+
+    const threshold = Math.min(2, baseTokens.length);
+    return matches >= threshold && matches < baseTokens.length;
+  }
+
   // ── Dates ──
   function parisDateString(offset = 0) {
     const now = new Date(Date.now() + offset * 86400000);
@@ -400,7 +439,9 @@
   let state = { guesses: [], solved: false, gaveUp: false }; // alias pratique vers puzzle.session
   let realtimeChannel = null;
   let suggestTimer = null;
+  let suggestRequestId = 0;
   let currentSuggestions = [];
+  let pendingFlash = null; // 'good' | 'bad' | 'close' | 'skip' — déclenché uniquement par une action locale
 
   function isValidPuzzle(p) {
     return !!(p && p.answer && p.image && p.focus && typeof p.focus.x === 'number');
@@ -523,14 +564,15 @@
   function renderGame() {
     const finished = state.solved || state.gaveUp || state.guesses.length >= MAX_ATTEMPTS;
     const zoomFactor = finished ? 1 : ZOOM_LEVELS[currentZoomIndex()];
+    const flash = pendingFlash; pendingFlash = null;
 
     let tabsHtml = '<div class="attempts-tabs">';
     for (let i = 0; i < MAX_ATTEMPTS; i++) {
       let cls = '', label = i + 1;
       if (i < state.guesses.length) {
         const g = state.guesses[i];
-        cls = g.correct ? 'correct' : (g.skipped ? 'skipped' : 'wrong');
-        label = g.correct ? '✓' : (g.skipped ? '⏭' : '✕');
+        cls = g.correct ? 'correct' : (g.skipped ? 'skipped' : (g.close ? 'close' : 'wrong'));
+        label = g.correct ? '✓' : (g.skipped ? '⏭' : (g.close ? '~' : '✕'));
       } else if (i === state.guesses.length && !finished) {
         cls = 'active'; label = '🔍 ' + (i + 1);
       }
@@ -542,8 +584,12 @@
     if (state.guesses.length > 0) {
       guessListHtml = '<div class="guess-list">';
       state.guesses.forEach(g => {
-        const cls = g.correct ? '' : (g.skipped ? 'skipped' : 'wrong');
-        const label = g.correct ? '✓ ' + escapeHtml(g.text) : (g.skipped ? '⏭ Passé' : '✕ ' + escapeHtml(g.text));
+        const cls = g.correct ? '' : (g.skipped ? 'skipped' : (g.close ? 'close' : 'wrong'));
+        let label;
+        if (g.correct) label = '✓ ' + escapeHtml(g.text);
+        else if (g.skipped) label = '⏭ Passé';
+        else if (g.close) label = `🔥 ${escapeHtml(g.text)} — presque ! Bonne licence, mauvais jeu`;
+        else label = '✕ ' + escapeHtml(g.text);
         guessListHtml += `<div class="guess-item ${cls}">${label}</div>`;
       });
       guessListHtml += '</div>';
@@ -575,7 +621,7 @@
     document.getElementById('cardEl').innerHTML = `
       <div class="game-layout">
         <div class="game-left">
-          <div class="zoom-frame">
+          <div class="zoom-frame${flash ? ' flash-' + flash : ''}">
             <img id="zoomImg" src="${puzzle.image}" style="transform-origin:${puzzle.focus.x}% ${puzzle.focus.y}%; transform:scale(${zoomFactor});">
           </div>
           ${tabsHtml}
@@ -609,17 +655,19 @@
   function onInputChange(e) {
     const q = e.target.value.trim();
     clearTimeout(suggestTimer);
-    if (q.length < 2) { hideSuggestions(); return; }
-    suggestTimer = setTimeout(() => fetchSuggestions(q), 250);
+    if (q.length < 2) { hideSuggestions(); suggestRequestId++; return; }
+    suggestTimer = setTimeout(() => fetchSuggestions(q), 120);
   }
   async function fetchSuggestions(q) {
+    const reqId = ++suggestRequestId;
     try {
       const res = await fetch('/api/search-games?q=' + encodeURIComponent(q));
       const data = await res.json();
+      if (reqId !== suggestRequestId) return; // une saisie plus récente a déjà pris le relais
       currentSuggestions = data.suggestions || [];
       renderSuggestions();
     } catch (e) {
-      hideSuggestions();
+      if (reqId === suggestRequestId) hideSuggestions();
     }
   }
   function renderSuggestions() {
@@ -671,13 +719,16 @@
   }
   function submitGuess(text) {
     const correct = isCorrectGuess(text, puzzle.answer);
-    state.guesses.push({ text, correct });
+    const close = !correct && isCloseGuess(text, puzzle.answer);
+    state.guesses.push({ text, correct, close });
     if (correct) state.solved = true;
+    pendingFlash = correct ? 'good' : (close ? 'close' : 'bad');
     saveSession();
     renderGame();
   }
   function onSkip() {
     state.guesses.push({ text: '', correct: false, skipped: true });
+    pendingFlash = 'skip';
     saveSession();
     renderGame();
   }
@@ -736,7 +787,7 @@
           let segCls = '';
           if (i < guesses.length) {
             const g = guesses[i];
-            segCls = g.correct ? 'correct' : (g.skipped ? 'skipped' : 'wrong');
+            segCls = g.correct ? 'correct' : (g.skipped ? 'skipped' : (g.close ? 'close' : 'wrong'));
           }
           miniHtml += `<span class="${segCls}"></span>`;
         }
