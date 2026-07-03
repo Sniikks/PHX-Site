@@ -144,6 +144,9 @@
   .guess-item.wrong { color:var(--bad); border-color:rgba(226,104,95,.3); }
   .guess-item.close { color:var(--gold); border-color:rgba(232,184,75,.35); }
   .guess-item.skipped { color:var(--gold-dim); border-color:rgba(156,125,51,.3); font-style:italic; }
+  .hint-match { color:var(--gold); font-weight:700; }
+  .hint-line { margin-top:.3rem; font-size:.72rem; color:var(--text2); }
+  .hint-line b { color:var(--gold); }
 
   form.guess-form { position:relative; }
   .input-wrap { position:relative; }
@@ -225,13 +228,14 @@
   }
   .names-toggle input { accent-color:var(--gold); cursor:pointer; }
   .archive-grid {
-    display:grid; grid-template-columns:repeat(7, 1fr); gap:.5rem;
+    display:grid; grid-template-columns:repeat(7, 1fr); gap:.4rem;
+    max-width:760px; margin:0 auto;
   }
   .archive-weekday {
-    text-align:center; font-size:10.5px; color:var(--text2); letter-spacing:.06em; padding-bottom:.2rem;
+    text-align:center; font-size:10px; color:var(--text2); letter-spacing:.06em; padding-bottom:.15rem;
   }
   .archive-cell {
-    aspect-ratio:1/1; border-radius:10px; overflow:hidden; position:relative;
+    aspect-ratio:1/0.8; border-radius:8px; overflow:hidden; position:relative;
     background:var(--bg3); border:2px solid var(--border);
     cursor:pointer;
   }
@@ -248,23 +252,23 @@
     z-index:1;
   }
   .archive-cell .cell-day {
-    position:absolute; top:.3rem; left:.35rem; font-family:'Sora',sans-serif; font-size:.68rem; font-weight:700;
-    color:#151510; background:var(--text2); padding:1px 5px; border-radius:5px; z-index:2;
+    position:absolute; top:.25rem; left:.3rem; font-family:'Sora',sans-serif; font-size:.62rem; font-weight:700;
+    color:#151510; background:var(--text2); padding:1px 4px; border-radius:4px; z-index:2;
   }
   .archive-cell.status-green .cell-day { background:var(--good); }
   .archive-cell.status-red .cell-day { background:var(--bad); }
   .archive-cell.status-yellow .cell-day { background:var(--gold); }
   .cell-mini-guesses {
-    position:absolute; top:.35rem; right:.35rem; display:flex; gap:2px; z-index:2;
+    position:absolute; top:.3rem; right:.3rem; display:flex; gap:1.5px; z-index:2;
   }
-  .cell-mini-guesses span { width:6px; height:6px; border-radius:1.5px; background:rgba(255,255,255,.25); }
+  .cell-mini-guesses span { width:5px; height:5px; border-radius:1px; background:rgba(255,255,255,.25); }
   .cell-mini-guesses span.correct { background:var(--good); }
   .cell-mini-guesses span.wrong { background:var(--bad); }
   .cell-mini-guesses span.close { background:var(--gold); }
   .cell-mini-guesses span.skipped { background:var(--gold-dim); }
   .archive-cell .cell-name {
-    position:absolute; bottom:.35rem; left:.35rem; right:.35rem; z-index:2;
-    font-size:9.5px; color:var(--text); font-weight:600; line-height:1.15;
+    position:absolute; bottom:.3rem; left:.3rem; right:.3rem; z-index:2;
+    font-size:8.5px; color:var(--text); font-weight:600; line-height:1.1;
     overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
   }
   .archive-grid.hide-names .cell-name { display:none; }
@@ -402,6 +406,45 @@
 
     const threshold = Math.min(2, baseTokens.length);
     return matches >= threshold && matches < baseTokens.length;
+  }
+
+  // Repère si la réponse commence par le(s) même(s) mot(s) que le vrai jeu
+  // (ex: "Project: Doors" -> "Project" partagé avec "Project Zomboid").
+  // Renvoie { text, wordCount } ou null si aucun mot de tête ne correspond.
+  function nameHint(guessRaw, answer) {
+    const cleanAnswer = answer.replace(/\s*\(\d{4}\)\s*$/, '');
+    const gTokens = normalize(guessRaw).split(' ').filter(Boolean);
+    const aTokensNorm = normalize(cleanAnswer).split(' ').filter(Boolean);
+    const aTokensOriginal = cleanAnswer.split(/[\s:\-]+/).filter(Boolean);
+
+    let matchLen = 0;
+    while (matchLen < gTokens.length && matchLen < aTokensNorm.length && tokensMatch(gTokens[matchLen], aTokensNorm[matchLen])) {
+      matchLen++;
+    }
+    if (matchLen === 0) return null;
+    return { text: aTokensOriginal.slice(0, matchLen).join(' '), wordCount: matchLen };
+  }
+
+  function extractYear(releasedStr) {
+    if (!releasedStr) return null;
+    const m = String(releasedStr).match(/\d{4}/);
+    return m ? parseInt(m[0], 10) : null;
+  }
+
+  // Met en gras/doré les premiers `wordCount` mots du texte original (préserve la casse tapée par le joueur)
+  function highlightPrefix(text, wordCount) {
+    if (!wordCount) return escapeHtml(text);
+    const parts = text.split(/(\s+)/);
+    let wordsSeen = 0, cut = parts.length;
+    for (let i = 0; i < parts.length; i++) {
+      if (parts[i].trim() !== '') {
+        wordsSeen++;
+        if (wordsSeen === wordCount) { cut = i + 1; break; }
+      }
+    }
+    const before = parts.slice(0, cut).join('');
+    const after = parts.slice(cut).join('');
+    return `<span class="hint-match">${escapeHtml(before)}</span>${escapeHtml(after)}`;
   }
 
   // ── Dates ──
@@ -562,6 +605,33 @@
     return Math.min(state.guesses.length, MAX_ATTEMPTS - 1);
   }
 
+  function buildGuessListHtml() {
+    if (state.guesses.length === 0) return '';
+    let html = '<div class="guess-list" id="guessListEl">';
+    state.guesses.forEach(g => {
+      const cls = g.correct ? '' : (g.skipped ? 'skipped' : (g.close ? 'close' : 'wrong'));
+      if (g.correct) {
+        html += `<div class="guess-item ${cls}">✓ ${escapeHtml(g.text)}</div>`;
+      } else if (g.skipped) {
+        html += `<div class="guess-item ${cls}">⏭ Passé</div>`;
+      } else {
+        const icon = g.close ? '🔥' : '✕';
+        const textHtml = highlightPrefix(g.text, g.nameHint ? g.nameHint.wordCount : 0);
+        let hintsHtml = '';
+        if (g.nameHint) {
+          hintsHtml += `<div class="hint-line">Nom : <b>${escapeHtml(capitalizeWords(g.nameHint.text))}</b> [...]</div>`;
+        }
+        if (g.yearHint) {
+          const yearLabel = g.yearHint === 'after' ? `après ${g.year}` : g.yearHint === 'before' ? `avant ${g.year}` : `même année (${g.year})`;
+          hintsHtml += `<div class="hint-line">Année : ${yearLabel}</div>`;
+        }
+        html += `<div class="guess-item ${cls}">${icon} ${textHtml}${hintsHtml}</div>`;
+      }
+    });
+    html += '</div>';
+    return html;
+  }
+
   function renderGame() {
     const finished = state.solved || state.gaveUp || state.guesses.length >= MAX_ATTEMPTS;
     const zoomFactor = finished ? 1 : ZOOM_LEVELS[currentZoomIndex()];
@@ -581,20 +651,7 @@
     }
     tabsHtml += '</div>';
 
-    let guessListHtml = '';
-    if (state.guesses.length > 0) {
-      guessListHtml = '<div class="guess-list">';
-      state.guesses.forEach(g => {
-        const cls = g.correct ? '' : (g.skipped ? 'skipped' : (g.close ? 'close' : 'wrong'));
-        let label;
-        if (g.correct) label = '✓ ' + escapeHtml(g.text);
-        else if (g.skipped) label = '⏭ Passé';
-        else if (g.close) label = `🔥 ${escapeHtml(g.text)} — presque ! Bonne licence, mauvais jeu`;
-        else label = '✕ ' + escapeHtml(g.text);
-        guessListHtml += `<div class="guess-item ${cls}">${label}</div>`;
-      });
-      guessListHtml += '</div>';
-    }
+    const guessListHtml = buildGuessListHtml();
 
     let sidebarHtml;
     if (finished) {
@@ -651,6 +708,9 @@
   function escapeHtml(s) {
     return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
+  function capitalizeWords(s) {
+    return s.replace(/\b\w/g, c => c.toUpperCase());
+  }
 
   // ── Autocomplétion ──
   function onInputChange(e) {
@@ -675,9 +735,9 @@
     const box = document.getElementById('suggestionsBox');
     if (!box) return;
     if (currentSuggestions.length === 0) { hideSuggestions(); return; }
-    box.innerHTML = currentSuggestions.map((name, i) => `
+    box.innerHTML = currentSuggestions.map((s, i) => `
       <div class="suggestion-item${i === 0 ? ' top-match' : ''}">
-        <span>${escapeHtml(name)}</span>
+        <span>${escapeHtml(s.name)}${s.year ? ` <span class="sugg-year">(${s.year})</span>` : ''}</span>
         ${i === 0 ? '<span class="sugg-badge">↵ Entrée</span>' : ''}
       </div>
     `).join('');
@@ -691,11 +751,11 @@
     if (box) { box.style.display = 'none'; box.innerHTML = ''; }
     currentSuggestions = [];
   }
-  function selectSuggestion(name) {
+  function selectSuggestion(s) {
     const input = document.getElementById('guessInput');
-    if (input) input.value = name;
+    if (input) input.value = s.name;
     hideSuggestions();
-    submitGuess(name);
+    submitGuess(s.name);
   }
   function onInputKeydown(e) {
     if (e.key === 'Escape') { hideSuggestions(); return; }
@@ -721,11 +781,40 @@
   function submitGuess(text) {
     const correct = isCorrectGuess(text, puzzle.answer);
     const close = !correct && isCloseGuess(text, puzzle.answer);
-    state.guesses.push({ text, correct, close });
+    const hint = !correct ? nameHint(text, puzzle.answer) : null;
+    const guessObj = { text, correct, close, nameHint: hint, year: null, yearHint: null };
+    state.guesses.push(guessObj);
     if (correct) state.solved = true;
     pendingFlash = correct ? 'good' : (close ? 'close' : 'bad');
     saveSession();
     renderGame();
+
+    if (!correct) resolveYearHint(guessObj);
+  }
+
+  // Va chercher l'année du jeu tapé (via /api/search-games?resolve=1) pour donner un indice
+  // "avant/après" par rapport à l'année du vrai jeu. Best-effort : si ça échoue ou ne trouve
+  // rien, on ne montre simplement pas cet indice — le jeu reste jouable sans.
+  async function resolveYearHint(guessObj) {
+    try {
+      const res = await fetch('/api/search-games?resolve=1&name=' + encodeURIComponent(guessObj.text));
+      const data = await res.json();
+      if (!data.year) return;
+      const answerYear = extractYear(puzzle.released);
+      guessObj.year = data.year;
+      if (answerYear) {
+        guessObj.yearHint = data.year < answerYear ? 'after' : (data.year > answerYear ? 'before' : 'same');
+      }
+      saveSession();
+      // Ne remplace que la liste des essais (pas tout le panneau), pour ne pas
+      // effacer une saisie en cours si le joueur a déjà commencé le prochain essai.
+      const listEl = document.getElementById('guessListEl');
+      if (listEl) {
+        listEl.outerHTML = buildGuessListHtml();
+      }
+    } catch (e) {
+      // silencieux : le jeu marche très bien sans cet indice
+    }
   }
   function onSkip() {
     state.guesses.push({ text: '', correct: false, skipped: true });
