@@ -123,12 +123,20 @@
   .guess-item.skipped { color:var(--gold-dim); border-color:rgba(156,125,51,.3); font-style:italic; }
 
   form.guess-form { position:relative; }
+  .input-wrap { position:relative; }
   input#guessInput {
     width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text);
-    border-radius:10px; padding:.75rem .9rem; font-family:'Manrope',sans-serif; font-size:.9rem;
+    border-radius:10px; padding:.75rem 2.2rem .75rem .9rem; font-family:'Manrope',sans-serif; font-size:.9rem;
     outline:none;
   }
   input#guessInput:focus { border-color:var(--gold-dim); }
+  .input-clear {
+    position:absolute; right:.5rem; top:50%; transform:translateY(-50%);
+    width:22px; height:22px; border-radius:6px; border:none; background:var(--bg2); color:var(--text2);
+    display:none; align-items:center; justify-content:center; font-size:.7rem; padding:0; cursor:pointer;
+  }
+  .input-clear.visible { display:flex; }
+  .input-clear:hover { background:var(--border); color:var(--text); }
   button {
     font-family:'Sora',sans-serif; font-weight:600; font-size:.8rem; letter-spacing:.04em;
     border-radius:10px; border:1px solid var(--gold-dim); background:transparent; color:var(--gold);
@@ -148,15 +156,24 @@
   .suggestions {
     position:absolute; top:calc(100% + 6px); left:0; right:0;
     background:var(--bg3); border:1px solid var(--border); border-radius:10px;
-    overflow:hidden; z-index:10;
-    box-shadow:0 10px 26px rgba(0,0,0,.5);
+    overflow-y:auto; max-height:280px; z-index:10;
+    box-shadow:0 14px 30px rgba(0,0,0,.55);
   }
   .suggestion-item {
     padding:.6rem .8rem; font-size:.85rem; color:var(--text); cursor:pointer;
     border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; gap:.5rem;
   }
+  .suggestion-item .sugg-year { color:var(--text2); font-size:.72rem; flex-shrink:0; }
   .suggestion-item:last-child { border-bottom:none; }
   .suggestion-item:hover, .suggestion-item.active { background:rgba(232,184,75,.1); color:var(--gold); }
+  .suggestion-item.top-match {
+    background:rgba(232,184,75,.14); font-weight:700;
+  }
+  .suggestion-item.top-match .sugg-badge {
+    font-family:'Sora',sans-serif; font-size:.65rem; font-weight:700; letter-spacing:.04em;
+    color:#151510; background:var(--gold); border-radius:6px; padding:2px 7px; flex-shrink:0;
+  }
 
   .result-box {
     padding:1rem; border-radius:12px;
@@ -536,7 +553,10 @@
     } else {
       sidebarHtml = `
         <form class="guess-form" id="guessForm" autocomplete="off">
-          <input id="guessInput" type="text" placeholder="Quel est ce jeu ?" />
+          <div class="input-wrap">
+            <input id="guessInput" type="text" placeholder="Quel est ce jeu ?" />
+            <button type="button" class="input-clear" id="clearBtn" title="Effacer">✕</button>
+          </div>
           <div class="suggestions" id="suggestionsBox" style="display:none;"></div>
         </form>
         <button type="button" class="wide" id="skipBtn">Passer ⏭</button>
@@ -564,8 +584,10 @@
       document.getElementById('skipBtn').addEventListener('click', onSkip);
       document.getElementById('giveUpBtn').addEventListener('click', onGiveUp);
       const input = document.getElementById('guessInput');
-      input.addEventListener('input', onInputChange);
+      const clearBtn = document.getElementById('clearBtn');
+      input.addEventListener('input', e => { onInputChange(e); clearBtn.classList.toggle('visible', !!e.target.value); });
       input.addEventListener('keydown', onInputKeydown);
+      clearBtn.addEventListener('click', () => { input.value = ''; clearBtn.classList.remove('visible'); hideSuggestions(); input.focus(); });
       document.addEventListener('click', onDocClickCloseSuggestions);
       if (viewingDate === todayStr) input.focus();
     }
@@ -596,7 +618,12 @@
     const box = document.getElementById('suggestionsBox');
     if (!box) return;
     if (currentSuggestions.length === 0) { hideSuggestions(); return; }
-    box.innerHTML = currentSuggestions.map(name => `<div class="suggestion-item">${escapeHtml(name)}</div>`).join('');
+    box.innerHTML = currentSuggestions.map((name, i) => `
+      <div class="suggestion-item${i === 0 ? ' top-match' : ''}">
+        <span>${escapeHtml(name)}</span>
+        ${i === 0 ? '<span class="sugg-badge">↵ Entrée</span>' : ''}
+      </div>
+    `).join('');
     box.style.display = 'block';
     box.querySelectorAll('.suggestion-item').forEach((el, i) => {
       el.addEventListener('click', () => selectSuggestion(currentSuggestions[i]));
@@ -614,7 +641,11 @@
     submitGuess(name);
   }
   function onInputKeydown(e) {
-    if (e.key === 'Escape') hideSuggestions();
+    if (e.key === 'Escape') { hideSuggestions(); return; }
+    if (e.key === 'Enter' && currentSuggestions.length > 0) {
+      e.preventDefault();
+      selectSuggestion(currentSuggestions[0]);
+    }
   }
   function onDocClickCloseSuggestions(e) {
     const form = document.getElementById('guessForm');
