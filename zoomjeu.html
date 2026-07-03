@@ -73,7 +73,7 @@
   }
 
   .card {
-    width:100%; max-width:1180px;
+    width:100%; max-width:1380px;
     background:var(--bg2);
     border:1px solid var(--border);
     border-radius:18px;
@@ -82,7 +82,7 @@
 
   .game-layout { display:flex; gap:1.3rem; align-items:flex-start; }
   .game-left { flex:1 1 auto; min-width:0; }
-  .game-right { flex:0 0 260px; display:flex; flex-direction:column; gap:.55rem; }
+  .game-right { flex:0 0 250px; display:flex; flex-direction:column; gap:.55rem; }
 
   .zoom-frame {
     width:100%;
@@ -97,24 +97,24 @@
     width:100%; height:100%;
     object-fit:cover;
     display:block;
-    transition:transform .65s cubic-bezier(.22,.85,.3,1);
-    will-change:transform;
+    transition:transform .9s cubic-bezier(.22,.75,.15,1), filter .9s ease;
+    will-change:transform, filter;
   }
 
-  @keyframes shakeX {
-    0%,100% { transform:translateX(0); }
-    20% { transform:translateX(-7px); }
-    40% { transform:translateX(6px); }
-    60% { transform:translateX(-4px); }
-    80% { transform:translateX(2px); }
+  @keyframes zoomBlur {
+    0% { filter:blur(0); }
+    40% { filter:blur(7px); }
+    100% { filter:blur(0); }
   }
+  .zoom-frame img.zoom-transition { animation:zoomBlur .9s ease; }
+
   @keyframes flashRing {
     0% { box-shadow:inset 0 0 0 0 rgba(226,104,95,0); }
     18% { box-shadow:inset 0 0 0 5px var(--flash-color, rgba(226,104,95,.85)); }
     100% { box-shadow:inset 0 0 0 0 rgba(226,104,95,0); }
   }
-  .zoom-frame.flash-bad { animation:shakeX .5s ease, flashRing .7s ease; --flash-color:rgba(226,104,95,.85); }
-  .zoom-frame.flash-close { animation:shakeX .4s ease, flashRing .7s ease; --flash-color:rgba(232,184,75,.85); }
+  .zoom-frame.flash-bad { animation:flashRing .7s ease; --flash-color:rgba(226,104,95,.85); }
+  .zoom-frame.flash-close { animation:flashRing .7s ease; --flash-color:rgba(232,184,75,.85); }
   .zoom-frame.flash-skip { animation:flashRing .7s ease; --flash-color:rgba(156,125,51,.7); }
   .zoom-frame.flash-good { animation:flashRing .8s ease; --flash-color:rgba(95,191,134,.9); }
 
@@ -318,7 +318,7 @@
   const MAX_ATTEMPTS = 5;
   const ZOOM_LEVELS = [6.5, 4, 2.5, 1.5, 1]; // facteur de scale() CSS, essai 1 -> 5
   const ARCHIVE_PEEK_ZOOM = 3.5; // zoom utilisé pour l'aperçu d'un puzzle pas encore terminé, dans l'archive
-  const LAUNCH_DATE = '2026-07-03';
+  const LAUNCH_DATE = '2026-01-01';
   const WEEKDAYS_FR = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
   const MONTHS_FR = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 
@@ -622,7 +622,7 @@
       <div class="game-layout">
         <div class="game-left">
           <div class="zoom-frame${flash ? ' flash-' + flash : ''}">
-            <img id="zoomImg" src="${puzzle.image}" style="transform-origin:${puzzle.focus.x}% ${puzzle.focus.y}%; transform:scale(${zoomFactor});">
+            <img id="zoomImg" class="${flash ? 'zoom-transition' : ''}" src="${puzzle.image}" style="transform-origin:${puzzle.focus.x}% ${puzzle.focus.y}%; transform:scale(${zoomFactor});">
           </div>
           ${tabsHtml}
         </div>

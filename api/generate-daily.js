@@ -26,7 +26,7 @@ const STEAMSPY_BASE = 'https://steamspy.com/api.php';
 const STEAM_STORE_BASE = 'https://store.steampowered.com/api/appdetails';
 const RAWG_BASE = 'https://api.rawg.io/api';
 
-const LAUNCH_DATE = '2026-07-03';
+const LAUNCH_DATE = '2026-01-01';
 
 const RAWG_PLATFORM_GROUPS = {
     retro: [
@@ -306,8 +306,13 @@ export default async function handler(req, res) {
     }
 
     try {
+        // Génération normale : date du jour (+ décalage éventuel). Génération rétroactive
+        // (backfill) : date explicite fournie en paramètre, réservée aux appels admin/cron
+        // déjà authentifiés plus haut. Format attendu : YYYY-MM-DD.
+        const explicitDate = req.query.date;
+        const isValidDate = typeof explicitDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(explicitDate);
         const dayOffset = req.query.offset ? parseInt(req.query.offset, 10) : 0;
-        const dateStr = getParisDateString(dayOffset);
+        const dateStr = isValidDate ? explicitDate : getParisDateString(dayOffset);
         const puzzleId = `zoomjeu_${dateStr}`;
 
         const { data: existing } = await supabase.from('app_data').select('data').eq('id', puzzleId).maybeSingle();

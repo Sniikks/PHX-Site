@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZoomJeu — Backfill (admin)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Sora:wght@600;700&display=swap');
+  :root {
+    --bg:#0a0a0c; --bg2:#111114; --bg3:#161619;
+    --gold:#e8b84b; --gold-dim:#9c7d33;
+    --text:#ededf0; --text2:#8c8c94; --border:#232327;
+    --good:#5fbf86; --bad:#e2685f;
+  }
+  * { box-sizing:border-box; }
+  body {
+    background:var(--bg); color:var(--text); font-family:'Manrope',sans-serif;
+    min-height:100vh; margin:0; padding:2rem 1.2rem; display:flex; flex-direction:column; align-items:center;
+  }
+  h1 { font-family:'Sora',sans-serif; color:var(--gold); font-size:1.3rem; letter-spacing:.08em; text-transform:uppercase; }
+  p.sub { color:var(--text2); font-size:.82rem; margin:.4rem 0 1.6rem; text-align:center; max-width:480px; }
+  .card { width:100%; max-width:560px; background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:1.4rem; }
+  label { display:block; font-size:.75rem; color:var(--text2); margin-bottom:.3rem; margin-top:.9rem; }
+  label:first-child { margin-top:0; }
+  input {
+    width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text);
+    border-radius:9px; padding:.6rem .8rem; font-family:'Manrope',sans-serif; font-size:.88rem; outline:none;
+  }
+  input:focus { border-color:var(--gold-dim); }
+  .row { display:flex; gap:.8rem; }
+  .row > div { flex:1; }
+  button {
+    margin-top:1.2rem; width:100%; font-family:'Sora',sans-serif; font-weight:700; font-size:.85rem; letter-spacing:.03em;
+    border-radius:10px; border:1px solid var(--gold-dim); background:transparent; color:var(--gold);
+    padding:.8rem; cursor:pointer;
+  }
+  button:hover:not(:disabled) { background:var(--gold); color:#151510; }
+  button:disabled { opacity:.4; cursor:default; }
+  .progress-wrap { margin-top:1rem; background:var(--bg3); border-radius:8px; height:8px; overflow:hidden; display:none; }
+  .progress-bar { height:100%; width:0%; background:var(--gold); transition:width .2s ease; }
+  .stats { display:flex; justify-content:space-between; font-size:.72rem; color:var(--text2); margin-top:.4rem; display:none; }
+  .log {
+    margin-top:1rem; max-height:320px; overflow-y:auto; font-size:.78rem; font-family:monospace;
+    background:var(--bg3); border:1px solid var(--border); border-radius:9px; padding:.7rem; display:none;
+  }
+  .log div { padding:.15rem 0; border-bottom:1px solid rgba(255,255,255,.04); }
+  .log .ok { color:var(--good); }
+  .log .skip { color:var(--text2); }
+  .log .err { color:var(--bad); }
+</style>
+</head>
+<body>
+  <h1>ZoomJeu — Backfill</h1>
+  <p class="sub">Génère rétroactivement un puzzle pour chaque jour d'une plage de dates. Les jours qui ont déjà un puzzle valide sont automatiquement sautés (sûr à relancer plusieurs fois).</p>
+
+  <div class="card">
+    <label for="adminKey">Clé admin (ADMIN_KEY)</label>
+    <input id="adminKey" type="password" placeholder="Ta clé admin Vercel" autocomplete="off">
+
+    <label for="siteUrl">URL du site</label>
+    <input id="siteUrl" type="text" value="https://phx-site-sniikks369.vercel.app" placeholder="https://ton-site.vercel.app">
+
+    <div class="row">
+      <div>
+        <label for="startDate">Du</label>
+        <input id="startDate" type="date" value="2026-01-01">
+      </div>
+      <div>
+        <label for="endDate">Au</label>
+        <input id="endDate" type="date" value="2026-07-02">
+      </div>
+    </div>
+
+    <label for="delay">Pause entre chaque jour (ms)</label>
+    <input id="delay" type="number" value="600" min="100" step="100">
+
+    <button id="startBtn">Lancer le backfill</button>
+
+    <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="stats" id="stats"><span id="statsText">0 / 0</span><span id="statsCounts"></span></div>
+    <div class="log" id="log"></div>
+  </div>
+
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const logEl = document.getElementById('log');
+    const progressWrap = document.getElementById('progressWrap');
+    const progressBar = document.getElementById('progressBar');
+    const statsEl = document.getElementById('stats');
+    const statsText = document.getElementById('statsText');
+    const statsCounts = document.getElementById('statsCounts');
+
+    function addDays(dateStr, n) {
+      const d = new Date(`${dateStr}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + n);
+      return d.toISOString().slice(0, 10);
+    }
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+    function log(text, cls) {
+      const div = document.createElement('div');
+      div.className = cls || '';
+      div.textContent = text;
+      logEl.appendChild(div);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    startBtn.addEventListener('click', async () => {
+      const adminKey = document.getElementById('adminKey').value.trim();
+      const siteUrl = document.getElementById('siteUrl').value.trim().replace(/\/$/, '');
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      const delay = parseInt(document.getElementById('delay').value, 10) || 600;
+
+      if (!adminKey || !siteUrl || !startDate || !endDate) {
+        alert('Remplis tous les champs.');
+        return;
+      }
+      if (startDate > endDate) {
+        alert('La date de début doit être avant la date de fin.');
+        return;
+      }
+
+      const dates = [];
+      let d = startDate;
+      while (d <= endDate) { dates.push(d); d = addDays(d, 1); }
+
+      startBtn.disabled = true;
+      startBtn.textContent = 'Backfill en cours…';
+      logEl.style.display = 'block';
+      logEl.innerHTML = '';
+      progressWrap.style.display = 'block';
+      statsEl.style.display = 'flex';
+
+      let done = 0, created = 0, skipped = 0, errors = 0;
+
+      for (const dateStr of dates) {
+        try {
+          const res = await fetch(`${siteUrl}/api/generate-daily?key=${encodeURIComponent(adminKey)}&date=${dateStr}`);
+          const data = await res.json();
+          if (!res.ok) {
+            errors++;
+            log(`✕ ${dateStr} — erreur : ${data.error || res.status}`, 'err');
+          } else if (data.skipped) {
+            skipped++;
+            log(`· ${dateStr} — déjà généré`, 'skip');
+          } else {
+            created++;
+            log(`✓ ${dateStr} — ${data.puzzle?.answer || 'généré'}`, 'ok');
+          }
+        } catch (e) {
+          errors++;
+          log(`✕ ${dateStr} — erreur réseau : ${e.message}`, 'err');
+        }
+
+        done++;
+        progressBar.style.width = Math.round((done / dates.length) * 100) + '%';
+        statsText.textContent = `${done} / ${dates.length}`;
+        statsCounts.textContent = `✓ ${created}  · ${skipped}  ✕ ${errors}`;
+
+        if (done < dates.length) await sleep(delay);
+      }
+
+      startBtn.disabled = false;
+      startBtn.textContent = 'Terminé — relancer';
+      log(`— Fini : ${created} créés, ${skipped} déjà existants, ${errors} erreurs —`, '');
+    });
+  </script>
+</body>
+</html>
