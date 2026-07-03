@@ -6,29 +6,30 @@
 <title>PHX</title>
 <link rel="shortcut icon" href="https://cdn.discordapp.com/icons/1030553621252821053/2e7356a5d822245ad7953afdb143581a.webp?size=160&quality=lossless">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=JetBrains+Mono:wght@400;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap');
 
   :root {
-    --bg:#1a1a18; --bg2:#222220; --bg3:#2a2a27;
-    --gold:#c9a84c; --gold2:#a07830; --gold-dim:#6b5425;
-    --text:#ffffff; --text2:#999;
-    --border:#3a3830;
+    --bg:#0a0a0c; --bg2:#111114; --bg3:#161619;
+    --gold:#e8b84b; --gold2:#c49a30; --gold-dim:#9c7d33;
+    --text:#ededf0; --text2:#8c8c94;
+    --border:#232327;
   }
   * { box-sizing:border-box; margin:0; padding:0; }
   html, body { height:100%; }
   body {
     background:
-      radial-gradient(1200px 600px at 50% -260px, rgba(201,168,76,.10), transparent 62%),
+      radial-gradient(1200px 600px at 50% -260px, rgba(232,184,75,.10), transparent 62%),
       var(--bg);
     color:var(--text);
-    font-family:'Share Tech Mono','Courier New',monospace;
+    font-family:'Manrope',sans-serif;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     min-height:100vh; padding:2rem 1.2rem;
   }
   .title {
-    font-family:'JetBrains Mono',monospace;
+    font-family:'Sora',sans-serif;
     font-size:clamp(1.4rem,4vw,2.2rem);
-    letter-spacing:.18em;
+    font-weight:700;
+    letter-spacing:.14em;
     color:var(--gold);
     margin-bottom:.5rem;
     text-transform:uppercase;
@@ -47,7 +48,7 @@
     position:relative;
     background:var(--bg2);
     border:1px solid var(--border);
-    border-radius:14px;
+    border-radius:16px;
     aspect-ratio:3/4;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:.9rem;
@@ -76,9 +77,10 @@
   }
   .tile-icon svg { width:52px; height:52px; }
   .tile-label {
-    font-family:'JetBrains Mono',monospace;
+    font-family:'Sora',sans-serif;
+    font-weight:600;
     font-size:.82rem;
-    letter-spacing:.08em;
+    letter-spacing:.06em;
     text-align:center;
     color:var(--gold);
     z-index:1;
@@ -102,6 +104,8 @@
     color:var(--gold-dim);
     letter-spacing:.1em;
   }
+  #dbStatus.db-ok { color:#5fbf86; }
+  #dbStatus.db-error { color:#e2685f; }
 </style>
 </head>
 <body>
@@ -131,7 +135,7 @@
       </a>
   </div>
 
-  <footer>PHX © 2026</footer>
+  <footer>PHX © 2026 <span id="dbStatus" style="margin-left:.6rem;"></span></footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
