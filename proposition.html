@@ -38,6 +38,8 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 .sticky-top{position:sticky;top:0;z-index:50;background:rgba(14,15,19,0.97);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
 .sh-inner{max-width:1400px;margin:0 auto;padding:0 28px;}
 .sh-title{display:flex;align-items:center;justify-content:space-between;padding:12px 0 10px;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap;}
+.menu-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);border-radius:10px;color:#e5e5e5;font-family:'Rajdhani',sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.02em;text-decoration:none;cursor:pointer;transition:all .15s ease;white-space:nowrap;}
+.menu-btn:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.24);color:#fff;}
 .logo{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;letter-spacing:2px;color:var(--gold);white-space:nowrap;}
 .logo span{color:var(--text-dim);font-weight:400;}
 .tabs{display:flex;align-items:center;gap:2px;}
@@ -229,7 +231,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 <div class="sh-inner">
   <div class="sh-title">
     <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-      <a href="index.html" class="btn" style="text-decoration:none; color:var(--gold);">← Menu</a>
+      <a href="index.html" class="menu-btn">← Menu</a>
       <div class="logo">// <span>GAME</span>TRACKER</div>
       <div class="tabs">
         <button class="tab-btn" id="tabBtn1" onclick="switchTab('tab1',this)">Jeux à faire</button>

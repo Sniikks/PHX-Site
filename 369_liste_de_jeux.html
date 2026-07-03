@@ -67,6 +67,8 @@ body{
   border-bottom:1px solid var(--border-soft);
 }
 .brand{display:flex;align-items:center;gap:10px;}
+.menu-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);border-radius:10px;color:#e5e5e5;font-family:'Manrope',sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.02em;text-decoration:none;cursor:pointer;transition:all .15s ease;white-space:nowrap;}
+.menu-btn:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.24);color:#fff;}
 .brand-mark{
   width:28px;height:28px;border-radius:8px;
   background:linear-gradient(155deg,var(--gold) 0%, #c79530 100%);
@@ -493,7 +495,7 @@ body.compact-view .card-name{
   
   <div class="brand-row">
     <div class="brand">
-        <a href="index.html" class="btn" style="text-decoration:none;">← Menu</a>
+        <a href="index.html" class="menu-btn">← Menu</a>
       <div class="brand-mark">G</div>
       <div class="brand-text">Backlog <span>· jeux vidéo</span></div>
     </div>
