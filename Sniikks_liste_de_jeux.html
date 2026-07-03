@@ -250,7 +250,9 @@
     .sticky-inner { padding:0 12px; }
     .toolbar-row { padding:8px 0 4px; gap:6px; justify-content:flex-start; }
 
-    .status-pills { justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap; max-width:100%; padding-bottom:2px; scrollbar-width:none; }
+    .status-pills { justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap; max-width:100%; padding-bottom:2px; scrollbar-width:none;
+      -webkit-mask-image:linear-gradient(to right, transparent 0, black 18px, black calc(100% - 18px), transparent 100%);
+      mask-image:linear-gradient(to right, transparent 0, black 18px, black calc(100% - 18px), transparent 100%); }
     .status-pills::-webkit-scrollbar { display:none; }
     .status-pill { padding:6px 10px; font-size:11.5px; flex-shrink:0; }
 
@@ -264,6 +266,8 @@
     .top-stat-label { font-size:9px; }
     .year-filters, .platform-row {
       justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap; padding-bottom:4px; scrollbar-width:none;
+      -webkit-mask-image:linear-gradient(to right, transparent 0, black 18px, black calc(100% - 18px), transparent 100%);
+      mask-image:linear-gradient(to right, transparent 0, black 18px, black calc(100% - 18px), transparent 100%);
     }
     .year-filters::-webkit-scrollbar, .platform-row::-webkit-scrollbar { display:none; }
     .year-pill, .filter-btn { flex-shrink:0; padding:5px 10px; font-size:11px; }
