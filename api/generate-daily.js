@@ -26,7 +26,7 @@ const STEAMSPY_BASE = 'https://steamspy.com/api.php';
 const STEAM_STORE_BASE = 'https://store.steampowered.com/api/appdetails';
 const RAWG_BASE = 'https://api.rawg.io/api';
 
-const LAUNCH_DATE = '2026-07-06';
+const LAUNCH_DATE = '2026-07-03';
 
 const RAWG_PLATFORM_GROUPS = {
     retro: [
