@@ -46,10 +46,28 @@
     color:var(--gold);
     text-transform:uppercase;
   }
-  .subtitle { color:var(--text2); font-size:12.5px; margin-top:.35rem; margin-bottom:1.5rem; letter-spacing:.03em; text-align:center; }
+  .subtitle { color:var(--text2); font-size:12.5px; margin-top:.35rem; margin-bottom:1rem; letter-spacing:.03em; text-align:center; }
+
+  /* ── Navigation par date ── */
+  .date-nav {
+    display:flex; align-items:center; justify-content:center; gap:.4rem;
+    margin-bottom:1.2rem;
+  }
+  .date-nav button {
+    width:34px; height:34px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:9px; border:1px solid var(--border); background:var(--bg2); color:var(--text2);
+    font-size:.85rem; cursor:pointer;
+  }
+  .date-nav button:hover:not(:disabled) { border-color:var(--gold-dim); color:var(--gold); }
+  .date-nav button:disabled { opacity:.3; cursor:default; }
+  .date-nav .date-label {
+    font-family:'Sora',sans-serif; font-weight:600; font-size:.85rem; color:var(--text);
+    min-width:170px; text-align:center; letter-spacing:.02em;
+  }
 
   .card {
-    width:100%; max-width:560px;
+    width:100%; max-width:640px;
     background:var(--bg2);
     border:1px solid var(--border);
     border-radius:18px;
@@ -58,16 +76,20 @@
 
   .zoom-frame {
     width:100%;
-    aspect-ratio:16/9;
+    aspect-ratio:4/3;
     border-radius:14px;
     overflow:hidden;
     background-color:#000;
-    background-repeat:no-repeat;
     position:relative;
     border:1px solid var(--border);
-    transition:background-size .5s cubic-bezier(.2,.8,.2,1), background-position .5s cubic-bezier(.2,.8,.2,1);
   }
-  .zoom-frame.reveal { background-size: 100% !important; }
+  .zoom-frame img {
+    width:100%; height:100%;
+    object-fit:cover;
+    display:block;
+    transition:transform .65s cubic-bezier(.22,.85,.3,1);
+    will-change:transform;
+  }
 
   .attempts-row {
     display:flex; justify-content:center; gap:.4rem;
@@ -81,7 +103,7 @@
   }
   .attempt-dot.wrong { background:rgba(226,104,95,.15); border-color:var(--bad); color:var(--bad); }
   .attempt-dot.correct { background:rgba(95,191,134,.15); border-color:var(--good); color:var(--good); }
-  .attempt-dot.pending { color:var(--gold-dim); }
+  .attempt-dot.skipped { background:rgba(156,125,51,.15); border-color:var(--gold-dim); color:var(--gold-dim); }
 
   .guess-list { margin:.6rem 0 0; display:flex; flex-direction:column; gap:.4rem; }
   .guess-item {
@@ -89,8 +111,9 @@
     background:var(--bg3); border:1px solid var(--border); color:var(--text2);
   }
   .guess-item.wrong { color:var(--bad); border-color:rgba(226,104,95,.3); }
+  .guess-item.skipped { color:var(--gold-dim); border-color:rgba(156,125,51,.3); font-style:italic; }
 
-  form.guess-form { display:flex; gap:.5rem; margin-top:1rem; }
+  form.guess-form { position:relative; display:flex; gap:.5rem; margin-top:1rem; }
   input#guessInput {
     flex:1; background:var(--bg3); border:1px solid var(--border); color:var(--text);
     border-radius:10px; padding:.75rem .9rem; font-family:'Manrope',sans-serif; font-size:.9rem;
@@ -101,6 +124,7 @@
     font-family:'Sora',sans-serif; font-weight:600; font-size:.8rem; letter-spacing:.04em;
     border-radius:10px; border:1px solid var(--gold-dim); background:transparent; color:var(--gold);
     padding:.75rem 1.1rem; cursor:pointer; transition:background .2s ease, color .2s ease;
+    white-space:nowrap;
   }
   button:hover:not(:disabled) { background:var(--gold); color:#151510; }
   button:disabled { opacity:.35; cursor:default; }
@@ -108,6 +132,20 @@
   button.ghost:hover:not(:disabled) { background:var(--bg3); color:var(--text); }
 
   .actions-row { display:flex; justify-content:space-between; gap:.6rem; margin-top:.7rem; }
+
+  /* ── Suggestions autocomplétion ── */
+  .suggestions {
+    position:absolute; top:calc(100% + 6px); left:0; right:0;
+    background:var(--bg3); border:1px solid var(--border); border-radius:10px;
+    overflow:hidden; z-index:10;
+    box-shadow:0 10px 26px rgba(0,0,0,.5);
+  }
+  .suggestion-item {
+    padding:.6rem .8rem; font-size:.85rem; color:var(--text); cursor:pointer;
+    border-bottom:1px solid var(--border);
+  }
+  .suggestion-item:last-child { border-bottom:none; }
+  .suggestion-item:hover, .suggestion-item.active { background:rgba(232,184,75,.1); color:var(--gold); }
 
   .result-box {
     margin-top:1.1rem; padding:1rem; border-radius:12px;
@@ -117,33 +155,9 @@
   .result-box .answer {
     font-family:'Sora',sans-serif; font-weight:700; font-size:1.05rem; color:var(--gold); margin-bottom:.3rem;
   }
-  .result-box .verdict { font-size:.85rem; color:var(--text2); margin-bottom:.8rem; }
+  .result-box .verdict { font-size:.85rem; color:var(--text2); }
   .result-box.win .verdict { color:var(--good); }
   .result-box.lose .verdict { color:var(--bad); }
-
-  .share-grid { font-size:1.1rem; letter-spacing:.15em; margin-bottom:.7rem; }
-
-  .leaderboard {
-    display:flex; gap:.6rem; margin-top:.6rem;
-  }
-  .lb-card {
-    flex:1; background:var(--bg2); border:1px solid var(--border); border-radius:10px;
-    padding:.6rem; text-align:center;
-  }
-  .lb-card .lb-name { font-family:'Sora',sans-serif; font-size:.75rem; color:var(--gold); letter-spacing:.05em; }
-  .lb-card .lb-val { font-size:.78rem; color:var(--text2); margin-top:.25rem; }
-  .lb-card .lb-val.win { color:var(--good); }
-  .lb-card .lb-val.lose { color:var(--bad); }
-
-  .player-select {
-    margin-top:1.2rem; text-align:center; font-size:11.5px; color:var(--text2);
-  }
-  .player-btns { display:flex; justify-content:center; gap:.5rem; margin-top:.5rem; }
-  .player-btn {
-    font-family:'Sora',sans-serif; font-size:.72rem; padding:.4rem .9rem; border-radius:20px;
-    border:1px solid var(--border); color:var(--text2); background:var(--bg3); cursor:pointer;
-  }
-  .player-btn.active { border-color:var(--gold); color:var(--gold); }
 
   .state-msg { color:var(--text2); font-size:.85rem; text-align:center; margin-top:2rem; }
 
@@ -154,6 +168,7 @@
   @media (max-width:640px) {
     body { padding:1.2rem .8rem 2.4rem; }
     .card { padding:1rem; }
+    .date-nav .date-label { min-width:130px; font-size:.75rem; }
   }
 </style>
 </head>
@@ -163,16 +178,16 @@
   <div class="title">ZoomJeu</div>
   <div class="subtitle" id="subtitleEl">Devine le jeu à partir d'un screenshot zoomé.</div>
 
-  <div class="card" id="cardEl">
-    <div class="state-msg" id="loadingMsg">Chargement du puzzle du jour…</div>
+  <div class="date-nav">
+    <button id="navFirst" title="Premier puzzle">⏮</button>
+    <button id="navPrev" title="Jour précédent">◀</button>
+    <div class="date-label" id="dateLabel">—</div>
+    <button id="navNext" title="Jour suivant">▶</button>
+    <button id="navLast" title="Aujourd'hui">⏭</button>
   </div>
 
-  <div class="player-select">
-    Tu joues en tant que
-    <div class="player-btns">
-      <button class="player-btn" data-player="369" id="btn369">369</button>
-      <button class="player-btn" data-player="Sniikks" id="btnSniikks">Sniikks</button>
-    </div>
+  <div class="card" id="cardEl">
+    <div class="state-msg" id="loadingMsg">Chargement du puzzle…</div>
   </div>
 
   <footer>PHX © 2026 <span id="dbStatus" style="margin-left:.6rem;"></span></footer>
@@ -182,11 +197,11 @@
   <script src="db.js"></script>
   <script>
   // ==========================================================
-  // ZoomJeu — logique client
+  // ZoomJeu — logique client (session partagée unique)
   // ==========================================================
 
   const MAX_ATTEMPTS = 5;
-  const ZOOM_LEVELS = [650, 400, 250, 150, 100]; // % background-size, attempt 1 -> 5
+  const ZOOM_LEVELS = [6.5, 4, 2.5, 1.5, 1]; // facteur de scale() CSS, essai 1 -> 5
   const LAUNCH_DATE = '2026-07-06';
 
   // ── Utils de comparaison texte (identiques au bot Discord "369") ──
@@ -263,58 +278,113 @@
     const d2 = new Date(`${dateStr}T00:00:00Z`);
     return Math.max(1, Math.round((d2 - d1) / 86400000) + 1);
   }
+  function addDays(dateStr, n) {
+    const d = new Date(`${dateStr}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
+  function formatDateFr(dateStr) {
+    const d = new Date(`${dateStr}T00:00:00Z`);
+    return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d);
+  }
 
-  // ── État local ──
+  // ── État ──
   const todayStr = parisDateString();
-  const stateKey = 'zoomjeu_state_' + todayStr;
-  let puzzle = null;
-  let state = loadState();
+  const urlParams = new URLSearchParams(location.search);
+  let viewingDate = urlParams.get('date') || todayStr;
+  if (viewingDate > todayStr) viewingDate = todayStr; // pas de triche dans le futur
 
-  function loadState() {
+  let puzzle = null;
+  let state = { guesses: [], solved: false, gaveUp: false };
+  let realtimeChannel = null;
+  let suggestTimer = null;
+  let currentSuggestions = [];
+
+  function cacheKey(d) { return 'zoomjeu_cache_' + d; }
+
+  function loadLocalCache(d) {
     try {
-      const raw = localStorage.getItem(stateKey);
+      const raw = localStorage.getItem(cacheKey(d));
       if (raw) return JSON.parse(raw);
     } catch (e) {}
-    return { guesses: [], solved: false, gaveUp: false };
+    return null;
   }
-  function saveState() {
-    localStorage.setItem(stateKey, JSON.stringify(state));
+  function saveLocalCache(d, s) {
+    try { localStorage.setItem(cacheKey(d), JSON.stringify(s)); } catch (e) {}
   }
 
-  // ── Joueur ──
-  let currentPlayer = localStorage.getItem('zoomjeu_player') || null;
-  function setPlayerUI() {
-    document.getElementById('btn369').classList.toggle('active', currentPlayer === '369');
-    document.getElementById('btnSniikks').classList.toggle('active', currentPlayer === 'Sniikks');
+  // ── Navigation par date ──
+  function updateNavUI() {
+    document.getElementById('dateLabel').textContent = formatDateFr(viewingDate) + ` · #${puzzleNumber(viewingDate)}`;
+    document.getElementById('navFirst').disabled = viewingDate <= LAUNCH_DATE;
+    document.getElementById('navPrev').disabled = viewingDate <= LAUNCH_DATE;
+    document.getElementById('navNext').disabled = viewingDate >= todayStr;
+    document.getElementById('navLast').disabled = viewingDate >= todayStr;
   }
-  document.getElementById('btn369').addEventListener('click', () => { currentPlayer = '369'; localStorage.setItem('zoomjeu_player', '369'); setPlayerUI(); });
-  document.getElementById('btnSniikks').addEventListener('click', () => { currentPlayer = 'Sniikks'; localStorage.setItem('zoomjeu_player', 'Sniikks'); setPlayerUI(); });
-  setPlayerUI();
+  function goToDate(d) {
+    if (d < LAUNCH_DATE) d = LAUNCH_DATE;
+    if (d > todayStr) d = todayStr;
+    viewingDate = d;
+    const params = new URLSearchParams(location.search);
+    params.set('date', viewingDate);
+    history.replaceState(null, '', location.pathname + '?' + params.toString());
+    loadPuzzle();
+  }
+  document.getElementById('navFirst').addEventListener('click', () => goToDate(LAUNCH_DATE));
+  document.getElementById('navPrev').addEventListener('click', () => goToDate(addDays(viewingDate, -1)));
+  document.getElementById('navNext').addEventListener('click', () => goToDate(addDays(viewingDate, 1)));
+  document.getElementById('navLast').addEventListener('click', () => goToDate(todayStr));
 
-  // ── Chargement du puzzle depuis Supabase ──
+  // ── Chargement du puzzle + session partagée depuis Supabase ──
   async function loadPuzzle() {
-    const { data, error } = await supabaseClient.from('app_data').select('data').eq('id', 'zoomjeu_' + todayStr).maybeSingle();
-    const el = document.getElementById('dbStatus');
-    if (error) {
-      el.textContent = '● Base de données non configurée'; el.classList.add('db-error');
-    } else {
-      el.textContent = '● Connecté à Supabase'; el.classList.add('db-ok');
-    }
-    if (!data) {
-      renderMissing();
+    updateNavUI();
+    document.getElementById('cardEl').innerHTML = '<div class="state-msg">Chargement du puzzle…</div>';
+    if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
+
+    const { data: puzzleRow, error } = await supabaseClient.from('app_data').select('data').eq('id', 'zoomjeu_' + viewingDate).maybeSingle();
+    const dbEl = document.getElementById('dbStatus');
+    if (error) { dbEl.textContent = '● Base de données non configurée'; dbEl.className = 'db-error'; }
+    else { dbEl.textContent = '● Connecté à Supabase'; dbEl.className = 'db-ok'; }
+
+    if (!puzzleRow) {
+      document.getElementById('cardEl').innerHTML = `<div class="state-msg">Aucun puzzle pour cette date.${viewingDate === todayStr ? '<br>Reviens un peu plus tard 🙂' : ''}</div>`;
       return;
     }
-    puzzle = data.data;
-    document.getElementById('subtitleEl').textContent = `ZoomJeu #${puzzle.number} — ${todayStr}`;
+    puzzle = puzzleRow.data;
+    document.getElementById('subtitleEl').textContent = `Devine le jeu à partir d'un screenshot zoomé.`;
+
+    // Session partagée : Supabase = source de vérité, cache local = fallback instantané
+    const cached = loadLocalCache(viewingDate);
+    if (cached) { state = cached; render(); }
+
+    const { data: sessionRow } = await supabaseClient.from('app_data').select('data').eq('id', 'zoomjeu_session_' + viewingDate).maybeSingle();
+    state = sessionRow?.data || { guesses: [], solved: false, gaveUp: false };
+    saveLocalCache(viewingDate, state);
     render();
-    loadLeaderboard();
+
+    subscribeRealtime();
   }
 
-  function renderMissing() {
-    document.getElementById('cardEl').innerHTML = `
-      <div class="state-msg">
-        Le puzzle du jour n'est pas encore prêt.<br>Reviens un peu plus tard 🙂
-      </div>`;
+  function subscribeRealtime() {
+    realtimeChannel = supabaseClient
+      .channel('zoomjeu_' + viewingDate)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_data', filter: `id=eq.zoomjeu_session_${viewingDate}` }, payload => {
+        if (payload.new && payload.new.data) {
+          state = payload.new.data;
+          saveLocalCache(viewingDate, state);
+          render();
+        }
+      })
+      .subscribe();
+  }
+
+  async function saveSession() {
+    saveLocalCache(viewingDate, state);
+    try {
+      await supabaseClient.from('app_data').upsert({ id: 'zoomjeu_session_' + viewingDate, data: state, updated_at: new Date().toISOString() });
+    } catch (e) {
+      console.error('Erreur sauvegarde session ZoomJeu:', e);
+    }
   }
 
   // ── Rendu ──
@@ -324,14 +394,15 @@
 
   function render() {
     const finished = state.solved || state.gaveUp || state.guesses.length >= MAX_ATTEMPTS;
-    const zoomPct = finished ? 100 : ZOOM_LEVELS[currentZoomIndex()];
+    const zoomFactor = finished ? 1 : ZOOM_LEVELS[currentZoomIndex()];
 
     let attemptsHtml = '<div class="attempts-row">';
     for (let i = 0; i < MAX_ATTEMPTS; i++) {
-      let cls = 'pending', label = i + 1;
+      let cls = '', label = i + 1;
       if (i < state.guesses.length) {
-        cls = state.guesses[i].correct ? 'correct' : 'wrong';
-        label = state.guesses[i].correct ? '✓' : '✕';
+        const g = state.guesses[i];
+        cls = g.correct ? 'correct' : (g.skipped ? 'skipped' : 'wrong');
+        label = g.correct ? '✓' : (g.skipped ? '⏭' : '✕');
       }
       attemptsHtml += `<div class="attempt-dot ${cls}">${label}</div>`;
     }
@@ -339,7 +410,9 @@
 
     let guessListHtml = '<div class="guess-list">';
     state.guesses.forEach(g => {
-      guessListHtml += `<div class="guess-item ${g.correct ? '' : 'wrong'}">${g.correct ? '✓' : '✕'} ${escapeHtml(g.text)}</div>`;
+      const cls = g.correct ? '' : (g.skipped ? 'skipped' : 'wrong');
+      const label = g.correct ? '✓' : (g.skipped ? '⏭ Passé' : '✕ ' + escapeHtml(g.text));
+      guessListHtml += `<div class="guess-item ${cls}">${label}</div>`;
     });
     guessListHtml += '</div>';
 
@@ -349,27 +422,27 @@
       bottomHtml = `
         <div class="result-box ${success ? 'win' : 'lose'}">
           <div class="answer">${escapeHtml(puzzle.answer)}</div>
-          <div class="verdict">${success ? `Trouvé en ${state.guesses.filter(g=>true).length} essai${state.guesses.length>1?'s':''} 🎉` : 'Perdu — bien joué quand même'}</div>
-          <div class="share-grid">${shareEmojis()}</div>
-          <button id="shareBtn">Partager le résultat</button>
+          <div class="verdict">${success ? `Trouvé en ${state.guesses.length} essai${state.guesses.length > 1 ? 's' : ''} 🎉` : (state.gaveUp ? 'Abandonné' : 'Perdu — bien joué quand même')}</div>
         </div>
-        <div class="leaderboard" id="leaderboardEl"></div>
       `;
     } else {
       bottomHtml = `
         <form class="guess-form" id="guessForm" autocomplete="off">
           <input id="guessInput" type="text" placeholder="Nom du jeu…" />
+          <div class="suggestions" id="suggestionsBox" style="display:none;"></div>
           <button type="submit">Valider</button>
         </form>
         <div class="actions-row">
+          <button type="button" class="ghost" id="skipBtn">⏭ Passer</button>
           <button type="button" class="ghost" id="giveUpBtn">Abandonner</button>
-          <span></span>
         </div>
       `;
     }
 
     document.getElementById('cardEl').innerHTML = `
-      <div class="zoom-frame ${finished ? 'reveal' : ''}" id="zoomFrame" style="background-image:url('${puzzle.image}'); background-size:${zoomPct}%; background-position:${puzzle.focus.x}% ${puzzle.focus.y}%;"></div>
+      <div class="zoom-frame">
+        <img id="zoomImg" src="${puzzle.image}" style="transform-origin:${puzzle.focus.x}% ${puzzle.focus.y}%; transform:scale(${zoomFactor});">
+      </div>
       ${attemptsHtml}
       ${guessListHtml}
       ${bottomHtml}
@@ -377,11 +450,13 @@
 
     if (!finished) {
       document.getElementById('guessForm').addEventListener('submit', onGuessSubmit);
+      document.getElementById('skipBtn').addEventListener('click', onSkip);
       document.getElementById('giveUpBtn').addEventListener('click', onGiveUp);
-      document.getElementById('guessInput').focus();
-    } else {
-      document.getElementById('shareBtn').addEventListener('click', onShare);
-      loadLeaderboard();
+      const input = document.getElementById('guessInput');
+      input.addEventListener('input', onInputChange);
+      input.addEventListener('keydown', onInputKeydown);
+      document.addEventListener('click', onDocClickCloseSuggestions);
+      if (viewingDate === todayStr) input.focus();
     }
   }
 
@@ -389,93 +464,80 @@
     return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
+  // ── Autocomplétion ──
+  function onInputChange(e) {
+    const q = e.target.value.trim();
+    clearTimeout(suggestTimer);
+    if (q.length < 2) { hideSuggestions(); return; }
+    suggestTimer = setTimeout(() => fetchSuggestions(q), 250);
+  }
+  async function fetchSuggestions(q) {
+    try {
+      const res = await fetch('/api/search-games?q=' + encodeURIComponent(q));
+      const data = await res.json();
+      currentSuggestions = data.suggestions || [];
+      renderSuggestions();
+    } catch (e) {
+      hideSuggestions();
+    }
+  }
+  function renderSuggestions() {
+    const box = document.getElementById('suggestionsBox');
+    if (!box) return;
+    if (currentSuggestions.length === 0) { hideSuggestions(); return; }
+    box.innerHTML = currentSuggestions.map(name => `<div class="suggestion-item">${escapeHtml(name)}</div>`).join('');
+    box.style.display = 'block';
+    box.querySelectorAll('.suggestion-item').forEach((el, i) => {
+      el.addEventListener('click', () => selectSuggestion(currentSuggestions[i]));
+    });
+  }
+  function hideSuggestions() {
+    const box = document.getElementById('suggestionsBox');
+    if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+    currentSuggestions = [];
+  }
+  function selectSuggestion(name) {
+    const input = document.getElementById('guessInput');
+    if (input) input.value = name;
+    hideSuggestions();
+    submitGuess(name);
+  }
+  function onInputKeydown(e) {
+    if (e.key === 'Escape') hideSuggestions();
+  }
+  function onDocClickCloseSuggestions(e) {
+    const form = document.getElementById('guessForm');
+    if (form && !form.contains(e.target)) hideSuggestions();
+  }
+
+  // ── Actions de jeu ──
   function onGuessSubmit(e) {
     e.preventDefault();
     const input = document.getElementById('guessInput');
     const text = input.value.trim();
     if (!text) return;
+    hideSuggestions();
+    submitGuess(text);
+  }
 
+  function submitGuess(text) {
     const correct = isCorrectGuess(text, puzzle.answer);
     state.guesses.push({ text, correct });
     if (correct) state.solved = true;
-    saveState();
+    saveSession();
+    render();
+  }
 
-    if (correct || state.guesses.length >= MAX_ATTEMPTS) {
-      submitResult();
-    }
+  function onSkip() {
+    state.guesses.push({ text: '', correct: false, skipped: true });
+    saveSession();
     render();
   }
 
   function onGiveUp() {
     state.gaveUp = true;
-    saveState();
-    submitResult();
+    saveSession();
     render();
-  }
-
-  function shareEmojis() {
-    let out = '';
-    for (let i = 0; i < MAX_ATTEMPTS; i++) {
-      if (i < state.guesses.length) {
-        out += state.guesses[i].correct ? '🟩' : '🟥';
-      } else {
-        out += '⬛';
-      }
-    }
-    return out;
-  }
-
-  function onShare() {
-    const url = location.origin + location.pathname;
-    const text = `ZoomJeu #${puzzle.number} — ${state.solved ? state.guesses.length + '/5' : 'X/5'}\n${shareEmojis()}\n${url}`;
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(() => {
-        const btn = document.getElementById('shareBtn');
-        if (btn) { const old = btn.textContent; btn.textContent = 'Copié ✓'; setTimeout(() => btn.textContent = old, 1500); }
-      }).catch(() => alert(text));
-    } else {
-      alert(text);
-    }
-  }
-
-  // ── Classement partagé (369 vs Sniikks) via Supabase ──
-  async function submitResult() {
-    if (!currentPlayer) return; // pas de joueur sélectionné, pas de sauvegarde partagée
-    const resultsId = 'zoomjeu_results_' + todayStr;
-    try {
-      const { data } = await supabaseClient.from('app_data').select('data').eq('id', resultsId).maybeSingle();
-      const current = data?.data || {};
-      current[currentPlayer] = {
-        tries: state.guesses.length,
-        success: !!state.solved,
-        gaveUp: !!state.gaveUp
-      };
-      await supabaseClient.from('app_data').upsert({ id: resultsId, data: current, updated_at: new Date().toISOString() });
-    } catch (e) {
-      console.error('Erreur sauvegarde résultat ZoomJeu:', e);
-    }
-  }
-
-  async function loadLeaderboard() {
-    const el = document.getElementById('leaderboardEl');
-    if (!el) return;
-    try {
-      const { data } = await supabaseClient.from('app_data').select('data').eq('id', 'zoomjeu_results_' + todayStr).maybeSingle();
-      const results = data?.data || {};
-      const names = ['369', 'Sniikks'];
-      el.innerHTML = names.map(n => {
-        const r = results[n];
-        let val = 'Pas encore joué';
-        let cls = '';
-        if (r) {
-          if (r.success) { val = `${r.tries}/5 ✅`; cls = 'win'; }
-          else { val = 'Perdu ❌'; cls = 'lose'; }
-        }
-        return `<div class="lb-card"><div class="lb-name">${n}</div><div class="lb-val ${cls}">${val}</div></div>`;
-      }).join('');
-    } catch (e) {
-      console.error('Erreur chargement classement ZoomJeu:', e);
-    }
   }
 
   loadPuzzle();
