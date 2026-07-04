@@ -741,7 +741,7 @@
     const q = e.target.value.trim();
     clearTimeout(suggestTimer);
     if (q.length < 2) { hideSuggestions(); suggestRequestId++; return; }
-    suggestTimer = setTimeout(() => fetchSuggestions(q), 30);
+    suggestTimer = setTimeout(() => fetchSuggestions(q), 10);
   }
   async function fetchSuggestions(q) {
     const reqId = ++suggestRequestId;
