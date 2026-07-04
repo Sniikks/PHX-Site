@@ -762,7 +762,7 @@
     box.innerHTML = currentSuggestions.map((s, i) => `
       <div class="suggestion-item${i === 0 ? ' top-match' : ''}">
         <span>${escapeHtml(s.name)}${s.year ? ` <span class="sugg-year">(${s.year})</span>` : ''}</span>
-        ${i === 0 ? '<span class="sugg-badge">↵</span>' : ''}
+        ${i === 0 ? '<span class="sugg-badge"></span>' : ''}
       </div>
     `).join('');
     box.style.display = 'block';
