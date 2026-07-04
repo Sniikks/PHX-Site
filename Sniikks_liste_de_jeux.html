@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>PHX - Liste de Sniikks</title>
 <link rel="shortcut icon" href="https://cdn.discordapp.com/icons/1030553621252821053/2e7356a5d822245ad7953afdb143581a.webp?size=160&quality=lossless">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -41,9 +41,9 @@
   /* ══════════════ HEADER ══════════════ */
   .app-header { position:sticky; top:0; z-index:55; background:rgba(10,10,12,.88); backdrop-filter:blur(16px) saturate(140%); -webkit-backdrop-filter:blur(16px) saturate(140%); border-bottom:1px solid var(--border-soft); }
   .app-header.scrolled { box-shadow:0 8px 22px rgba(0,0,0,.5); }
-  .page-header { position:relative; display:flex; align-items:center; justify-content:center; padding:16px 32px; max-width:1320px; margin:0 auto; border-bottom:1px solid var(--border-soft); }
-  .header-io { position:absolute; right:32px; top:50%; transform:translateY(-50%); display:flex; gap:8px; }
-  .menu-btn { display:inline-flex; align-items:center; gap:6px; padding:9px 16px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:var(--radius); color:#e5e5e5; font-family:'Manrope',sans-serif; font-size:12.5px; font-weight:600; letter-spacing:.02em; text-decoration:none; cursor:pointer; transition:all .15s ease; white-space:nowrap; position:absolute; left:32px; top:50%; transform:translateY(-50%); }
+  .page-header { position:relative; display:flex; align-items:center; justify-content:center; padding:16px 32px; max-width:1320px; margin:0 auto; border-bottom:1px solid var(--border-soft); padding-left:max(32px, env(safe-area-inset-left)); padding-right:max(32px, env(safe-area-inset-right)); }
+  .header-io { position:absolute; right:max(32px, env(safe-area-inset-right)); top:50%; transform:translateY(-50%); display:flex; gap:8px; }
+  .menu-btn { display:inline-flex; align-items:center; gap:6px; padding:9px 16px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:var(--radius); color:#e5e5e5; font-family:'Manrope',sans-serif; font-size:12.5px; font-weight:600; letter-spacing:.02em; text-decoration:none; cursor:pointer; transition:all .15s ease; white-space:nowrap; position:absolute; left:max(32px, env(safe-area-inset-left)); top:50%; transform:translateY(-50%); }
   .menu-btn:hover { background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.24); color:#fff; }
   .text-action-btn { background:transparent; border:1px solid var(--border); color:var(--text-dim); font-family:inherit; font-size:12px; cursor:pointer; transition:all .15s; padding:7px 13px; border-radius:var(--radius); }
   .text-action-btn:hover { color:var(--text); background:var(--bg3); border-color:var(--gold-dim); }
@@ -53,8 +53,9 @@
 
   .sticky-header { border-bottom:1px solid var(--border-soft); }
   .sticky-header.scrolled { border-bottom-color:transparent; }
-  .sticky-inner { max-width:1320px; margin:0 auto; padding:0 32px; }
+  .sticky-inner { max-width:1320px; margin:0 auto; padding:0 32px; padding-left:max(32px, env(safe-area-inset-left)); padding-right:max(32px, env(safe-area-inset-right)); }
   .toolbar-row { display:flex; align-items:center; justify-content:center; gap:10px; padding:14px 0 6px; flex-wrap:wrap; }
+  .toolbar-row.split { justify-content:space-between; }
   .toolbar-row + .toolbar-row { padding-top:0; }
   .toolbar-block:last-child .toolbar-row:last-child { padding-bottom:14px; }
 
@@ -101,7 +102,7 @@
   .filter-btn.active { background:var(--gold); border-color:var(--gold); color:#0a0a0c; }
 
   /* ══════════════ MAIN ══════════════ */
-  .main-content { max-width:1320px; margin:0 auto; padding:28px 32px 80px; }
+  .main-content { max-width:1320px; margin:0 auto; padding:28px 32px 80px; padding-left:max(32px, env(safe-area-inset-left)); padding-right:max(32px, env(safe-area-inset-right)); padding-bottom:max(80px, env(safe-area-inset-bottom)); }
 
   .year-section { margin-bottom:36px; }
   .year-heading { display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; padding-bottom:12px; margin-bottom:20px; border-bottom:1px solid var(--border-soft); border-radius:0; transition:none; }
@@ -651,7 +652,7 @@ function renderStatusCounts() {
   const base = games.filter(g=>{
     const mq=!q||g.name.toLowerCase().includes(q);
     const mp=filterPlatform==='tous'||g.platform===filterPlatform;
-    const my=filterYear==='tous'||g.annee===filterYear;
+    const my=filterYear==='tous'||(filterYear==='none'?g.annee==null:g.annee===filterYear);
     return mq&&mp&&my;
   });
   document.getElementById('cnt-tous').textContent = base.length;
@@ -675,11 +676,15 @@ function renderYearFilters() {
     return mq&&ms&&mp;
   });
   const years=[...new Set(base.map(g=>g.annee))].filter(y=>y!=null).sort((a,b)=>b-a);
+  const noYearCount = base.filter(g=>g.annee==null).length;
   let html=`<button class="year-pill tous-pill${filterYear==='tous'?' active':''}" onclick="setYearFilter('tous')">Toutes</button>`;
   years.forEach(y=>{
     const c=base.filter(g=>g.annee===y).length;
     html+=`<button class="year-pill${filterYear===y?' active':''}" onclick="setYearFilter(${y})">${y} <span class="yp-count">${c}</span></button>`;
   });
+  if(noYearCount>0){
+    html+=`<button class="year-pill${filterYear==='none'?' active':''}" onclick="setYearFilter('none')">Sans année <span class="yp-count">${noYearCount}</span></button>`;
+  }
   document.getElementById('yearFilters').innerHTML=html;
 }
 function setYearFilter(y){ filterYear=y; renderGrid(); }
@@ -694,7 +699,7 @@ function getFiltered() {
       (filterStatus==='fini'&&(g.status==='fini'))||(filterStatus==='attente'&&g.status==='attente')||
       (filterStatus==='abandonne'&&g.status==='abandonne');
     const mp=filterPlatform==='tous'||g.platform===filterPlatform;
-    const my=filterYear==='tous'||g.annee===filterYear;
+    const my=filterYear==='tous'||(filterYear==='none'?g.annee==null:g.annee===filterYear);
     return mq&&ms&&mp&&my;
   });
 }
