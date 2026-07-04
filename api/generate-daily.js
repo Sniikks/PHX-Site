@@ -236,43 +236,69 @@ async function fetchRawgDetails(rawgId) {
 // ───────────────────────── Sélection du jeu du jour ─────────────────────────
 
 async function pickDailyGame(usedIds, usedNames) {
-    const mode = Math.random() < 0.65 ? 'big' : 'retro';
+    const primaryMode = Math.random() < 0.65 ? 'big' : 'retro';
 
-    let pool = mode === 'big'
-        ? await fetchSteamBigPool()
-        : (RAWG_API_KEY && Math.random() < 0.7 ? await fetchRawgGamePool(0.85) : await fetchSteamRandomPool());
+    // Plusieurs sources de pool, dans l'ordre de préférence. Si la première ne donne
+    // rien d'exploitable (SteamSpy/RAWG en panne ou rate-limité, pool épuisé par les
+    // jeux déjà utilisés...), on tente les suivantes avant d'abandonner. Avant, une
+    // seule panne transitoire d'une API externe faisait échouer tout le puzzle du jour.
+    const poolFetchers = primaryMode === 'big'
+        ? [fetchSteamBigPool, fetchSteamRandomPool, () => fetchRawgGamePool(0.85)]
+        : [
+            () => (RAWG_API_KEY && Math.random() < 0.7 ? fetchRawgGamePool(0.85) : fetchSteamRandomPool()),
+            fetchSteamBigPool,
+            fetchSteamRandomPool
+          ];
 
-    if (!pool || pool.length === 0) pool = await fetchSteamBigPool();
+    let totalAttempts = 0;
+    const MAX_TOTAL_ATTEMPTS = 30;
 
-    for (let i = pool.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
+    for (const fetchPool of poolFetchers) {
+        if (totalAttempts >= MAX_TOTAL_ATTEMPTS) break;
 
-    let attempts = 0;
-    for (const candidate of pool) {
-        if (attempts >= 20) break;
-        const key = `${candidate.source}:${candidate.id}`;
-        if (usedIds.has(key)) continue;
-        if (usedNames.has(normalize(candidate.name))) continue;
+        let pool;
+        try {
+            pool = await fetchPool();
+        } catch (e) {
+            console.error('Source de pool indisponible, on passe à la suivante :', e.message);
+            continue;
+        }
+        if (!pool || pool.length === 0) continue;
 
-        attempts++;
-        const details = candidate.source === 'rawg'
-            ? await fetchRawgDetails(candidate.id)
-            : await fetchAppDetails(candidate.id);
-        if (!details) continue;
+        for (let i = pool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
 
-        const finalName = details.name || candidate.name;
-        if (hasNonLatinScript(finalName)) continue;
+        for (const candidate of pool) {
+            if (totalAttempts >= MAX_TOTAL_ATTEMPTS) break;
+            const key = `${candidate.source}:${candidate.id}`;
+            if (usedIds.has(key)) continue;
+            if (usedNames.has(normalize(candidate.name))) continue;
 
-        return {
-            source: candidate.source,
-            id: candidate.id,
-            name: finalName,
-            screenshot: details.screenshots[Math.floor(Math.random() * details.screenshots.length)],
-            cover: details.cover,
-            released: details.released
-        };
+            totalAttempts++;
+            let details;
+            try {
+                details = candidate.source === 'rawg'
+                    ? await fetchRawgDetails(candidate.id)
+                    : await fetchAppDetails(candidate.id);
+            } catch (e) {
+                continue;
+            }
+            if (!details) continue;
+
+            const finalName = details.name || candidate.name;
+            if (hasNonLatinScript(finalName)) continue;
+
+            return {
+                source: candidate.source,
+                id: candidate.id,
+                name: finalName,
+                screenshot: details.screenshots[Math.floor(Math.random() * details.screenshots.length)],
+                cover: details.cover,
+                released: details.released
+            };
+        }
     }
     return null;
 }
