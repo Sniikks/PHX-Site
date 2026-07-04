@@ -153,7 +153,7 @@ async function handleAutocomplete(req, res, debug) {
         return a.name.localeCompare(b.name);
     });
 
-    const merged = results.slice(0, 15);
+    const merged = results.slice(0, 30);
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
     return res.status(200).json(debug ? { suggestions: merged, debug: debugInfo } : { suggestions: merged });
