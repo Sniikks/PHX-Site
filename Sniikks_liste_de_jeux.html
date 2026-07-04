@@ -56,6 +56,7 @@
   .sticky-inner { max-width:1320px; margin:0 auto; padding:0 32px; padding-left:max(32px, env(safe-area-inset-left)); padding-right:max(32px, env(safe-area-inset-right)); }
   .toolbar-row { display:flex; align-items:center; justify-content:center; gap:10px; padding:14px 0 6px; flex-wrap:wrap; }
   .toolbar-row.split { justify-content:center; gap:28px; }
+  .toolbar-row.split > * { min-width:0; }
   .toolbar-row + .toolbar-row { padding-top:0; }
   .toolbar-block:last-child .toolbar-row:last-child { padding-bottom:14px; }
 
@@ -85,8 +86,8 @@
   .add-btn-main { background:var(--gold); border:none; color:#0a0a0c; padding:8px 16px; font-family:'Manrope',sans-serif; font-size:12.5px; font-weight:700; cursor:pointer; border-radius:var(--radius); white-space:nowrap; transition:all .15s; }
   .add-btn-main:hover { background:#f0c563; transform:translateY(-1px); }
 
-  .stats-years { display:flex; align-items:center; justify-content:center; gap:18px; flex-wrap:wrap; }
-  .year-filters { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+  .stats-years { display:flex; align-items:center; justify-content:center; gap:18px; flex-wrap:wrap; min-width:0; }
+  .year-filters { display:flex; align-items:center; gap:4px; flex-wrap:wrap; min-width:0; }
   .yf-label { display:none; }
   .year-pill { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:var(--radius); color:var(--text-dim); cursor:pointer; font-size:12px; font-weight:600; border:1px solid transparent; transition:all .15s; background:transparent; font-family:inherit; }
   .year-pill:hover { color:var(--text); background:var(--bg3); transform:none; }
@@ -251,6 +252,7 @@
 
     .sticky-inner { padding:0 12px; }
     .toolbar-row { padding:8px 0 4px; gap:6px; justify-content:flex-start; }
+    .toolbar-row.split { justify-content:flex-start; gap:6px; }
 
     .status-pills {
       justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap;
@@ -653,7 +655,7 @@ function renderStatusCounts() {
   const base = games.filter(g=>{
     const mq=!q||g.name.toLowerCase().includes(q);
     const mp=filterPlatform==='tous'||g.platform===filterPlatform;
-    const my=filterYear==='tous'||(filterYear==='none'?g.annee==null:g.annee===filterYear);
+    const my=filterYear==='tous'||g.annee===filterYear;
     return mq&&mp&&my;
   });
   document.getElementById('cnt-tous').textContent = base.length;
@@ -677,15 +679,11 @@ function renderYearFilters() {
     return mq&&ms&&mp;
   });
   const years=[...new Set(base.map(g=>g.annee))].filter(y=>y!=null).sort((a,b)=>b-a);
-  const noYearCount = base.filter(g=>g.annee==null).length;
   let html=`<button class="year-pill tous-pill${filterYear==='tous'?' active':''}" onclick="setYearFilter('tous')">Toutes</button>`;
   years.forEach(y=>{
     const c=base.filter(g=>g.annee===y).length;
     html+=`<button class="year-pill${filterYear===y?' active':''}" onclick="setYearFilter(${y})">${y} <span class="yp-count">${c}</span></button>`;
   });
-  if(noYearCount>0){
-    html+=`<button class="year-pill${filterYear==='none'?' active':''}" onclick="setYearFilter('none')">Sans année <span class="yp-count">${noYearCount}</span></button>`;
-  }
   document.getElementById('yearFilters').innerHTML=html;
 }
 function setYearFilter(y){ filterYear=y; renderGrid(); }
@@ -700,7 +698,7 @@ function getFiltered() {
       (filterStatus==='fini'&&(g.status==='fini'))||(filterStatus==='attente'&&g.status==='attente')||
       (filterStatus==='abandonne'&&g.status==='abandonne');
     const mp=filterPlatform==='tous'||g.platform===filterPlatform;
-    const my=filterYear==='tous'||(filterYear==='none'?g.annee==null:g.annee===filterYear);
+    const my=filterYear==='tous'||g.annee===filterYear;
     return mq&&ms&&mp&&my;
   });
 }
