@@ -92,13 +92,22 @@ async function handleAutocomplete(req, res, debug) {
 
     if (RAWG_API_KEY) {
         try {
-            const rawgUrl = `${RAWG_BASE}/games?key=${RAWG_API_KEY}&search=${encodeURIComponent(q)}&search_precise=true&page_size=8`;
+            // page_size augmenté (8 → 20) pour couvrir vraiment tous les jeux correspondants,
+            // pas seulement la petite poignée la plus évidente.
+            const rawgUrl = `${RAWG_BASE}/games?key=${RAWG_API_KEY}&search=${encodeURIComponent(q)}&search_precise=true&page_size=20`;
             const rawgRes = await fetch(rawgUrl, { headers: BROWSER_HEADERS });
             debugInfo.rawgStatus = rawgRes.status;
             if (rawgRes.ok) {
                 const data = await rawgRes.json();
                 debugInfo.rawgCount = (data.results || []).length;
-                rawgResults = (data.results || []).filter(g => g && g.name);
+                // RAWG fonctionne comme un wiki : n'importe qui peut soumettre une fiche.
+                // Ça inclut de vrais jeux obscurs, mais aussi des fiches troll/blague ou des
+                // prototypes de game jam abandonnés. Le champ "added" (nb d'utilisateurs qui
+                // ont ajouté le jeu à une liste) sert de filet anti-troll léger : un vrai jeu,
+                // même obscur, a presque toujours au moins un peu d'activité.
+                const MIN_RAWG_ADDED = 3;
+                rawgResults = (data.results || []).filter(g => g && g.name && (g.added || 0) >= MIN_RAWG_ADDED);
+                debugInfo.rawgFilteredOut = (data.results || []).length - rawgResults.length;
             } else {
                 debugInfo.rawgBody = (await rawgRes.text()).slice(0, 200);
             }
@@ -144,7 +153,7 @@ async function handleAutocomplete(req, res, debug) {
         return a.name.localeCompare(b.name);
     });
 
-    const merged = results.slice(0, 10);
+    const merged = results.slice(0, 15);
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
     return res.status(200).json(debug ? { suggestions: merged, debug: debugInfo } : { suggestions: merged });
