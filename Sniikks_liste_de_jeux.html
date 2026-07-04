@@ -250,10 +250,14 @@
     .sticky-inner { padding:0 12px; }
     .toolbar-row { padding:8px 0 4px; gap:6px; justify-content:flex-start; }
 
-    .status-pills { justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap; max-width:100%; padding-bottom:2px; scrollbar-width:none;
-      -webkit-mask-image:linear-gradient(to right, black 0, black calc(100% - 18px), transparent 100%);
-      mask-image:linear-gradient(to right, black 0, black calc(100% - 18px), transparent 100%); }
-    .status-pills::-webkit-scrollbar { display:none; }
+    .status-pills {
+      justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap;
+      width:100%; max-width:100%; padding-bottom:6px;
+      scrollbar-width:thin; scrollbar-color:var(--gold-dim) transparent;
+    }
+    .status-pills::-webkit-scrollbar { height:4px; }
+    .status-pills::-webkit-scrollbar-track { background:transparent; }
+    .status-pills::-webkit-scrollbar-thumb { background:var(--gold-dim); border-radius:4px; }
     .status-pill { padding:6px 10px; font-size:11.5px; flex-shrink:0; }
 
     .row2-right { justify-content:space-between; width:100%; gap:8px; }
@@ -265,11 +269,13 @@
     .top-stat-num { font-size:14px; }
     .top-stat-label { font-size:9px; }
     .year-filters, .platform-row {
-      justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap; padding-bottom:4px; scrollbar-width:none;
-      -webkit-mask-image:linear-gradient(to right, black 0, black calc(100% - 18px), transparent 100%);
-      mask-image:linear-gradient(to right, black 0, black calc(100% - 18px), transparent 100%);
+      justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap;
+      width:100%; max-width:100%; padding-bottom:6px;
+      scrollbar-width:thin; scrollbar-color:var(--gold-dim) transparent;
     }
-    .year-filters::-webkit-scrollbar, .platform-row::-webkit-scrollbar { display:none; }
+    .year-filters::-webkit-scrollbar, .platform-row::-webkit-scrollbar { height:4px; }
+    .year-filters::-webkit-scrollbar-track, .platform-row::-webkit-scrollbar-track { background:transparent; }
+    .year-filters::-webkit-scrollbar-thumb, .platform-row::-webkit-scrollbar-thumb { background:var(--gold-dim); border-radius:4px; }
     .year-pill, .filter-btn { flex-shrink:0; padding:5px 10px; font-size:11px; }
 
     .search-wrap, .search-box { width:100%; }
