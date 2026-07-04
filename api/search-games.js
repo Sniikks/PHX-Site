@@ -119,10 +119,15 @@ async function handleAutocomplete(req, res, debug) {
     }
 
     // Année Steam : pas fournie par storesearch, il faut un appel appdetails par jeu.
-    // On les récupère pour TOUS les résultats Steam (pas seulement les plus populaires),
+    // On les récupère pour tous les résultats Steam (pas seulement les plus populaires),
     // sinon des jeux moins connus (ex: petits jeux indés) restent sans date. Lancés en
     // parallèle + mis en cache pour limiter le coût réel côté temps de réponse.
-    const steamYears = await Promise.all(steamItems.map(i => fetchSteamReleaseYear(i.id)));
+    // Garde-fou : sur une recherche très large (terme générique), Steam peut renvoyer
+    // 30-50 résultats — on plafonne à 20 appels appdetails en parallèle pour éviter
+    // de se faire rate-limiter par Steam. Au-delà, pas de date (mieux que planter).
+    const MAX_STEAM_DATE_LOOKUPS = 20;
+    const steamForDates = steamItems.slice(0, MAX_STEAM_DATE_LOOKUPS);
+    const steamYears = await Promise.all(steamForDates.map(i => fetchSteamReleaseYear(i.id)));
 
     // Fusionne : Steam (avec année) + RAWG (avec année).
     const seen = new Set();
@@ -140,7 +145,8 @@ async function handleAutocomplete(req, res, debug) {
         results.push({ name, year: year || null });
     };
 
-    steamItems.forEach((item, idx) => push(item.name, steamYears[idx]));
+    steamForDates.forEach((item, idx) => push(item.name, steamYears[idx]));
+    steamItems.slice(MAX_STEAM_DATE_LOOKUPS).forEach(i => push(i.name, null)); // au-delà du plafond : pas de date, mais le jeu reste dans la liste
     rawgResults.forEach(g => push(g.name, yearFromDateStr(g.released)));
 
     // Tri par date de sortie croissante ; les jeux sans date connue passent après,
