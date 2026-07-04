@@ -105,7 +105,7 @@ async function handleAutocomplete(req, res, debug) {
                 // prototypes de game jam abandonnés. Le champ "added" (nb d'utilisateurs qui
                 // ont ajouté le jeu à une liste) sert de filet anti-troll léger : un vrai jeu,
                 // même obscur, a presque toujours au moins un peu d'activité.
-                const MIN_RAWG_ADDED = 3;
+                const MIN_RAWG_ADDED = 10;
                 rawgResults = (data.results || []).filter(g => g && g.name && (g.added || 0) >= MIN_RAWG_ADDED);
                 debugInfo.rawgFilteredOut = (data.results || []).length - rawgResults.length;
             } else {
