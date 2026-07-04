@@ -741,7 +741,7 @@
     const q = e.target.value.trim();
     clearTimeout(suggestTimer);
     if (q.length < 2) { hideSuggestions(); suggestRequestId++; return; }
-    suggestTimer = setTimeout(() => fetchSuggestions(q), 120);
+    suggestTimer = setTimeout(() => fetchSuggestions(q), 30);
   }
   async function fetchSuggestions(q) {
     const reqId = ++suggestRequestId;
@@ -762,7 +762,7 @@
     box.innerHTML = currentSuggestions.map((s, i) => `
       <div class="suggestion-item${i === 0 ? ' top-match' : ''}">
         <span>${escapeHtml(s.name)}${s.year ? ` <span class="sugg-year">(${s.year})</span>` : ''}</span>
-        ${i === 0 ? '<span class="sugg-badge">Submit</span>' : ''}
+        ${i === 0 ? '<span class="sugg-badge">Entrée</span>' : ''}
       </div>
     `).join('');
     box.style.display = 'block';
