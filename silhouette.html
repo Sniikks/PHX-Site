@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Silhouette - PHX</title>
+<link rel="shortcut icon" href="https://cdn.discordapp.com/icons/1030553621252821053/2e7356a5d822245ad7953afdb143581a.webp?size=160&quality=lossless">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap');
+
+  :root {
+    --bg:#0a0a0c; --bg2:#111114; --bg3:#161619;
+    --gold:#e8b84b; --gold2:#c49a30; --gold-dim:#9c7d33;
+    --text:#ededf0; --text2:#8c8c94;
+    --border:#232327;
+    --good:#5fbf86; --bad:#e2685f;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 50% -200px, rgba(232,184,75,.08), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Manrope',sans-serif;
+    min-height:100vh;
+    display:flex; flex-direction:column; align-items:center;
+    padding:1.6rem 1.2rem 3rem;
+  }
+
+  a.back {
+    align-self:flex-start;
+    display:inline-flex; align-items:center; gap:.4rem;
+    text-decoration:none;
+    font-family:'Sora',sans-serif; font-weight:600; font-size:.72rem; letter-spacing:.03em;
+    color:var(--text2);
+    background:var(--bg2); border:1px solid var(--border); border-radius:9px;
+    padding:.5rem .9rem;
+    margin-bottom:1rem;
+    cursor:pointer; transition:background .2s ease, color .2s ease;
+  }
+  a.back:hover { border-color:var(--gold-dim); color:var(--gold); background:var(--bg3); }
+
+  .title {
+    font-family:'Sora',sans-serif;
+    font-size:clamp(1.3rem,4vw,1.9rem);
+    font-weight:700;
+    letter-spacing:.1em;
+    color:var(--gold);
+    text-transform:uppercase;
+  }
+  .subtitle { color:var(--text2); font-size:12.5px; margin-top:.35rem; margin-bottom:1rem; letter-spacing:.03em; text-align:center; }
+
+  .date-nav {
+    display:flex; align-items:center; justify-content:center; gap:.4rem;
+    margin-bottom:1.2rem;
+  }
+  .date-nav button {
+    width:34px; height:34px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:9px; border:1px solid var(--border); background:var(--bg2); color:var(--text2);
+    font-size:.85rem; cursor:pointer;
+  }
+  .date-nav button:hover:not(:disabled) { border-color:var(--gold-dim); color:var(--gold); }
+  .date-nav button:disabled { opacity:.3; cursor:default; }
+  .date-nav .date-label {
+    font-family:'Sora',sans-serif; font-weight:600; font-size:.85rem; color:var(--text);
+    min-width:190px; text-align:center; letter-spacing:.02em;
+  }
+  .archive-toggle {
+    width:auto !important; padding:0 .8rem !important; gap:.35rem; display:flex; align-items:center;
+    font-family:'Sora',sans-serif; font-size:.72rem !important; font-weight:600; letter-spacing:.03em;
+  }
+
+  .card {
+    width:100%; max-width:1220px;
+    background:var(--bg2);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:1.3rem;
+  }
+
+  .game-layout { display:flex; gap:1.3rem; align-items:flex-start; }
+  .game-left { flex:1 1 auto; min-width:0; }
+  .game-right { flex:0 0 250px; display:flex; flex-direction:column; gap:.55rem; }
+
+  .silhouette-frame {
+    width:100%;
+    aspect-ratio:16/10;
+    max-height:64vh;
+    border-radius:14px;
+    overflow:hidden;
+    background-color:var(--bg3);
+    position:relative;
+    border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .silhouette-frame img {
+    max-width:88%; max-height:88%;
+    object-fit:contain;
+    display:block;
+    transition:filter .9s ease;
+    will-change:filter;
+  }
+  .category-badge {
+    position:absolute; top:.6rem; left:.6rem;
+    font-family:'Sora',sans-serif; font-size:.68rem; font-weight:700; letter-spacing:.04em;
+    background:var(--bg2); border:1px solid var(--border); color:var(--gold);
+    padding:.3rem .6rem; border-radius:8px; z-index:2;
+  }
+
+  @keyframes revealPulse {
+    0% { filter:brightness(0) contrast(1); }
+    40% { filter:brightness(.05) contrast(1.4); }
+    100% { filter:brightness(var(--target-brightness,1)); }
+  }
+  .silhouette-frame img.reveal-transition { animation:revealPulse .9s ease forwards; }
+
+  @keyframes flashRing {
+    0% { box-shadow:inset 0 0 0 0 rgba(226,104,95,0); }
+    18% { box-shadow:inset 0 0 0 5px var(--flash-color, rgba(226,104,95,.85)); }
+    100% { box-shadow:inset 0 0 0 0 rgba(226,104,95,0); }
+  }
+  .silhouette-frame.flash-bad { animation:flashRing .7s ease; --flash-color:rgba(226,104,95,.85); }
+  .silhouette-frame.flash-skip { animation:flashRing .7s ease; --flash-color:rgba(156,125,51,.7); }
+  .silhouette-frame.flash-good { animation:flashRing .8s ease; --flash-color:rgba(95,191,134,.9); }
+
+  .attempts-tabs {
+    display:flex; margin-top:.7rem; border-radius:10px; overflow:hidden;
+    border:1px solid var(--border);
+  }
+  .attempt-tab {
+    flex:1; padding:.65rem 0; text-align:center;
+    background:var(--bg3); color:var(--text2);
+    font-family:'Sora',sans-serif; font-weight:600; font-size:.82rem;
+    border-right:1px solid var(--border);
+  }
+  .attempt-tab:last-child { border-right:none; }
+  .attempt-tab.active { background:var(--bg2); color:var(--gold); box-shadow:inset 0 -2px 0 var(--gold); }
+  .attempt-tab.correct { background:rgba(95,191,134,.15); color:var(--good); }
+  .attempt-tab.wrong { background:rgba(226,104,95,.15); color:var(--bad); }
+  .attempt-tab.skipped { background:rgba(156,125,51,.15); color:var(--gold-dim); }
+
+  .guess-list { margin-top:.7rem; display:flex; flex-direction:column; gap:.4rem; }
+  .guess-item {
+    font-size:.82rem; padding:.5rem .7rem; border-radius:9px;
+    background:var(--bg3); border:1px solid var(--border); color:var(--text2);
+  }
+  .guess-item.wrong { color:var(--bad); border-color:rgba(226,104,95,.3); }
+  .guess-item.skipped { color:var(--gold-dim); border-color:rgba(156,125,51,.3); font-style:italic; }
+
+  form.guess-form { position:relative; }
+  .input-wrap { position:relative; }
+  input#guessInput {
+    width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text);
+    border-radius:10px; padding:.75rem 2.2rem .75rem .9rem; font-family:'Manrope',sans-serif; font-size:.9rem;
+    outline:none;
+  }
+  input#guessInput:focus { border-color:var(--gold-dim); }
+  .input-clear {
+    position:absolute; right:.5rem; top:50%; transform:translateY(-50%);
+    width:22px; height:22px; border-radius:6px; border:none; background:var(--bg2); color:var(--text2);
+    display:none; align-items:center; justify-content:center; font-size:.7rem; padding:0; cursor:pointer;
+  }
+  .input-clear.visible { display:flex; }
+  .input-clear:hover { background:var(--border); color:var(--text); }
+  button {
+    font-family:'Sora',sans-serif; font-weight:600; font-size:.8rem; letter-spacing:.04em;
+    border-radius:10px; border:1px solid var(--gold-dim); background:transparent; color:var(--gold);
+    padding:.75rem 1.1rem; cursor:pointer; transition:background .2s ease, color .2s ease;
+    white-space:nowrap;
+  }
+  button:hover:not(:disabled) { background:var(--gold); color:#151510; }
+  button:disabled { opacity:.35; cursor:default; }
+  button.wide { width:100%; }
+  button.small-link {
+    border:none; background:none; color:var(--text2); font-size:.72rem; padding:.3rem; text-decoration:underline;
+  }
+  button.small-link:hover { color:var(--bad); background:none; }
+
+  .suggestions {
+    position:absolute; top:calc(100% + 6px); left:0; right:0;
+    background:var(--bg3); border:1px solid var(--border); border-radius:10px;
+    overflow-y:auto; max-height:280px; z-index:10;
+    box-shadow:0 14px 30px rgba(0,0,0,.55);
+  }
+  .suggestion-item {
+    padding:.6rem .8rem; font-size:.85rem; color:var(--text); cursor:pointer;
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; gap:.5rem;
+  }
+  .suggestion-item .sugg-cat { color:var(--text2); font-size:.68rem; flex-shrink:0; }
+  .suggestion-item:last-child { border-bottom:none; }
+  .suggestion-item:hover, .suggestion-item.active { background:rgba(232,184,75,.1); color:var(--gold); }
+
+  .result-box {
+    padding:1rem; border-radius:12px;
+    background:var(--bg3); border:1px solid var(--border);
+    text-align:center;
+  }
+  .result-box .answer {
+    font-family:'Sora',sans-serif; font-weight:700; font-size:1.05rem; color:var(--gold); margin-bottom:.3rem;
+  }
+  .result-box .verdict { font-size:.85rem; color:var(--text2); }
+  .result-box.win .verdict { color:var(--good); }
+  .result-box.lose .verdict { color:var(--bad); }
+
+  .state-msg { color:var(--text2); font-size:.85rem; text-align:center; margin-top:2rem; }
+
+  .archive-header {
+    display:flex; flex-direction:column; align-items:center; gap:.6rem; margin-bottom:1rem;
+  }
+  .archive-header .archive-nav-row { display:flex; align-items:center; justify-content:center; gap:.5rem; }
+  .archive-header .archive-month-label {
+    font-family:'Sora',sans-serif; font-weight:700; font-size:1rem; color:var(--gold);
+    min-width:180px; text-align:center; text-transform:capitalize;
+  }
+  .names-toggle {
+    display:flex; align-items:center; gap:.4rem; font-size:.75rem; color:var(--text2); cursor:pointer; user-select:none;
+  }
+  .names-toggle input { accent-color:var(--gold); cursor:pointer; }
+  .archive-grid {
+    display:grid; grid-template-columns:repeat(7, 1fr); gap:.4rem;
+    max-width:760px; margin:0 auto;
+  }
+  .archive-weekday {
+    text-align:center; font-size:10px; color:var(--text2); letter-spacing:.06em; padding-bottom:.15rem;
+  }
+  .archive-cell {
+    aspect-ratio:1/0.8; border-radius:8px; overflow:hidden; position:relative;
+    background:var(--bg3); border:2px solid var(--border);
+    cursor:pointer;
+  }
+  .archive-cell.empty { visibility:hidden; cursor:default; }
+  .archive-cell.disabled { opacity:.25; cursor:default; pointer-events:none; border-color:var(--border); }
+  .archive-cell.status-green { border-color:var(--good); }
+  .archive-cell.status-red { border-color:var(--bad); }
+  .archive-cell.status-yellow { border-color:var(--gold); }
+  .archive-cell img.cell-img {
+    position:absolute; inset:0; width:100%; height:100%; object-fit:contain; padding:8%;
+  }
+  .archive-cell::after {
+    content:''; position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.75), transparent 50%);
+    z-index:1;
+  }
+  .archive-cell .cell-day {
+    position:absolute; top:.25rem; left:.3rem; font-family:'Sora',sans-serif; font-size:.62rem; font-weight:700;
+    color:#151510; background:var(--text2); padding:1px 4px; border-radius:4px; z-index:2;
+  }
+  .archive-cell.status-green .cell-day { background:var(--good); }
+  .archive-cell.status-red .cell-day { background:var(--bad); }
+  .archive-cell.status-yellow .cell-day { background:var(--gold); }
+  .cell-mini-guesses {
+    position:absolute; top:.3rem; right:.3rem; display:flex; gap:1.5px; z-index:2;
+  }
+  .cell-mini-guesses span { width:5px; height:5px; border-radius:1px; background:rgba(255,255,255,.25); }
+  .cell-mini-guesses span.correct { background:var(--good); }
+  .cell-mini-guesses span.wrong { background:var(--bad); }
+  .cell-mini-guesses span.skipped { background:var(--gold-dim); }
+  .archive-cell .cell-name {
+    position:absolute; bottom:.3rem; left:.3rem; right:.3rem; z-index:2;
+    font-size:8.5px; color:var(--text); font-weight:600; line-height:1.1;
+    overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  }
+  .archive-grid.hide-names .cell-name { display:none; }
+  .archive-cell:hover:not(.disabled) { filter:brightness(1.15); }
+
+  footer { margin-top:2rem; font-size:11px; color:var(--gold-dim); letter-spacing:.1em; }
+  #dbStatus.db-ok { color:#5fbf86; }
+  #dbStatus.db-error { color:#e2685f; }
+
+  @media (max-width:760px) {
+    .game-layout { flex-direction:column; }
+    .game-right { flex:1 1 auto; width:100%; }
+  }
+  @media (max-width:640px) {
+    body { padding:1.2rem .8rem 2.4rem; }
+    .card { padding:1rem; }
+    .date-nav .date-label { min-width:120px; font-size:.72rem; }
+    .archive-cell .cell-name { display:none; }
+  }
+</style>
+</head>
+<body>
+
+  <a class="back" href="index.html">☰ Menu</a>
+  <div class="title">Silhouette</div>
+  <div class="subtitle" id="subtitleEl">Devine le personnage ou l'arme culte à partir de sa silhouette.</div>
+
+  <div class="date-nav" id="dateNavEl">
+    <button id="navFirst" title="Premier puzzle">⏮</button>
+    <button id="navPrev" title="Jour précédent">◀</button>
+    <div class="date-label" id="dateLabel">—</div>
+    <button id="navNext" title="Jour suivant">▶</button>
+    <button id="navLast" title="Aujourd'hui">⏭</button>
+    <button id="archiveToggle" class="archive-toggle" title="Archives">🗓 Archives</button>
+  </div>
+
+  <div class="card" id="cardEl">
+    <div class="state-msg" id="loadingMsg">Chargement du puzzle…</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="db.js"></script>
+  <script>
+  // ==========================================================
+  // Silhouette — logique client
+  // Une seule ligne Supabase par jour (app_data.id = "silhouette_YYYY-MM-DD"),
+  // qui contient à la fois les infos du puzzle et la session partagée
+  // (data.session = { guesses, solved, gaveUp }).
+  // Le pool de personnages/armes vit dans app_data.id = "silhouette_pool"
+  // et se gère depuis silhouette-admin.html.
+  // ==========================================================
+
+  const MAX_ATTEMPTS = 6;
+  const REVEAL_LEVELS = [0, 0.18, 0.35, 0.55, 0.78, 1]; // filter:brightness(), essai 1 -> 6
+  const ARCHIVE_PEEK_BRIGHTNESS = 0; // aperçu d'un puzzle pas encore terminé, dans l'archive
+  const LAUNCH_DATE = '2026-07-04';
+  const WEEKDAYS_FR = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  const MONTHS_FR = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  const CATEGORY_LABEL = { personnage: '🧍 Personnage', arme: '⚔️ Arme' };
+
+  // ── Utils de comparaison texte ──
+  function normalize(str) {
+    return str
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[™®©]/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  function levenshtein(a, b) {
+    const m = a.length, n = b.length;
+    if (m === 0) return n;
+    if (n === 0) return m;
+    const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+    return dp[m][n];
+  }
+  function isCorrectGuess(guessRaw, answer) {
+    const guess = normalize(guessRaw);
+    const target = normalize(answer);
+    if (guess.length < 2) return false;
+    if (guess === target) return true;
+    const maxLen = Math.max(guess.length, target.length);
+    const threshold = maxLen <= 6 ? 1 : (maxLen <= 12 ? 2 : 3);
+    return levenshtein(guess, target) <= threshold;
+  }
+
+  // ── Dates ──
+  function parisDateString(offset = 0) {
+    const now = new Date(Date.now() + offset * 86400000);
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+    const get = t => parts.find(p => p.type === t).value;
+    return `${get('year')}-${get('month')}-${get('day')}`;
+  }
+  function puzzleNumber(dateStr) {
+    const d1 = new Date(`${LAUNCH_DATE}T00:00:00Z`);
+    const d2 = new Date(`${dateStr}T00:00:00Z`);
+    return Math.max(1, Math.round((d2 - d1) / 86400000) + 1);
+  }
+  function addDays(dateStr, n) {
+    const d = new Date(`${dateStr}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
+  function formatDateFr(dateStr) {
+    const d = new Date(`${dateStr}T00:00:00Z`);
+    return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d);
+  }
+
+  // ── État global ──
+  const todayStr = parisDateString();
+  const urlParams = new URLSearchParams(location.search);
+  let viewingDate = urlParams.get('date') || todayStr;
+  if (viewingDate > todayStr) viewingDate = todayStr;
+
+  let mode = 'play'; // 'play' | 'archive'
+  let archiveYear = parseInt(viewingDate.slice(0, 4), 10);
+  let archiveMonth = parseInt(viewingDate.slice(5, 7), 10);
+
+  let puzzle = null;
+  let state = { guesses: [], solved: false, gaveUp: false };
+  let realtimeChannel = null;
+  let poolNames = []; // [{name, category}] chargé une fois pour l'autocomplétion
+  let currentSuggestions = [];
+  let pendingFlash = null;
+
+  function isValidPuzzle(p) {
+    return !!(p && p.answer && p.image);
+  }
+
+  function cacheKey(d) { return 'silhouette_cache_' + d; }
+  function loadLocalCache(d) {
+    try { const raw = localStorage.getItem(cacheKey(d)); if (raw) return JSON.parse(raw); } catch (e) {}
+    return null;
+  }
+  function saveLocalCache(d, p) {
+    try { localStorage.setItem(cacheKey(d), JSON.stringify(p)); } catch (e) {}
+  }
+
+  // ── Navigation par date ──
+  function updateNavUI() {
+    document.getElementById('dateNavEl').style.display = mode === 'play' ? 'flex' : 'none';
+    if (mode !== 'play') return;
+    document.getElementById('dateLabel').textContent = formatDateFr(viewingDate) + ` · #${puzzleNumber(viewingDate)}`;
+    document.getElementById('navFirst').disabled = viewingDate <= LAUNCH_DATE;
+    document.getElementById('navPrev').disabled = viewingDate <= LAUNCH_DATE;
+    document.getElementById('navNext').disabled = viewingDate >= todayStr;
+    document.getElementById('navLast').disabled = viewingDate >= todayStr;
+  }
+  function goToDate(d) {
+    if (d < LAUNCH_DATE) d = LAUNCH_DATE;
+    if (d > todayStr) d = todayStr;
+    viewingDate = d;
+    mode = 'play';
+    const params = new URLSearchParams(location.search);
+    params.set('date', viewingDate);
+    history.replaceState(null, '', location.pathname + '?' + params.toString());
+    loadPuzzle();
+  }
+  document.getElementById('navFirst').addEventListener('click', () => goToDate(LAUNCH_DATE));
+  document.getElementById('navPrev').addEventListener('click', () => goToDate(addDays(viewingDate, -1)));
+  document.getElementById('navNext').addEventListener('click', () => goToDate(addDays(viewingDate, 1)));
+  document.getElementById('navLast').addEventListener('click', () => goToDate(todayStr));
+  document.getElementById('archiveToggle').addEventListener('click', () => {
+    mode = 'archive';
+    archiveYear = parseInt(viewingDate.slice(0, 4), 10);
+    archiveMonth = parseInt(viewingDate.slice(5, 7), 10);
+    updateNavUI();
+    renderArchive();
+  });
+
+  async function loadPoolNames() {
+    if (poolNames.length) return;
+    try {
+      const { data: row } = await supabaseClient.from('app_data').select('data').eq('id', 'silhouette_pool').maybeSingle();
+      poolNames = (row?.data?.entries || []).map(e => ({ name: e.name, category: e.category }));
+    } catch (e) { /* silencieux : l'autocomplétion est un confort, pas un bloquant */ }
+  }
+
+  // ── Chargement du puzzle (+ session intégrée) depuis Supabase ──
+  async function loadPuzzle() {
+    updateNavUI();
+    document.getElementById('cardEl').innerHTML = '<div class="state-msg">Chargement du puzzle…</div>';
+    if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
+    loadPoolNames();
+
+    try {
+      const cached = loadLocalCache(viewingDate);
+      if (isValidPuzzle(cached)) {
+        puzzle = cached;
+        state = puzzle.session || { guesses: [], solved: false, gaveUp: false };
+        renderGame();
+      }
+
+      const { data: row, error } = await supabaseClient.from('app_data').select('data').eq('id', 'silhouette_' + viewingDate).maybeSingle();
+      setDbStatus(error);
+      if (error) throw error;
+
+      if (!isValidPuzzle(row?.data)) {
+        puzzle = null;
+        document.getElementById('cardEl').innerHTML = `<div class="state-msg">Aucun puzzle pour cette date.${viewingDate === todayStr ? '<br>Reviens un peu plus tard 🙂' : ''}</div>`;
+        return;
+      }
+
+      puzzle = row.data;
+      state = puzzle.session || { guesses: [], solved: false, gaveUp: false };
+      puzzle.session = state;
+      saveLocalCache(viewingDate, puzzle);
+      renderGame();
+      subscribeRealtime();
+    } catch (e) {
+      console.error('Erreur chargement Silhouette:', e);
+      document.getElementById('cardEl').innerHTML = `<div class="state-msg">Erreur de chargement : ${escapeHtml(e.message || String(e))}<br>Ouvre la console (F12) pour plus de détails.</div>`;
+    }
+  }
+
+  function setDbStatus(error) {
+    const dbEl = document.getElementById('dbStatus');
+    if (!dbEl) return;
+    if (error) { dbEl.textContent = '● Base de données non configurée'; dbEl.className = 'db-error'; }
+    else { dbEl.textContent = '● Connecté à Supabase'; dbEl.className = 'db-ok'; }
+  }
+
+  function subscribeRealtime() {
+    realtimeChannel = supabaseClient
+      .channel('silhouette_' + viewingDate)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_data', filter: `id=eq.silhouette_${viewingDate}` }, payload => {
+        if (isValidPuzzle(payload.new?.data)) {
+          puzzle = payload.new.data;
+          state = puzzle.session || { guesses: [], solved: false, gaveUp: false };
+          saveLocalCache(viewingDate, puzzle);
+          renderGame();
+        }
+      })
+      .subscribe();
+  }
+
+  async function saveSession() {
+    puzzle.session = state;
+    saveLocalCache(viewingDate, puzzle);
+    try {
+      await supabaseClient.from('app_data').upsert({ id: 'silhouette_' + viewingDate, data: puzzle, updated_at: new Date().toISOString() });
+    } catch (e) {
+      console.error('Erreur sauvegarde Silhouette:', e);
+    }
+  }
+
+  // ── Rendu du jeu ──
+  function currentRevealIndex() {
+    return Math.min(state.guesses.length, MAX_ATTEMPTS - 1);
+  }
+
+  function buildGuessListHtml() {
+    if (state.guesses.length === 0) return '';
+    let html = '<div class="guess-list" id="guessListEl">';
+    state.guesses.forEach(g => {
+      const cls = g.correct ? '' : (g.skipped ? 'skipped' : 'wrong');
+      if (g.correct) {
+        html += `<div class="guess-item ${cls}">✓ ${escapeHtml(g.text)}</div>`;
+      } else if (g.skipped) {
+        html += `<div class="guess-item ${cls}">⏭ Passé</div>`;
+      } else {
+        html += `<div class="guess-item ${cls}">✕ ${escapeHtml(g.text)}</div>`;
+      }
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function renderGame() {
+    const finished = state.solved || state.gaveUp || state.guesses.length >= MAX_ATTEMPTS;
+    const brightness = finished ? 1 : REVEAL_LEVELS[currentRevealIndex()];
+    const flash = pendingFlash; pendingFlash = null;
+
+    let tabsHtml = '<div class="attempts-tabs">';
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      let cls = '', label = i + 1;
+      if (i < state.guesses.length) {
+        const g = state.guesses[i];
+        cls = g.correct ? 'correct' : (g.skipped ? 'skipped' : 'wrong');
+        label = g.correct ? '✓' : (g.skipped ? '⏭' : '✕');
+      } else if (i === state.guesses.length && !finished) {
+        cls = 'active'; label = '👁 ' + (i + 1);
+      }
+      tabsHtml += `<div class="attempt-tab ${cls}">${label}</div>`;
+    }
+    tabsHtml += '</div>';
+
+    const guessListHtml = buildGuessListHtml();
+    const catLabel = CATEGORY_LABEL[puzzle.category] || '';
+
+    let sidebarHtml;
+    if (finished) {
+      const success = state.solved;
+      sidebarHtml = `
+        <div class="result-box ${success ? 'win' : 'lose'}">
+          <div class="answer">${escapeHtml(puzzle.answer)}</div>
+          <div class="verdict">${success ? `Trouvé en ${state.guesses.length} essai${state.guesses.length > 1 ? 's' : ''} 🎉` : (state.gaveUp ? 'Abandonné' : 'Perdu — bien joué quand même')}</div>
+        </div>
+      `;
+    } else {
+      sidebarHtml = `
+        <form class="guess-form" id="guessForm" autocomplete="off">
+          <div class="input-wrap">
+            <input id="guessInput" type="text" placeholder="Qui (ou quoi) est-ce ?" />
+            <button type="button" class="input-clear" id="clearBtn" title="Effacer">✕</button>
+          </div>
+          <div class="suggestions" id="suggestionsBox" style="display:none;"></div>
+        </form>
+        <button type="button" class="wide" id="skipBtn">Passer ⏭</button>
+        <button type="button" class="small-link" id="giveUpBtn">Abandonner la partie</button>
+      `;
+    }
+
+    document.getElementById('cardEl').innerHTML = `
+      <div class="game-layout">
+        <div class="game-left">
+          <div class="silhouette-frame${flash ? ' flash-' + flash : ''}">
+            ${catLabel ? `<div class="category-badge">${catLabel}</div>` : ''}
+            <img id="silhouetteImg" class="${flash ? 'reveal-transition' : ''}" style="--target-brightness:${brightness}; filter:brightness(${brightness});" src="${puzzle.image}">
+          </div>
+          ${tabsHtml}
+        </div>
+        <div class="game-right">
+          ${sidebarHtml}
+          ${guessListHtml}
+        </div>
+      </div>
+    `;
+
+    if (!finished) {
+      document.getElementById('guessForm').addEventListener('submit', onGuessSubmit);
+      document.getElementById('skipBtn').addEventListener('click', onSkip);
+      document.getElementById('giveUpBtn').addEventListener('click', onGiveUp);
+      const input = document.getElementById('guessInput');
+      const clearBtn = document.getElementById('clearBtn');
+      input.addEventListener('input', e => { onInputChange(e); clearBtn.classList.toggle('visible', !!e.target.value); });
+      input.addEventListener('keydown', onInputKeydown);
+      clearBtn.addEventListener('click', () => { input.value = ''; clearBtn.classList.remove('visible'); hideSuggestions(); input.focus(); });
+      document.addEventListener('click', onDocClickCloseSuggestions);
+      if (viewingDate === todayStr) input.focus();
+    }
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ── Autocomplétion (locale, à partir du pool) ──
+  function onInputChange(e) {
+    const q = normalize(e.target.value.trim());
+    if (q.length < 2) { hideSuggestions(); return; }
+    currentSuggestions = poolNames
+      .filter(p => normalize(p.name).includes(q))
+      .slice(0, 8);
+    renderSuggestions();
+  }
+  function renderSuggestions() {
+    const box = document.getElementById('suggestionsBox');
+    if (!box) return;
+    if (currentSuggestions.length === 0) { hideSuggestions(); return; }
+    box.innerHTML = currentSuggestions.map((s, i) => `
+      <div class="suggestion-item">
+        <span>${escapeHtml(s.name)}</span>
+        <span class="sugg-cat">${s.category === 'arme' ? '⚔️' : '🧍'}</span>
+      </div>
+    `).join('');
+    box.style.display = 'block';
+    box.querySelectorAll('.suggestion-item').forEach((el, i) => {
+      el.addEventListener('click', () => selectSuggestion(currentSuggestions[i]));
+    });
+  }
+  function hideSuggestions() {
+    const box = document.getElementById('suggestionsBox');
+    if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+    currentSuggestions = [];
+  }
+  function selectSuggestion(s) {
+    const input = document.getElementById('guessInput');
+    if (input) input.value = s.name;
+    hideSuggestions();
+    submitGuess(s.name);
+  }
+  function onInputKeydown(e) {
+    if (e.key === 'Escape') { hideSuggestions(); return; }
+    if (e.key === 'Enter' && currentSuggestions.length > 0) {
+      e.preventDefault();
+      selectSuggestion(currentSuggestions[0]);
+    }
+  }
+  function onDocClickCloseSuggestions(e) {
+    const form = document.getElementById('guessForm');
+    if (form && !form.contains(e.target)) hideSuggestions();
+  }
+
+  // ── Actions de jeu ──
+  function onGuessSubmit(e) {
+    e.preventDefault();
+    const input = document.getElementById('guessInput');
+    const text = input.value.trim();
+    if (!text) return;
+    hideSuggestions();
+    submitGuess(text);
+  }
+  function submitGuess(text) {
+    const correct = isCorrectGuess(text, puzzle.answer);
+    state.guesses.push({ text, correct });
+    if (correct) state.solved = true;
+    pendingFlash = correct ? 'good' : 'bad';
+    saveSession();
+    renderGame();
+  }
+  function onSkip() {
+    state.guesses.push({ text: '', correct: false, skipped: true });
+    pendingFlash = 'skip';
+    saveSession();
+    renderGame();
+  }
+  function onGiveUp() {
+    state.gaveUp = true;
+    saveSession();
+    renderGame();
+  }
+
+  // ── Archives (vue calendrier) ──
+  function monthPrefix(y, m) { return `silhouette_${y}-${String(m).padStart(2, '0')}-`; }
+  let showNames = true;
+
+  async function renderArchive() {
+    document.getElementById('cardEl').innerHTML = '<div class="state-msg">Chargement des archives…</div>';
+
+    try {
+      const prefix = monthPrefix(archiveYear, archiveMonth);
+      const { data: rows, error } = await supabaseClient.from('app_data').select('id,data').ilike('id', prefix + '%');
+      setDbStatus(error);
+      if (error) throw error;
+
+      const puzzleByDate = {};
+      (rows || []).forEach(r => {
+        const d = r.id.replace('silhouette_', '');
+        if (isValidPuzzle(r.data)) puzzleByDate[d] = r.data;
+      });
+
+      const daysInMonth = new Date(Date.UTC(archiveYear, archiveMonth, 0)).getUTCDate();
+      const firstWeekday = (new Date(Date.UTC(archiveYear, archiveMonth - 1, 1)).getUTCDay() + 6) % 7;
+
+      let cellsHtml = '';
+      for (let i = 0; i < firstWeekday; i++) cellsHtml += '<div class="archive-cell empty"></div>';
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${archiveYear}-${String(archiveMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const p = puzzleByDate[dateStr];
+        const isFuture = dateStr > todayStr;
+        const isBeforeLaunch = dateStr < LAUNCH_DATE;
+
+        if (!p || isFuture || isBeforeLaunch) {
+          cellsHtml += `<div class="archive-cell disabled"><div class="cell-day">${day}</div></div>`;
+          continue;
+        }
+
+        const s = p.session || { guesses: [] };
+        const guesses = s.guesses || [];
+        const finished = s.solved || s.gaveUp || guesses.length >= MAX_ATTEMPTS;
+
+        let status = 'yellow';
+        if (finished) status = s.solved ? 'green' : 'red';
+
+        let miniHtml = '<div class="cell-mini-guesses">';
+        for (let i = 0; i < MAX_ATTEMPTS; i++) {
+          let segCls = '';
+          if (i < guesses.length) {
+            const g = guesses[i];
+            segCls = g.correct ? 'correct' : (g.skipped ? 'skipped' : 'wrong');
+          }
+          miniHtml += `<span class="${segCls}"></span>`;
+        }
+        miniHtml += '</div>';
+
+        const brightness = finished ? 1 : ARCHIVE_PEEK_BRIGHTNESS;
+        cellsHtml += `
+          <div class="archive-cell status-${status}" data-date="${dateStr}">
+            <img class="cell-img" src="${p.image}" style="filter:brightness(${brightness});">
+            <div class="cell-day">${day}</div>
+            ${miniHtml}
+            ${finished ? `<div class="cell-name">${escapeHtml(p.answer)}</div>` : ''}
+          </div>
+        `;
+      }
+
+      const monthLabel = `${MONTHS_FR[archiveMonth - 1]} ${archiveYear}`;
+      const isFirstMonth = archiveYear < parseInt(LAUNCH_DATE.slice(0,4)) || (archiveYear === parseInt(LAUNCH_DATE.slice(0,4)) && archiveMonth <= parseInt(LAUNCH_DATE.slice(5,7)));
+      const isLastMonth = archiveYear > parseInt(todayStr.slice(0,4)) || (archiveYear === parseInt(todayStr.slice(0,4)) && archiveMonth >= parseInt(todayStr.slice(5,7)));
+
+      document.getElementById('cardEl').innerHTML = `
+        <div class="archive-header">
+          <div class="archive-nav-row">
+            <button id="archFirst" title="Premier mois" ${isFirstMonth ? 'disabled' : ''}>⏮</button>
+            <button id="archPrev" title="Mois précédent" ${isFirstMonth ? 'disabled' : ''}>◀</button>
+            <div class="archive-month-label">${monthLabel}</div>
+            <button id="archNext" title="Mois suivant" ${isLastMonth ? 'disabled' : ''}>▶</button>
+            <button id="archLast" title="Mois actuel" ${isLastMonth ? 'disabled' : ''}>⏭</button>
+            <button id="archClose" class="ghost" title="Retour au jeu">✕</button>
+          </div>
+          <label class="names-toggle">
+            <input type="checkbox" id="showNamesToggle" ${showNames ? 'checked' : ''}>
+            Afficher les noms
+          </label>
+        </div>
+        <div class="archive-grid${showNames ? '' : ' hide-names'}">
+          ${WEEKDAYS_FR.map(w => `<div class="archive-weekday">${w}</div>`).join('')}
+          ${cellsHtml}
+        </div>
+      `;
+
+      document.getElementById('archFirst').addEventListener('click', () => { archiveYear = parseInt(LAUNCH_DATE.slice(0,4)); archiveMonth = parseInt(LAUNCH_DATE.slice(5,7)); renderArchive(); });
+      document.getElementById('archLast').addEventListener('click', () => { archiveYear = parseInt(todayStr.slice(0,4)); archiveMonth = parseInt(todayStr.slice(5,7)); renderArchive(); });
+      document.getElementById('archPrev').addEventListener('click', () => { archiveMonth--; if (archiveMonth < 1) { archiveMonth = 12; archiveYear--; } renderArchive(); });
+      document.getElementById('archNext').addEventListener('click', () => { archiveMonth++; if (archiveMonth > 12) { archiveMonth = 1; archiveYear++; } renderArchive(); });
+      document.getElementById('archClose').addEventListener('click', () => { mode = 'play'; updateNavUI(); loadPuzzle(); });
+      document.getElementById('showNamesToggle').addEventListener('change', e => {
+        showNames = e.target.checked;
+        document.querySelector('.archive-grid').classList.toggle('hide-names', !showNames);
+      });
+      document.querySelectorAll('.archive-cell[data-date]').forEach(el => {
+        el.addEventListener('click', () => goToDate(el.getAttribute('data-date')));
+      });
+    } catch (e) {
+      console.error('Erreur chargement archives Silhouette:', e);
+      document.getElementById('cardEl').innerHTML = `<div class="state-msg">Erreur de chargement : ${escapeHtml(e.message || String(e))}<br>Ouvre la console (F12) pour plus de détails.</div>`;
+    }
+  }
+
+  loadPuzzle();
+  </script>
+</body>
+</html>
