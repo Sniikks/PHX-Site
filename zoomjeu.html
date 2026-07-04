@@ -142,6 +142,7 @@
     font-size:.82rem; padding:.5rem .7rem; border-radius:9px;
     background:var(--bg3); border:1px solid var(--border); color:var(--text2);
   }
+  .guess-item.correct { color:var(--good); border-color:rgba(95,191,134,.35); font-weight:700; }
   .guess-item.wrong { color:var(--bad); border-color:rgba(226,104,95,.3); }
   .guess-item.close { color:var(--gold); border-color:rgba(232,184,75,.35); }
   .guess-item.skipped { color:var(--gold-dim); border-color:rgba(156,125,51,.3); font-style:italic; }
@@ -195,12 +196,15 @@
   .suggestion-item:last-child { border-bottom:none; }
   .suggestion-item:hover, .suggestion-item.active { background:rgba(232,184,75,.1); color:var(--gold); }
   .suggestion-item.top-match {
-    background:rgba(232,184,75,.14); font-weight:700;
+    background:#eee3d2; color:#221a10; font-weight:700;
   }
+  .suggestion-item.top-match .sugg-year { color:#6b5d47; }
+  .suggestion-item.top-match:hover { background:#e7d9c2; color:#221a10; }
   .suggestion-item.top-match .sugg-badge {
-    font-family:'Sora',sans-serif; font-size:.65rem; font-weight:700; letter-spacing:.04em;
-    color:#151510; background:var(--gold); border-radius:6px; padding:2px 7px; flex-shrink:0;
+    font-family:'Sora',sans-serif; font-size:.72rem; font-weight:700; letter-spacing:.03em;
+    color:#f1e9dc; background:#2a2118; border-radius:7px; padding:5px 12px; flex-shrink:0;
   }
+  .suggestion-item.top-match .sugg-badge:hover { background:#3a2f22; }
 
   .result-box {
     padding:1rem; border-radius:12px;
@@ -629,7 +633,7 @@
     if (state.guesses.length === 0) return '';
     let html = '<div class="guess-list" id="guessListEl">';
     state.guesses.forEach(g => {
-      const cls = g.correct ? '' : (g.skipped ? 'skipped' : (g.close ? 'close' : 'wrong'));
+      const cls = g.correct ? 'correct' : (g.skipped ? 'skipped' : (g.close ? 'close' : 'wrong'));
       if (g.correct) {
         html += `<div class="guess-item ${cls}">✓ ${escapeHtml(g.text)}</div>`;
       } else if (g.skipped) {
@@ -758,7 +762,7 @@
     box.innerHTML = currentSuggestions.map((s, i) => `
       <div class="suggestion-item${i === 0 ? ' top-match' : ''}">
         <span>${escapeHtml(s.name)}${s.year ? ` <span class="sugg-year">(${s.year})</span>` : ''}</span>
-        ${i === 0 ? '<span class="sugg-badge">↵ Entrée</span>' : ''}
+        ${i === 0 ? '<span class="sugg-badge">Submit</span>' : ''}
       </div>
     `).join('');
     box.style.display = 'block';

@@ -57,7 +57,9 @@ async function handleAutocomplete(req, res, debug) {
         if (steamRes.ok) {
             const data = await steamRes.json();
             debugInfo.steamCount = (data.items || []).length;
-            steamItems = (data.items || []).filter(i => i && i.name);
+            // "type" vaut "game" pour un vrai jeu ; on exclut explicitement les DLC.
+            // Les entrées sans "type" (rare, mais arrive) sont gardées par sécurité.
+            steamItems = (data.items || []).filter(i => i && i.name && i.type !== 'dlc');
         } else {
             debugInfo.steamBody = (await steamRes.text()).slice(0, 200);
         }
@@ -90,7 +92,12 @@ async function handleAutocomplete(req, res, debug) {
     const starts = [];
     const contains = [];
 
+    // Filet de sécurité supplémentaire par le nom (RAWG n'a pas de champ "type" DLC,
+    // et certaines entrées Steam n'ont parfois pas le champ "type" non plus).
+    const DLC_NAME_PATTERN = /\b(dlc|season pass|expansion|soundtrack|artbook|art book|bonus content)\b/i;
+
     const push = (name, year) => {
+        if (DLC_NAME_PATTERN.test(name)) return;
         const key = name.toLowerCase();
         if (seen.has(key)) return;
         seen.add(key);
