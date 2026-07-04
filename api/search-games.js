@@ -119,12 +119,12 @@ async function handleAutocomplete(req, res, debug) {
     }
 
     // Année Steam : pas fournie par storesearch, il faut un appel appdetails par jeu.
-    // On le limite aux 8 premiers résultats (déjà les plus pertinents pour Steam) et
-    // on les lance en parallèle pour ne pas cumuler les temps de réponse.
-    const steamForDates = steamItems.slice(0, 8);
-    const steamYears = await Promise.all(steamForDates.map(i => fetchSteamReleaseYear(i.id)));
+    // On les récupère pour TOUS les résultats Steam (pas seulement les plus populaires),
+    // sinon des jeux moins connus (ex: petits jeux indés) restent sans date. Lancés en
+    // parallèle + mis en cache pour limiter le coût réel côté temps de réponse.
+    const steamYears = await Promise.all(steamItems.map(i => fetchSteamReleaseYear(i.id)));
 
-    // Fusionne : Steam (avec année quand récupérée) + RAWG (avec année).
+    // Fusionne : Steam (avec année) + RAWG (avec année).
     const seen = new Set();
     const results = [];
 
@@ -140,8 +140,7 @@ async function handleAutocomplete(req, res, debug) {
         results.push({ name, year: year || null });
     };
 
-    steamForDates.forEach((item, idx) => push(item.name, steamYears[idx]));
-    steamItems.slice(8).forEach(i => push(i.name, null)); // au-delà des 8 premiers : pas de date récupérée (coût)
+    steamItems.forEach((item, idx) => push(item.name, steamYears[idx]));
     rawgResults.forEach(g => push(g.name, yearFromDateStr(g.released)));
 
     // Tri par date de sortie croissante ; les jeux sans date connue passent après,
@@ -153,7 +152,7 @@ async function handleAutocomplete(req, res, debug) {
         return a.name.localeCompare(b.name);
     });
 
-    const merged = results.slice(0, 30);
+    const merged = results.slice(0, 15);
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
     return res.status(200).json(debug ? { suggestions: merged, debug: debugInfo } : { suggestions: merged });
