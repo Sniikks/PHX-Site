@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>PHX - Accueil</title>
 <link rel="shortcut icon" href="https://cdn.discordapp.com/icons/1030553621252821053/2e7356a5d822245ad7953afdb143581a.webp?size=160&quality=lossless">
 <style>
@@ -15,8 +15,10 @@
     --border:#232327;
   }
   * { box-sizing:border-box; margin:0; padding:0; }
+  html { overflow-x:clip; }
   html, body { height:100%; }
   body {
+    overflow-x:clip; max-width:100%;
     background:
       radial-gradient(1200px 600px at 50% -200px, rgba(232,184,75,.08), transparent 60%),
       var(--bg);
@@ -24,6 +26,9 @@
     font-family:'Manrope',sans-serif;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     min-height:100vh; padding:2rem 1.2rem;
+    padding-left:max(1.2rem, env(safe-area-inset-left));
+    padding-right:max(1.2rem, env(safe-area-inset-right));
+    padding-bottom:max(2rem, env(safe-area-inset-bottom));
   }
   .title {
     font-family:'Sora',sans-serif;
@@ -96,6 +101,10 @@
     position:absolute; bottom:.7rem;
     font-size:9px; letter-spacing:.12em; color:var(--text2);
     z-index:1;
+  }
+
+  @media (min-width:641px) and (max-width:1024px) {
+    .grid { grid-template-columns:repeat(3, 1fr); max-width:640px; }
   }
 
   @media (max-width:640px) {

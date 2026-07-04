@@ -28,18 +28,18 @@
     padding:1.6rem 1.2rem 3rem;
   }
 
-  a.back {
+  .menu-btn {
     align-self:flex-start;
-    display:inline-flex; align-items:center; gap:.4rem;
-    text-decoration:none;
-    font-family:'Sora',sans-serif; font-weight:600; font-size:.72rem; letter-spacing:.03em;
-    color:var(--text2);
-    background:var(--bg2); border:1px solid var(--border); border-radius:9px;
-    padding:.5rem .9rem;
+    display:inline-flex; align-items:center; gap:6px;
+    padding:9px 16px;
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:10px;
+    color:#e5e5e5;
+    font-family:'Manrope',sans-serif; font-size:12.5px; font-weight:600; letter-spacing:.02em;
+    text-decoration:none; white-space:nowrap;
     margin-bottom:1rem;
-    cursor:pointer; transition:background .2s ease, color .2s ease;
+    cursor:pointer; transition:all .15s ease;
   }
-  a.back:hover { border-color:var(--gold-dim); color:var(--gold); background:var(--bg3); }
+  .menu-btn:hover { background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.24); color:#fff; }
 
   .title {
     font-family:'Sora',sans-serif;
@@ -54,9 +54,10 @@
   .date-nav {
     display:flex; align-items:center; justify-content:center; gap:.4rem;
     margin-bottom:1.2rem;
+    flex-wrap:wrap; max-width:100%; row-gap:.5rem;
   }
   .date-nav button {
-    width:34px; height:34px; padding:0;
+    width:34px; height:34px; padding:0; flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
     border-radius:9px; border:1px solid var(--border); background:var(--bg2); color:var(--text2);
     font-size:.85rem; cursor:pointer;
@@ -68,7 +69,7 @@
     min-width:190px; text-align:center; letter-spacing:.02em;
   }
   .archive-toggle {
-    width:auto !important; padding:0 .8rem !important; gap:.35rem; display:flex; align-items:center;
+    width:auto !important; padding:0 .8rem !important; gap:.35rem; display:flex; align-items:center; flex-shrink:0;
     font-family:'Sora',sans-serif; font-size:.72rem !important; font-weight:600; letter-spacing:.03em;
   }
 
@@ -288,11 +289,18 @@
     .date-nav .date-label { min-width:120px; font-size:.72rem; }
     .archive-cell .cell-name { display:none; }
   }
+  @media (max-width:400px) {
+    .date-nav { gap:.3rem; }
+    .date-nav button { width:30px; height:30px; }
+    .date-nav .date-label { min-width:0; flex:1 1 100%; order:5; font-size:.78rem; }
+    .archive-label { display:none; }
+    .archive-toggle { padding:0 .55rem !important; }
+  }
 </style>
 </head>
 <body>
 
-  <a class="back" href="index.html">☰ Menu</a>
+  <a class="menu-btn" href="index.html">☰ Menu</a>
   <div class="title">ZoomJeu</div>
   <div class="subtitle" id="subtitleEl">Devine le jeu à partir d'un screenshot zoomé.</div>
 
@@ -302,7 +310,7 @@
     <div class="date-label" id="dateLabel">—</div>
     <button id="navNext" title="Jour suivant">▶</button>
     <button id="navLast" title="Aujourd'hui">⏭</button>
-    <button id="archiveToggle" class="archive-toggle" title="Archives">🗓 Archives</button>
+    <button id="archiveToggle" class="archive-toggle" title="Archives">🗓 <span class="archive-label">Archives</span></button>
   </div>
 
   <div class="card" id="cardEl">
