@@ -3,8 +3,9 @@
 // Deux usages :
 //
 // 1) Autocomplétion : /api/search-games?q=the
-//    Renvoie { suggestions: [{name, year}, ...] } — year est null quand
-//    l'info n'est pas dispo à faible coût (cas des résultats Steam).
+//    Renvoie { suggestions: [{name, year}, ...] } triés par date de sortie
+//    croissante (Steam + RAWG). "year" est null quand la date n'a pas pu être
+//    récupérée (au-delà des 8 premiers résultats Steam, pour limiter le coût).
 //
 // 2) Résolution d'indice année : /api/search-games?resolve=1&name=Fallout
 //    Renvoie { name, year } pour la meilleure correspondance trouvée —
@@ -29,6 +30,28 @@ function yearFromDateStr(str) {
     if (!str) return null;
     const m = String(str).match(/\d{4}/);
     return m ? parseInt(m[0], 10) : null;
+}
+
+// Cache mémoire (survit tant que l'instance serverless reste "chaude" entre deux
+// requêtes rapprochées — typiquement le cas pendant une saisie au clavier).
+// Évite de refaire un appel Steam appdetails pour le même jeu à chaque frappe.
+const steamYearCache = new Map();
+
+async function fetchSteamReleaseYear(appid) {
+    if (steamYearCache.has(appid)) return steamYearCache.get(appid);
+    try {
+        const res = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appid}&l=english`, { headers: BROWSER_HEADERS });
+        if (!res.ok) { steamYearCache.set(appid, null); return null; }
+        const json = await res.json();
+        const entry = json[appid];
+        const year = entry && entry.success && entry.data
+            ? yearFromDateStr(entry.data.release_date && entry.data.release_date.date)
+            : null;
+        steamYearCache.set(appid, year);
+        return year;
+    } catch (e) {
+        return null; // pas de cache sur échec réseau : on retentera au prochain appel
+    }
 }
 
 export default async function handler(req, res) {
@@ -86,11 +109,15 @@ async function handleAutocomplete(req, res, debug) {
         debugInfo.rawgSkipped = 'RAWG_API_KEY absente';
     }
 
-    // Fusionne : Steam d'abord, puis RAWG. Priorise les noms qui COMMENCENT par la recherche.
-    const qNorm = q.toLowerCase();
+    // Année Steam : pas fournie par storesearch, il faut un appel appdetails par jeu.
+    // On le limite aux 8 premiers résultats (déjà les plus pertinents pour Steam) et
+    // on les lance en parallèle pour ne pas cumuler les temps de réponse.
+    const steamForDates = steamItems.slice(0, 8);
+    const steamYears = await Promise.all(steamForDates.map(i => fetchSteamReleaseYear(i.id)));
+
+    // Fusionne : Steam (avec année quand récupérée) + RAWG (avec année).
     const seen = new Set();
-    const starts = [];
-    const contains = [];
+    const results = [];
 
     // Filet de sécurité supplémentaire par le nom (RAWG n'a pas de champ "type" DLC,
     // et certaines entrées Steam n'ont parfois pas le champ "type" non plus).
@@ -101,13 +128,23 @@ async function handleAutocomplete(req, res, debug) {
         const key = name.toLowerCase();
         if (seen.has(key)) return;
         seen.add(key);
-        (key.startsWith(qNorm) ? starts : contains).push({ name, year: year || null });
+        results.push({ name, year: year || null });
     };
 
-    steamItems.forEach(i => push(i.name, null)); // pas d'année Steam ici (coût trop élevé pour l'autocomplete)
+    steamForDates.forEach((item, idx) => push(item.name, steamYears[idx]));
+    steamItems.slice(8).forEach(i => push(i.name, null)); // au-delà des 8 premiers : pas de date récupérée (coût)
     rawgResults.forEach(g => push(g.name, yearFromDateStr(g.released)));
 
-    const merged = [...starts, ...contains].slice(0, 10);
+    // Tri par date de sortie croissante ; les jeux sans date connue passent après,
+    // triés alphabétiquement entre eux pour rester stables/prévisibles.
+    results.sort((a, b) => {
+        if (a.year && b.year) return a.year - b.year;
+        if (a.year && !b.year) return -1;
+        if (!a.year && b.year) return 1;
+        return a.name.localeCompare(b.name);
+    });
+
+    const merged = results.slice(0, 10);
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
     return res.status(200).json(debug ? { suggestions: merged, debug: debugInfo } : { suggestions: merged });
