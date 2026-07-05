@@ -89,7 +89,7 @@
   .stats-years { display:flex; align-items:center; justify-content:center; gap:18px; flex-wrap:wrap; min-width:0; }
   .year-filters {
     display:flex; align-items:center; gap:4px; flex-wrap:nowrap; min-width:0;
-    overflow-x:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch;
+    max-width:460px; overflow-x:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch;
     scrollbar-width:thin; scrollbar-color:var(--gold-dim) transparent;
   }
   .year-filters::-webkit-scrollbar { height:4px; }
@@ -183,10 +183,10 @@
   .form-row input:focus, .form-row select:focus, .form-row textarea:focus { border-color:var(--gold-dim); background:var(--bg3); box-shadow:0 0 0 3px var(--violet-soft); }
   .form-row select option { background:var(--bg2); }
   .select-wrap { position:relative; }
-  .select-wrap select { padding-right:34px; }
+  .select-wrap select { padding-right:38px; }
   .select-wrap .select-arrow {
     position:absolute; right:12px; top:50%; transform:translateY(-50%);
-    font-size:10px; color:var(--text-dim); pointer-events:none; transition:color .15s;
+    font-size:17px; color:var(--text-dim); pointer-events:none; transition:color .15s;
   }
   .select-wrap .select-arrow::before { content:'▾'; }
   .select-wrap:focus-within .select-arrow { color:var(--gold-dim); }
