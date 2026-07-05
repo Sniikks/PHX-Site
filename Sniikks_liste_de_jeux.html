@@ -207,6 +207,7 @@
   .toast { background:var(--bg2); border:1px solid var(--gold-ring); color:var(--text); padding:11px 18px; border-radius:var(--radius); font-family:'Manrope',sans-serif; font-size:13px; font-weight:600; box-shadow:0 0 14px rgba(232,184,75,.15), 0 8px 24px rgba(0,0,0,.6); opacity:0; transform:translateY(10px); transition:opacity .25s, transform .25s; }
   .toast.show { opacity:1; transform:translateY(0); }
   .toast.green { border-color:rgba(76,175,120,.4); }
+  .toast.red { border-color:rgba(226,104,95,.5); }
 
   .url-hint { font-size:11px; color:var(--text-faint); margin-top:6px; }
   .url-detect { font-size:11px; color:var(--gold); margin-top:6px; display:none; font-weight:600; }
@@ -879,9 +880,10 @@ function delGame(id){
   document.getElementById('confirmDeleteOverlay').classList.add('open');
 }
 function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function showToast(msg,green=false){
+function showToast(msg,variant=false){
   const c=document.getElementById('toastContainer');
-  const t=document.createElement('div');t.className='toast'+(green?' green':'');t.textContent=msg;c.appendChild(t);
+  const cls=variant===true?'green':(variant||'');
+  const t=document.createElement('div');t.className='toast'+(cls?' '+cls:'');t.textContent=msg;c.appendChild(t);
   requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add('show')));
   setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300);},2800);
 }
@@ -922,7 +924,7 @@ document.getElementById('btnConfirmDelete').addEventListener('click',()=>{
     const g=games.find(x=>x.id===pendingDeleteId);
     games=games.filter(x=>x.id!==pendingDeleteId);
     save();renderGrid();
-    showToast(`"${g?g.name:'Jeu'}" supprimé`);
+    showToast(`"${g?g.name:'Jeu'}" supprimé`,'red');
   }
   pendingDeleteId=null;
   document.getElementById('confirmDeleteOverlay').classList.remove('open');
