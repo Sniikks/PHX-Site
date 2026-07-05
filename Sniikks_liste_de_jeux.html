@@ -87,9 +87,17 @@
   .add-btn-main:hover { background:#f0c563; transform:translateY(-1px); }
 
   .stats-years { display:flex; align-items:center; justify-content:center; gap:18px; flex-wrap:wrap; min-width:0; }
+  .year-filters-wrap { display:flex; align-items:center; gap:4px; min-width:0; max-width:460px; }
+  .yf-arrow {
+    flex-shrink:0; width:22px; height:22px; border-radius:50%; border:1px solid var(--border);
+    background:var(--bg3); color:var(--text-dim); font-size:13px; line-height:1; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:all .15s; padding:0;
+  }
+  .yf-arrow:hover:not(:disabled) { color:var(--gold); border-color:var(--gold-dim); }
+  .yf-arrow:disabled { opacity:0; visibility:hidden; pointer-events:none; }
   .year-filters {
-    display:flex; align-items:center; gap:4px; flex-wrap:nowrap; min-width:0;
-    max-width:460px; overflow-x:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch;
+    display:flex; align-items:center; gap:4px; flex-wrap:nowrap; min-width:0; flex:1;
+    overflow-x:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch;
     scrollbar-width:thin; scrollbar-color:var(--gold-dim) transparent;
     cursor:grab;
   }
@@ -316,6 +324,7 @@
     .add-btn-main { padding:7px 12px; font-size:11.5px; }
 
     .stats-years { flex-direction:column; align-items:stretch; gap:6px; }
+    .year-filters-wrap { max-width:100%; }
     .inline-stats { justify-content:center; gap:16px; }
     .top-stat-num { font-size:14px; }
     .top-stat-label { font-size:9px; }
@@ -410,7 +419,11 @@
             <div class="top-stat"><span class="top-stat-num" id="statTotal">0</span><span class="top-stat-label">JEUX</span></div>
             <div class="top-stat is-done"><span class="top-stat-num" id="statDone">0</span><span class="top-stat-label">TERMINÉS</span></div>
           </div>
-          <div class="year-filters" id="yearFilters"></div>
+          <div class="year-filters-wrap">
+            <button class="yf-arrow yf-arrow-left" id="yfArrowLeft" aria-label="Années précédentes">‹</button>
+            <div class="year-filters" id="yearFilters"></div>
+            <button class="yf-arrow yf-arrow-right" id="yfArrowRight" aria-label="Années suivantes">›</button>
+          </div>
         </div>
         <div class="search-wrap">
           <span class="search-icon">⌕</span>
@@ -775,8 +788,19 @@ function setYearFilter(y){ filterYear=y; renderGrid(); }
 function updateYearFilterFade() {
   const el = document.getElementById('yearFilters');
   if (!el) return;
-  el.classList.toggle('has-overflow', el.scrollWidth - el.scrollLeft > el.clientWidth + 2);
-  el.classList.toggle('has-overflow-left', el.scrollLeft > 2);
+  const hasRight = el.scrollWidth - el.scrollLeft > el.clientWidth + 2;
+  const hasLeft = el.scrollLeft > 2;
+  el.classList.toggle('has-overflow', hasRight);
+  el.classList.toggle('has-overflow-left', hasLeft);
+  const arrowLeft = document.getElementById('yfArrowLeft');
+  const arrowRight = document.getElementById('yfArrowRight');
+  if (arrowLeft) arrowLeft.disabled = !hasLeft;
+  if (arrowRight) arrowRight.disabled = !hasRight;
+}
+function scrollYearFilters(dir) {
+  const el = document.getElementById('yearFilters');
+  if (!el) return;
+  el.scrollBy({ left: dir * Math.round(el.clientWidth * 0.75), behavior: 'smooth' });
 }
 window.addEventListener('resize', updateYearFilterFade);
 
@@ -1040,6 +1064,8 @@ function toggleYear(yrKey) {
   const el = document.getElementById('yearFilters');
   if (!el) return;
   el.addEventListener('scroll', updateYearFilterFade);
+  document.getElementById('yfArrowLeft')?.addEventListener('click', () => scrollYearFilters(-1));
+  document.getElementById('yfArrowRight')?.addEventListener('click', () => scrollYearFilters(1));
   let isDown = false, dragged = false, startX = 0, startScroll = 0;
   el.addEventListener('mousedown', e => {
     isDown = true; dragged = false;
