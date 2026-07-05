@@ -217,6 +217,11 @@
       <input class="search-box" id="searchInput" placeholder="Rechercher un jeu…">
       <button type="button" class="search-clear" id="searchClear" title="Effacer">✕</button>
     </div>
+    <div class="evaluators-legend">
+      <span class="ev-chip ev-369">369</span>
+      <span class="ev-chip ev-sniikks">Sniikks</span>
+      <span>donnent chacun un avis (S → F, ou N si jamais joué) — le rang final est leur moyenne</span>
+    </div>
     <div class="toolbar-actions">
       <button class="btn-cancel" id="resetRatingsBtn">↺ Réinitialiser les avis</button>
       <button class="btn-primary" id="addBtn">+ Ajouter un jeu</button>
@@ -340,13 +345,27 @@ let pendingDeleteId = null;
 function escapeHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmt(s) { return s.replace(/\b\w/g, c => c.toUpperCase()); }
 
-function computeTier(r) {
+// Petit hash stable (même résultat à chaque fois pour un même id de jeu)
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return h;
+}
+
+function computeTier(r, id) {
   if (!r || !r.g369 || !r.sniikks) return null; // en attente d'au moins un des deux avis
   if (r.g369 === 'N' && r.sniikks === 'N') return 'N';
   if (r.g369 === 'N') return r.sniikks;   // un des deux n'a jamais joué -> on garde l'avis de l'autre
   if (r.sniikks === 'N') return r.g369;
   const i1 = SCALE.indexOf(r.g369), i2 = SCALE.indexOf(r.sniikks);
-  return SCALE[Math.round((i1 + i2) / 2)];
+  const sum = i1 + i2;
+  if (sum % 2 === 0) return SCALE[sum / 2]; // moyenne exacte, pas d'ambiguïté
+  // Pile exactement au milieu de deux rangs (ex: A + D) : aucun des deux n'est "plus vrai"
+  // que l'autre, donc on tranche 50/50 — mais toujours pareil pour un même jeu (sinon le
+  // classement changerait à chaque fois qu'on rouvre sa fiche).
+  const lower = Math.floor(sum / 2), upper = lower + 1;
+  const coinFlip = id ? (hashStr(id) & 1) : 0;
+  return SCALE[coinFlip ? upper : lower];
 }
 
 // ── INIT ─────────────────────────────────────────
@@ -409,7 +428,7 @@ function renderAll() {
     const g = allGames[id]; if (!g) return;
     if (q && !g.name.toLowerCase().includes(q)) return;
     const r = ratings[id] || { g369:null, sniikks:null };
-    const tier = computeTier(r);
+    const tier = computeTier(r, id);
     if (tier) groups[tier].push(id); else pending.push(id);
   });
 
@@ -477,12 +496,12 @@ function openInfoModal(id) {
   const r = ratings[id] || { g369:null, sniikks:null };
   document.getElementById('infoRateG369').value = r.g369 || '';
   document.getElementById('infoRateSniikks').value = r.sniikks || '';
-  updateInfoBadge(r);
+  updateInfoBadge(r, id);
   document.getElementById('infoOverlay').classList.add('open');
 }
-function updateInfoBadge(r) {
+function updateInfoBadge(r, id) {
   const badge = document.getElementById('infoTierBadge');
-  const tier = computeTier(r);
+  const tier = computeTier(r, id);
   if (!tier) { badge.className = 'info-tier-badge pending'; badge.textContent = "En attente d'avis"; return; }
   badge.className = 'info-tier-badge';
   badge.style.background = TIER_COLORS[tier] + '22';
@@ -493,7 +512,7 @@ function closeInfoModal() { document.getElementById('infoOverlay').classList.rem
 function onInfoRateChange(ev, val) {
   if (!infoModalId) return;
   onRateChange(infoModalId, ev, val);
-  updateInfoBadge(ratings[infoModalId] || { g369:null, sniikks:null });
+  updateInfoBadge(ratings[infoModalId] || { g369:null, sniikks:null }, infoModalId);
 }
 
 function filterGames() { renderAll(); }

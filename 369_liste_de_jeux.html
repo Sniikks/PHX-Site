@@ -288,8 +288,7 @@ body{
 .card-name{
   font-size:11px;font-weight:600;text-align:center;padding:8px 9px;
   line-height:1.35;color:var(--text-dim);
-  overflow:hidden;text-overflow:ellipsis;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;
   height:46px;word-break:normal;overflow-wrap:break-word;
 }
 
@@ -896,6 +895,24 @@ function renderStats(){
   renderGlobalStats();
 }
 
+function fitCardTitles(container){
+  container.querySelectorAll('.card-name').forEach(el=>{
+    const card=el.closest('.game-card');
+    const g=card?games.find(x=>x.id===card.dataset.id):null;
+    const full=g?g.title:el.textContent;
+    el.textContent=full;
+    if(el.scrollHeight<=el.clientHeight+1) return;
+    const words=full.split(/\s+/);
+    let shown=words.length-1;
+    while(shown>=1){
+      el.textContent=words.slice(0,shown).join(' ')+' [...]';
+      if(el.scrollHeight<=el.clientHeight+1) return;
+      shown--;
+    }
+    el.textContent=(words[0]||full)+' [...]';
+  });
+}
+
 function renderGrid(){
   const filtered=getFiltered();
   const container=document.getElementById('mainContent');
@@ -928,6 +945,7 @@ function renderGrid(){
     html+=`</div></div>`;
   }
   container.innerHTML=html||'<div class="empty-state">Aucun jeu trouvé.</div>';
+  fitCardTitles(container);
 
   container.querySelectorAll('[data-toggle-year]').forEach(el=>{
     el.addEventListener('click',()=>{
@@ -1139,6 +1157,13 @@ document.getElementById('btnCompactToggle').addEventListener('click',()=>{
   compactView=!compactView;
   localStorage.setItem('backlog_compact_v1',compactView?'1':'0');
   applyCompactState(compactView);
+  fitCardTitles(document.getElementById('mainContent'));
+});
+
+let resizeFitTimer=null;
+window.addEventListener('resize',()=>{
+  clearTimeout(resizeFitTimer);
+  resizeFitTimer=setTimeout(()=>fitCardTitles(document.getElementById('mainContent')),150);
 });
 
 document.addEventListener('keydown',e=>{
