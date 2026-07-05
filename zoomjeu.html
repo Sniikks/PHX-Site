@@ -803,12 +803,11 @@
       } else {
         const icon = g.close ? '🔥' : '✕';
         const textHtml = highlightPrefix(g.text, g.nameHint ? g.nameHint.wordCount : 0);
+        const yearLabel = g.yearHint === 'after' ? `après ${g.year}` : g.yearHint === 'before' ? `avant ${g.year}` : g.yearHint === 'same' ? `même année (${g.year})` : null;
         let hintsHtml = '';
         if (g.nameHint) {
-          hintsHtml += `<div class="hint-line">Nom : <b>${escapeHtml(capitalizeWords(g.nameHint.text))}</b> [...]</div>`;
-        }
-        if (g.yearHint) {
-          const yearLabel = g.yearHint === 'after' ? `après ${g.year}` : g.yearHint === 'before' ? `avant ${g.year}` : `même année (${g.year})`;
+          hintsHtml += `<div class="hint-line">Nom : <b>${escapeHtml(capitalizeWords(g.nameHint.text))}</b> [...]${yearLabel ? ` (${yearLabel})` : ''}</div>`;
+        } else if (yearLabel) {
           hintsHtml += `<div class="hint-line">Année : ${yearLabel}</div>`;
         }
         html += `<div class="guess-item ${cls}">${icon} ${textHtml}${hintsHtml}</div>`;
