@@ -193,6 +193,15 @@
   .btn-danger { background:transparent; border:1px solid rgba(226,104,95,.3); color:rgba(226,104,95,.85); font-family:inherit; font-size:12.5px; padding:10px 18px; cursor:pointer; transition:all .15s; border-radius:var(--radius); }
   .btn-danger:hover { color:var(--red); border-color:var(--red); background:rgba(226,104,95,.08); }
 
+  /* ══════════════ CONFIRM / ALERT BOX ══════════════ */
+  .confirm-box { background:var(--bg2); border:1px solid var(--border); padding:24px 26px; width:340px; max-width:100%; border-radius:var(--radius-lg); box-shadow:0 30px 70px -20px rgba(0,0,0,.7); animation:modalIn .2s ease; }
+  .confirm-box h2 { font-family:'Sora',sans-serif; font-size:14px; font-weight:600; color:var(--red); margin-bottom:14px; }
+  .confirm-box p { font-size:13.5px; color:var(--text); margin-bottom:5px; }
+  .confirm-box p strong { color:#fff; }
+  .confirm-box small { font-size:11px; color:var(--text-faint); }
+  .confirm-actions { display:flex; gap:10px; margin-top:18px; }
+  .confirm-actions .btn-cancel, .confirm-actions .btn-danger, .confirm-actions .btn-primary { flex:1; }
+
   .url-hint { font-size:11px; color:var(--text-faint); margin-top:6px; }
   .url-detect { font-size:11px; color:var(--gold); margin-top:6px; display:none; font-weight:600; }
   .img-preview-wrap { margin-top:10px; display:none; }
@@ -456,6 +465,30 @@
     <div id="infoImgWrap"></div>
     <button class="info-close" id="infoClose">✕</button>
     <div class="info-body" id="infoBody"></div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE -->
+<div class="overlay" id="confirmDeleteOverlay">
+  <div class="confirm-box">
+    <h2>Supprimer ce jeu</h2>
+    <p>Supprimer <strong id="confirmDeleteName"></strong> ?</p>
+    <small>Cette action est irréversible.</small>
+    <div class="confirm-actions">
+      <button class="btn-cancel" id="btnCancelDelete">Annuler</button>
+      <button class="btn-danger" id="btnConfirmDelete" style="background:var(--red);color:#fff;border-color:var(--red)">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- DOUBLON -->
+<div class="overlay" id="dupOverlay">
+  <div class="confirm-box">
+    <h2>Doublon détecté</h2>
+    <p id="dupMessage"></p>
+    <div class="confirm-actions">
+      <button class="btn-primary" id="btnDupOk" style="flex:1">OK</button>
+    </div>
   </div>
 </div>
 
@@ -811,7 +844,7 @@ function saveGame(){
     x.name.trim().toLowerCase()===name.toLowerCase() ||
     (imgVal && x.img && x.img.trim()===imgVal.trim())
   ));
-  if(dup){ alert(`Doublon détecté : "${dup.name}" est déjà dans la liste (même nom ou même lien/image).`); document.getElementById('f-name').focus(); return; }
+  if(dup){ document.getElementById('dupMessage').innerHTML=`Doublon détecté : <strong>${escHtml(dup.name)}</strong> est déjà dans la liste (même nom ou même lien/image).`;document.getElementById('dupOverlay').classList.add('open'); return; }
   const sv=parseFloat(slider.value);
   const g={
     id:editingId||uid(), name,
@@ -828,7 +861,13 @@ function saveGame(){
   save();closeModal();renderGrid();
 }
 function editGame(id){const g=games.find(x=>x.id===id);if(g)openModal(g);}
-function delGame(id){if(!confirm('Supprimer ce jeu ?'))return;games=games.filter(x=>x.id!==id);save();renderGrid();}
+let pendingDeleteId=null;
+function delGame(id){
+  const g=games.find(x=>x.id===id);if(!g)return;
+  pendingDeleteId=id;
+  document.getElementById('confirmDeleteName').textContent=g.name;
+  document.getElementById('confirmDeleteOverlay').classList.add('open');
+}
 function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 // ── FILTERS ──
@@ -861,6 +900,13 @@ document.getElementById('cancelBtn').addEventListener('click',closeModal);
 document.getElementById('saveBtn').addEventListener('click',saveGame);
 // Le formulaire ne se ferme PAS en cliquant sur le fond — utiliser la croix ou le bouton Annuler
 document.getElementById('infoClose').addEventListener('click',closeInfo);
+document.getElementById('btnCancelDelete').addEventListener('click',()=>{pendingDeleteId=null;document.getElementById('confirmDeleteOverlay').classList.remove('open');});
+document.getElementById('btnConfirmDelete').addEventListener('click',()=>{
+  if(pendingDeleteId){games=games.filter(x=>x.id!==pendingDeleteId);save();renderGrid();}
+  pendingDeleteId=null;
+  document.getElementById('confirmDeleteOverlay').classList.remove('open');
+});
+document.getElementById('btnDupOk').addEventListener('click',()=>document.getElementById('dupOverlay').classList.remove('open'));
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeInfo();} // Échap ferme uniquement la fiche info, pas le formulaire
   if(e.key==='Enter'&&document.getElementById('overlay').classList.contains('open')){if(document.activeElement?.tagName!=='TEXTAREA')saveGame();}
