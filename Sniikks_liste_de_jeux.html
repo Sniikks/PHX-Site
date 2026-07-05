@@ -97,6 +97,14 @@
     mask-image:linear-gradient(to right, black calc(100% - 28px), transparent 100%);
     -webkit-mask-image:linear-gradient(to right, black calc(100% - 28px), transparent 100%);
   }
+  .year-filters.has-overflow-left {
+    mask-image:linear-gradient(to left, black calc(100% - 28px), transparent 100%);
+    -webkit-mask-image:linear-gradient(to left, black calc(100% - 28px), transparent 100%);
+  }
+  .year-filters.has-overflow.has-overflow-left {
+    mask-image:linear-gradient(to right, transparent 0%, black 28px, black calc(100% - 28px), transparent 100%);
+    -webkit-mask-image:linear-gradient(to right, transparent 0%, black 28px, black calc(100% - 28px), transparent 100%);
+  }
   .year-filters.dragging { cursor:grabbing; user-select:none; scroll-snap-type:none; }
   .year-filters.dragging .year-pill { pointer-events:none; }
   .year-filters::-webkit-scrollbar { height:4px; }
@@ -759,6 +767,7 @@ function renderYearFilters() {
     html+=`<button class="year-pill${filterYear===y?' active':''}" onclick="setYearFilter(${y})">${y} <span class="yp-count">${c}</span></button>`;
   });
   document.getElementById('yearFilters').innerHTML=html;
+  document.getElementById('yearFilters').scrollLeft=0;
   requestAnimationFrame(updateYearFilterFade);
 }
 function setYearFilter(y){ filterYear=y; renderGrid(); }
@@ -767,6 +776,7 @@ function updateYearFilterFade() {
   const el = document.getElementById('yearFilters');
   if (!el) return;
   el.classList.toggle('has-overflow', el.scrollWidth - el.scrollLeft > el.clientWidth + 2);
+  el.classList.toggle('has-overflow-left', el.scrollLeft > 2);
 }
 window.addEventListener('resize', updateYearFilterFade);
 
