@@ -101,6 +101,10 @@
     display:block;
     transition:transform .9s cubic-bezier(.22,.75,.15,1), filter .9s ease;
     will-change:transform, filter;
+    -webkit-user-drag:none; user-drag:none;
+    -webkit-touch-callout:none;
+    user-select:none; -webkit-user-select:none;
+    pointer-events:none;
   }
 
   @keyframes zoomBlur {
@@ -136,6 +140,9 @@
   .attempt-tab.wrong { background:rgba(226,104,95,.15); color:var(--bad); }
   .attempt-tab.close { background:rgba(232,184,75,.15); color:var(--gold); }
   .attempt-tab.skipped { background:rgba(156,125,51,.15); color:var(--gold-dim); }
+  .attempt-tab.reviewable { cursor:pointer; }
+  .attempt-tab.reviewable:hover { filter:brightness(1.3); }
+  .attempt-tab.previewing { box-shadow:inset 0 0 0 2px var(--gold); }
 
   .guess-list { margin-top:.7rem; display:flex; flex-direction:column; gap:.4rem; }
   .guess-item {
@@ -260,6 +267,10 @@
   .archive-cell.status-yellow { border-color:var(--gold); }
   .archive-cell img.cell-img {
     position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+    -webkit-user-drag:none; user-drag:none;
+    -webkit-touch-callout:none;
+    user-select:none; -webkit-user-select:none;
+    pointer-events:none;
   }
   .archive-cell::after {
     content:''; position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.75), transparent 50%);
@@ -346,7 +357,6 @@
 
   const MAX_ATTEMPTS = 5;
   const ZOOM_LEVELS = [6.5, 4, 2.5, 1.5, 1]; // facteur de scale() CSS, essai 1 -> 5
-  const ARCHIVE_PEEK_ZOOM = 3.5; // zoom utilisé pour l'aperçu d'un puzzle pas encore terminé, dans l'archive
   const LAUNCH_DATE = '2026-01-01';
   const WEEKDAYS_FR = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
   const MONTHS_FR = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
@@ -510,6 +520,8 @@
   let suggestRequestId = 0;
   let currentSuggestions = [];
   let pendingFlash = null; // 'good' | 'bad' | 'close' | 'skip' — déclenché uniquement par une action locale
+  let lastZoomFactor = null; // dernier zoom affiché, pour animer un vrai dézoom entre deux essais
+  let previewIndex = null; // index de la phase de zoom actuellement prévisualisée via les onglets (null = zoom réel)
 
   function isValidPuzzle(p) {
     return !!(p && p.answer && p.image && p.focus && typeof p.focus.x === 'number');
@@ -559,6 +571,8 @@
   // ── Chargement du puzzle (+ session intégrée) depuis Supabase ──
   async function loadPuzzle() {
     updateNavUI();
+    lastZoomFactor = null;
+    previewIndex = null;
     document.getElementById('cardEl').innerHTML = '<div class="state-msg">Chargement du puzzle…</div>';
     if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
 
@@ -629,6 +643,23 @@
     return Math.min(state.guesses.length, MAX_ATTEMPTS - 1);
   }
 
+  // Clic sur un onglet d'essai (1-2-3-4-5) : montre l'image telle qu'elle était affichée
+  // à cette phase de zoom. Un second clic sur le même onglet revient au zoom réel/actuel.
+  function previewZoomTab(i) {
+    const img = document.getElementById('zoomImg');
+    if (!img) return;
+    previewIndex = (previewIndex === i) ? null : i;
+    const finished = state.solved || state.gaveUp || state.guesses.length >= MAX_ATTEMPTS;
+    const liveIdx = finished ? MAX_ATTEMPTS - 1 : currentZoomIndex();
+    const targetIdx = previewIndex === null ? liveIdx : previewIndex;
+    const targetZoom = finished ? (targetIdx === MAX_ATTEMPTS - 1 ? 1 : ZOOM_LEVELS[targetIdx]) : ZOOM_LEVELS[targetIdx];
+    img.style.transition = 'transform 1s cubic-bezier(.22,.75,.15,1)';
+    img.style.transform = `scale(${targetZoom})`;
+    document.querySelectorAll('.attempt-tab').forEach((el, idx) => {
+      el.classList.toggle('previewing', previewIndex === idx);
+    });
+  }
+
   function buildGuessListHtml() {
     if (state.guesses.length === 0) return '';
     let html = '<div class="guess-list" id="guessListEl">';
@@ -660,8 +691,14 @@
     const finished = state.solved || state.gaveUp || state.guesses.length >= MAX_ATTEMPTS;
     const zoomFactor = finished ? 1 : ZOOM_LEVELS[currentZoomIndex()];
     const flash = pendingFlash; pendingFlash = null;
+    previewIndex = null; // toute nouvelle action (guess/skip/abandon/chargement) annule un aperçu en cours
+
+    // Zoom de départ pour l'animation de dézoom : si on a déjà affiché un zoom avant
+    // (essai précédent), on repart visuellement de là plutôt que d'apparaître déjà au bon niveau.
+    const animateFrom = (lastZoomFactor !== null && lastZoomFactor !== zoomFactor) ? lastZoomFactor : null;
 
     let tabsHtml = '<div class="attempts-tabs">';
+    const liveIdx = finished ? MAX_ATTEMPTS - 1 : currentZoomIndex();
     for (let i = 0; i < MAX_ATTEMPTS; i++) {
       let cls = '', label = i + 1;
       if (i < state.guesses.length) {
@@ -671,7 +708,9 @@
       } else if (i === state.guesses.length && !finished) {
         cls = 'active'; label = '🔍 ' + (i + 1);
       }
-      tabsHtml += `<div class="attempt-tab ${cls}">${label}</div>`;
+      // On ne peut revoir que les phases de zoom déjà vues (jamais celles à venir, pour ne pas spoiler).
+      const reviewable = finished || i <= liveIdx;
+      tabsHtml += `<div class="attempt-tab ${cls}${reviewable ? ' reviewable' : ''}" data-zoom-idx="${i}" title="Revoir cette phase de zoom">${label}</div>`;
     }
     tabsHtml += '</div>';
 
@@ -704,7 +743,8 @@
       <div class="game-layout">
         <div class="game-left">
           <div class="zoom-frame${flash ? ' flash-' + flash : ''}">
-            <img id="zoomImg" class="${flash ? 'zoom-transition' : ''}" src="${puzzle.image}" style="transform-origin:${puzzle.focus.x}% ${puzzle.focus.y}%; transform:scale(${zoomFactor});">
+            <img id="zoomImg" class="${flash ? 'zoom-transition' : ''}" src="${puzzle.image}" draggable="false" oncontextmenu="return false;"
+              style="transform-origin:${puzzle.focus.x}% ${puzzle.focus.y}%; transform:scale(${animateFrom !== null ? animateFrom : zoomFactor});${animateFrom !== null ? ' transition:none;' : ''}">
           </div>
           ${tabsHtml}
         </div>
@@ -714,6 +754,23 @@
         </div>
       </div>
     `;
+
+    lastZoomFactor = zoomFactor;
+
+    if (animateFrom !== null) {
+      // Double rAF : on laisse le navigateur peindre le zoom de départ une première fois,
+      // puis on déclenche la transition CSS vers le zoom cible -> vrai effet de dézoom animé.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const img = document.getElementById('zoomImg');
+          if (img) { img.style.transition = ''; img.style.transform = `scale(${zoomFactor})`; }
+        });
+      });
+    }
+
+    document.querySelectorAll('.attempt-tab.reviewable').forEach(el => {
+      el.addEventListener('click', () => previewZoomTab(parseInt(el.dataset.zoomIdx, 10)));
+    });
 
     if (!finished) {
       document.getElementById('guessForm').addEventListener('submit', onGuessSubmit);
@@ -907,11 +964,13 @@
         }
         miniHtml += '</div>';
 
-        // Terminé -> image complète (scale 1). Pas encore fini -> aperçu zoomé (ne spoile pas).
-        const scale = finished ? 1 : ARCHIVE_PEEK_ZOOM;
+        // Terminé -> image complète (scale 1). Pas encore fini -> exactement le même niveau de
+        // zoom que ce que montrerait la partie en cours (même phase 1-2-3-4-5), pour ne pas
+        // donner un aperçu plus révélateur (ou plus flou) que le jeu réel.
+        const scale = finished ? 1 : ZOOM_LEVELS[Math.min(guesses.length, MAX_ATTEMPTS - 1)];
         cellsHtml += `
           <div class="archive-cell status-${status}" data-date="${dateStr}">
-            <img class="cell-img" src="${p.image}" style="transform-origin:${p.focus.x}% ${p.focus.y}%; transform:scale(${scale});">
+            <img class="cell-img" src="${p.image}" draggable="false" oncontextmenu="return false;" style="transform-origin:${p.focus.x}% ${p.focus.y}%; transform:scale(${scale});">
             <div class="cell-day">${day}</div>
             ${miniHtml}
             ${finished ? `<div class="cell-name">${escapeHtml(p.answer)}</div>` : ''}
