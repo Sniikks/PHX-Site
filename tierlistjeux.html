@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>PHX - Tier List Jeux</title>
+<link rel="shortcut icon" href="https://cdn.discordapp.com/icons/1030553621252821053/2e7356a5d822245ad7953afdb143581a.webp?size=160&quality=lossless">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap');
+
+  :root {
+    --bg:#0a0a0c; --bg2:#111114; --bg3:#161619;
+    --border:#232327; --border-soft:#1a1a1d;
+    --gold:#e8b84b; --gold2:#c79530; --gold-dim:#9c7d33;
+    --gold-soft:rgba(232,184,75,.10); --gold-ring:rgba(232,184,75,.35);
+    --violet:#a78bfa; --violet-soft:rgba(167,139,250,.12);
+    --text:#ededf0; --text-dim:#8c8c94; --text-faint:#55555c;
+    --red:#e2685f;
+    --radius-sm:6px; --radius:10px; --radius-lg:16px;
+    /* Palette des rangs, dans l'esprit de la palette du site (or -> ambre -> vert -> bleu -> violet -> rouge) */
+    --tier-s:#e8b84b; --tier-a:#e8a04b; --tier-b:#e8cf4b; --tier-c:#5fbf86;
+    --tier-d:#6699e8; --tier-e:#a78bfa; --tier-f:#e2685f; --tier-n:#55555c;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html { scroll-behavior:smooth; scrollbar-color:var(--border) transparent; overflow-x:clip; }
+  *:focus-visible { outline:2px solid var(--gold); outline-offset:2px; border-radius:3px; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:var(--bg2); }
+  ::-webkit-scrollbar-thumb { background:var(--gold-dim); border-radius:8px; }
+  ::-webkit-scrollbar-thumb:hover { background:var(--gold2); }
+  ::selection { background:var(--gold-soft); color:var(--gold); }
+  body {
+    background:radial-gradient(1200px 600px at 50% -200px, rgba(232,184,75,.08), transparent 60%), var(--bg);
+    color:var(--text); font-family:'Manrope',sans-serif; font-size:14px; line-height:1.5;
+    min-height:100vh; -webkit-font-smoothing:antialiased;
+    overflow-x:clip; max-width:100%;
+    padding-bottom:2rem;
+  }
+
+  /* ══════════════ HEADER ══════════════ */
+  .app-header { position:sticky; top:0; z-index:55; background:rgba(10,10,12,.88); backdrop-filter:blur(16px) saturate(140%); -webkit-backdrop-filter:blur(16px) saturate(140%); border-bottom:1px solid var(--border-soft); }
+  .page-header { position:relative; display:flex; align-items:center; justify-content:center; padding:16px 32px; max-width:1320px; margin:0 auto; padding-left:max(32px, env(safe-area-inset-left)); padding-right:max(32px, env(safe-area-inset-right)); }
+  .menu-btn { display:inline-flex; align-items:center; gap:6px; padding:9px 16px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:var(--radius); color:#e5e5e5; font-family:'Manrope',sans-serif; font-size:12.5px; font-weight:600; letter-spacing:.02em; text-decoration:none; cursor:pointer; transition:all .15s ease; white-space:nowrap; position:absolute; left:max(32px, env(safe-area-inset-left)); top:50%; transform:translateY(-50%); }
+  .menu-btn:hover { background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.24); color:#fff; }
+  .brand { display:flex; align-items:center; gap:10px; }
+  .brand-icon { font-size:22px; }
+  .brand h1 { font-family:'Sora',sans-serif; font-size:17px; font-weight:600; color:var(--text); letter-spacing:.01em; }
+  .header-io { position:absolute; right:max(32px, env(safe-area-inset-right)); top:50%; transform:translateY(-50%); display:flex; gap:8px; }
+  .text-action-btn { background:transparent; border:1px solid var(--border); color:var(--text-dim); font-family:inherit; font-size:12px; cursor:pointer; transition:all .15s; padding:7px 13px; border-radius:var(--radius); display:inline-flex; align-items:center; }
+  .text-action-btn:hover { color:var(--text); background:var(--bg3); border-color:var(--gold-dim); }
+
+  /* ══════════════ TOOLBAR ══════════════ */
+  .sticky-header { position:sticky; top:65px; z-index:50; background:rgba(10,10,12,.88); backdrop-filter:blur(16px) saturate(140%); -webkit-backdrop-filter:blur(16px) saturate(140%); border-bottom:1px solid var(--border-soft); }
+  .toolbar-row { display:flex; align-items:center; gap:14px; max-width:1320px; margin:0 auto; padding:12px 32px; flex-wrap:wrap; padding-left:max(32px, env(safe-area-inset-left)); padding-right:max(32px, env(safe-area-inset-right)); }
+  .search-wrap { position:relative; flex-shrink:0; }
+  .search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-faint); font-size:13px; pointer-events:none; }
+  .search-box { background:var(--bg2); border:1px solid var(--border); color:var(--text); padding:8px 14px 8px 32px; font-family:'Manrope',sans-serif; font-size:13px; outline:none; border-radius:var(--radius); width:220px; transition:border-color .15s,background .15s,box-shadow .15s; }
+  .search-box:focus { border-color:var(--gold-dim); background:var(--bg3); box-shadow:0 0 0 3px var(--violet-soft); }
+  .search-box::placeholder { color:var(--text-faint); }
+
+  .evaluators-legend { display:flex; align-items:center; gap:8px; flex:1; min-width:0; color:var(--text-faint); font-size:11.5px; flex-wrap:wrap; }
+  .ev-chip { display:inline-flex; align-items:center; padding:3px 9px; border-radius:20px; font-family:'Sora',sans-serif; font-size:11px; font-weight:700; letter-spacing:.02em; }
+  .ev-chip.ev-369 { background:rgba(102,153,232,.15); color:#7fa8ee; }
+  .ev-chip.ev-sniikks { background:rgba(232,184,75,.15); color:var(--gold); }
+
+  .toolbar-actions { display:flex; gap:8px; flex-shrink:0; margin-left:auto; }
+  .btn-primary { background:var(--gold); border:1px solid var(--gold); color:#0a0a0c; font-family:inherit; font-size:12.5px; font-weight:700; padding:9px 16px; cursor:pointer; letter-spacing:.02em; transition:all .15s; border-radius:var(--radius); white-space:nowrap; }
+  .btn-primary:hover { background:#f0c563; border-color:#f0c563; transform:translateY(-1px); }
+  .btn-cancel { background:transparent; border:1px solid var(--border); color:var(--text-dim); font-family:inherit; font-size:12.5px; padding:9px 16px; cursor:pointer; transition:all .15s; border-radius:var(--radius); white-space:nowrap; }
+  .btn-cancel:hover { border-color:var(--text-faint); color:var(--text); background:var(--bg3); }
+  .btn-danger { background:transparent; border:1px solid rgba(226,104,95,.3); color:rgba(226,104,95,.85); font-family:inherit; font-size:12.5px; padding:9px 16px; cursor:pointer; transition:all .15s; border-radius:var(--radius); white-space:nowrap; }
+  .btn-danger:hover { color:var(--red); border-color:var(--red); background:rgba(226,104,95,.08); }
+
+  /* ══════════════ MAIN LAYOUT ══════════════ */
+  .main { display:flex; gap:20px; max-width:1320px; margin:20px auto 0; padding:0 32px 40px; padding-left:max(32px, env(safe-area-inset-left)); padding-right:max(32px, env(safe-area-inset-right)); align-items:flex-start; }
+  .tier-section { flex:1; min-width:0; display:flex; flex-direction:column; gap:10px; }
+  .pending-section { width:320px; min-width:280px; flex-shrink:0; background:var(--bg2); border:1px solid var(--border-soft); border-radius:var(--radius-lg); overflow:hidden; }
+  .pending-sticky { padding:14px 16px; border-bottom:1px solid var(--border-soft); }
+  .pending-header { font-family:'Sora',sans-serif; font-size:11px; color:var(--gold); letter-spacing:.08em; text-transform:uppercase; display:flex; align-items:center; justify-content:space-between; }
+  .pending-header .count-badge { background:var(--gold-soft); color:var(--gold); border-radius:20px; padding:1px 8px; font-size:10.5px; font-weight:700; }
+  .pending-scroll { padding:12px; max-height:calc(100vh - 220px); overflow-y:auto; }
+  .pending-grid { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; min-height:60px; }
+  .pending-empty, .tier-empty { color:var(--text-faint); font-size:11.5px; text-align:center; padding:10px; width:100%; }
+
+  /* ══════════════ TIER ROWS ══════════════ */
+  .tier-row { display:flex; align-items:stretch; border:1px solid var(--border-soft); border-radius:var(--radius-lg); overflow:hidden; background:var(--bg2); }
+  .tier-label { width:88px; min-width:88px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:8px 4px; flex-shrink:0; }
+  .tier-letter { font-family:'Sora',sans-serif; font-size:1.6rem; font-weight:700; line-height:1; }
+  .tier-desc { font-size:8.5px; letter-spacing:.06em; text-align:center; line-height:1.2; text-transform:uppercase; opacity:.85; }
+  .tier-count { font-size:9.5px; opacity:.7; }
+  .tier-row[data-tier="S"] .tier-label { background:rgba(232,184,75,.16); color:var(--tier-s); }
+  .tier-row[data-tier="A"] .tier-label { background:rgba(232,160,75,.16); color:var(--tier-a); }
+  .tier-row[data-tier="B"] .tier-label { background:rgba(232,207,75,.16); color:var(--tier-b); }
+  .tier-row[data-tier="C"] .tier-label { background:rgba(95,191,134,.16); color:var(--tier-c); }
+  .tier-row[data-tier="D"] .tier-label { background:rgba(102,153,232,.16); color:var(--tier-d); }
+  .tier-row[data-tier="E"] .tier-label { background:rgba(167,139,250,.16); color:var(--tier-e); }
+  .tier-row[data-tier="F"] .tier-label { background:rgba(226,104,95,.16); color:var(--tier-f); }
+  .tier-row[data-tier="N"] .tier-label { background:rgba(85,85,92,.16); color:var(--tier-n); }
+  .tier-content { flex:1; display:flex; flex-wrap:wrap; gap:8px; padding:10px; align-content:flex-start; min-height:96px; }
+
+  /* ══════════════ GAME CARD ══════════════ */
+  .game-card { width:128px; position:relative; background:var(--bg3); border:1px solid var(--border-soft); border-radius:var(--radius); overflow:hidden; transition:border-color .15s, transform .15s; flex-shrink:0; }
+  .game-card:hover { border-color:var(--gold-dim); }
+  .game-card img { width:100%; height:60px; object-fit:cover; display:block; background:var(--bg); }
+  .card-name { font-size:10.5px; font-weight:600; padding:6px 7px 4px; line-height:1.25; color:var(--text); overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; height:30px; cursor:default; }
+  .card-ratings { display:flex; flex-direction:column; gap:4px; padding:0 7px 8px; }
+  .rate-field { display:flex; align-items:center; gap:5px; }
+  .rate-tag { font-size:8.5px; font-weight:700; letter-spacing:.02em; width:38px; flex-shrink:0; text-transform:uppercase; }
+  .rate-tag.rate-g369 { color:#7fa8ee; }
+  .rate-tag.rate-sniikks { color:var(--gold); }
+  .select-wrap { position:relative; flex:1; min-width:0; }
+  .select-wrap select {
+    width:100%; background:var(--bg2); border:1px solid var(--border); color:var(--text);
+    font-family:inherit; font-size:10.5px; font-weight:600; padding:3px 18px 3px 6px;
+    border-radius:6px; outline:none; appearance:none; -webkit-appearance:none; cursor:pointer;
+    transition:border-color .15s;
+  }
+  .select-wrap select:focus { border-color:var(--gold-dim); }
+  .select-wrap .select-arrow { position:absolute; right:6px; top:50%; transform:translateY(-50%); font-size:8px; color:var(--text-faint); pointer-events:none; }
+  .select-wrap .select-arrow::before { content:'▾'; }
+  .select-wrap:focus-within .select-arrow::before { content:'▴'; }
+  .card-del { position:absolute; top:4px; right:4px; width:18px; height:18px; border-radius:50%; border:none; background:rgba(0,0,0,.55); color:#ff8080; font-size:10px; cursor:pointer; display:none; align-items:center; justify-content:center; line-height:1; z-index:2; }
+  .game-card:hover .card-del { display:flex; }
+
+  /* ══════════════ MODAL ══════════════ */
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(2px); display:none; align-items:center; justify-content:center; z-index:200; padding:20px; }
+  .overlay.open { display:flex; }
+  @keyframes modalIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .modal { background:var(--bg2); border:1px solid var(--border); padding:26px 28px; width:min(440px,100%); max-height:90vh; overflow-y:auto; border-radius:var(--radius-lg); box-shadow:0 30px 70px -20px rgba(0,0,0,.7); animation:modalIn .2s ease; }
+  .modal h2 { font-family:'Sora',sans-serif; font-size:14px; font-weight:600; color:var(--text); margin-bottom:20px; display:flex; align-items:center; gap:8px; }
+  .modal h2::before { content:''; width:4px; height:14px; background:var(--gold); border-radius:2px; }
+  .form-row { margin-bottom:14px; }
+  .form-row label { display:block; font-size:10.5px; color:var(--text-faint); font-weight:700; letter-spacing:.05em; margin-bottom:7px; text-transform:uppercase; }
+  .form-row input[type=text] {
+    width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text);
+    font-family:inherit; font-size:13px; padding:10px 12px; border-radius:var(--radius); outline:none;
+    transition:border-color .15s,box-shadow .15s;
+  }
+  .form-row input[type=text]:focus { border-color:var(--gold-dim); box-shadow:0 0 0 3px var(--violet-soft); }
+  .form-row input[type=file] { font-size:11px; color:var(--text-dim); }
+  .url-hint, .url-detect { font-size:10.5px; margin-top:6px; }
+  .url-hint { color:var(--text-faint); }
+  .url-detect { color:var(--gold); display:none; }
+  .modal-preview { width:140px; height:65px; object-fit:cover; background:var(--bg3); border:1px solid var(--border); border-radius:6px; display:none; margin-top:8px; }
+  .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:22px; }
+
+  .confirm-box { background:var(--bg2); border:1px solid var(--border); padding:24px 26px; width:340px; max-width:100%; border-radius:var(--radius-lg); box-shadow:0 30px 70px -20px rgba(0,0,0,.7); animation:modalIn .2s ease; }
+  .confirm-box h2 { font-family:'Sora',sans-serif; font-size:14px; font-weight:600; color:var(--red); margin-bottom:14px; }
+  .confirm-box p { font-size:13.5px; color:var(--text); margin-bottom:16px; }
+  .confirm-box p strong { color:#fff; }
+  .confirm-actions { display:flex; gap:8px; }
+  .confirm-actions > * { flex:1; }
+
+  /* ══════════════ TOAST ══════════════ */
+  .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(120%); background:var(--bg2); border:1px solid var(--gold-dim); color:var(--text); font-family:'Manrope',sans-serif; font-size:12.5px; padding:10px 18px; border-radius:var(--radius); z-index:999; pointer-events:none; transition:transform .25s ease,opacity .25s ease; opacity:0; white-space:nowrap; max-width:90vw; box-shadow:0 12px 30px -8px rgba(0,0,0,.6); }
+  .toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+
+  /* ══════════════ RESPONSIVE ══════════════ */
+  @media (max-width:900px) {
+    .main { flex-direction:column; }
+    .pending-section { width:100%; min-width:0; }
+    .pending-scroll { max-height:none; }
+  }
+  @media (max-width:760px) {
+    .page-header { padding:12px 16px; }
+    .menu-btn { position:static; transform:none; padding:7px 10px; font-size:11.5px; }
+    .header-io { position:static; transform:none; }
+    .brand h1 { font-size:15px; }
+    .page-header { flex-wrap:wrap; gap:8px; justify-content:space-between; }
+    .sticky-header { top:0; }
+    .toolbar-row { padding:10px 16px; gap:10px; }
+    .search-wrap, .search-box { width:100%; }
+    .evaluators-legend { order:3; width:100%; }
+    .toolbar-actions { width:100%; margin-left:0; }
+    .toolbar-actions > * { flex:1; }
+    .main { padding:0 16px 32px; margin-top:14px; }
+    .tier-label { width:66px; min-width:66px; }
+    .tier-letter { font-size:1.2rem; }
+    .game-card { width:104px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="page-header">
+    <a href="index.html" class="menu-btn">☰ Menu</a>
+    <div class="header-io">
+      <button class="text-action-btn" id="exportBtn">Exporter</button>
+      <label class="text-action-btn" for="importInput" style="cursor:pointer">Importer</label>
+      <input type="file" id="importInput" accept=".json" style="display:none">
+    </div>
+    <div class="brand"><span class="brand-icon">🏆</span><h1>Tier List Jeux</h1></div>
+  </div>
+</div>
+
+<div class="sticky-header">
+  <div class="toolbar-row">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input class="search-box" id="searchInput" placeholder="Rechercher un jeu…">
+    </div>
+    <div class="evaluators-legend">
+      <span class="ev-chip ev-369">369</span>
+      <span class="ev-chip ev-sniikks">Sniikks</span>
+      <span>donnent chacun un avis (S → F, ou N si jamais joué) — le rang final est leur moyenne</span>
+    </div>
+    <div class="toolbar-actions">
+      <button class="btn-cancel" id="resetRatingsBtn">↺ Réinitialiser les avis</button>
+      <button class="btn-primary" id="addBtn">+ Ajouter un jeu</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="tier-section" id="tierSection"></div>
+  <div class="pending-section">
+    <div class="pending-sticky">
+      <div class="pending-header">EN ATTENTE D'AVIS <span class="count-badge" id="pendingCount">0</span></div>
+    </div>
+    <div class="pending-scroll">
+      <div class="pending-grid" id="pendingGrid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="overlay" id="addOverlay">
+  <div class="modal">
+    <h2 id="modalTitle">Ajouter un jeu</h2>
+    <div class="form-row">
+      <label>Nom du jeu</label>
+      <input type="text" id="newGameName" placeholder="ex : Resident Evil 2">
+    </div>
+    <div class="form-row">
+      <label>Photo (lien Steam ou URL image directe)</label>
+      <input type="text" id="newGameUrl" placeholder="https://store.steampowered.com/app/...">
+      <div class="url-hint" id="urlHint">💡 Colle un lien de page Steam ou l'URL directe d'une image (.jpg/.png)</div>
+      <div class="url-detect" id="urlDetect"></div>
+    </div>
+    <div class="form-row">
+      <label>Ou choisir un fichier image</label>
+      <input type="file" id="newGameFile" accept="image/*">
+      <img id="modalPreview" class="modal-preview" alt="aperçu">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="modalCancelBtn">Annuler</button>
+      <button class="btn-primary" id="modalConfirmBtn">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="resetOverlay">
+  <div class="confirm-box">
+    <h2>Réinitialiser les avis</h2>
+    <p>Tous les avis de <strong>369</strong> et <strong>Sniikks</strong> seront effacés — tous les jeux repasseront en attente. Cette action est irréversible.</p>
+    <div class="confirm-actions">
+      <button class="btn-cancel" id="resetCancelBtn">Annuler</button>
+      <button class="btn-danger" id="resetConfirmBtn" style="background:var(--red);color:#fff;border-color:var(--red)">Réinitialiser</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="deleteOverlay">
+  <div class="confirm-box">
+    <h2>Supprimer le jeu</h2>
+    <p>Supprimer <strong id="deleteGameName"></strong> ? Ses avis seront perdus.</p>
+    <div class="confirm-actions">
+      <button class="btn-cancel" id="deleteCancelBtn">Annuler</button>
+      <button class="btn-danger" id="deleteConfirmBtn" style="background:var(--red);color:#fff;border-color:var(--red)">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE_GAMES = [{"name":"The Last Of Us Part I","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1888930/header.jpg"},{"name":"The Last Of Us Part II Remastered","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2531310/header.jpg"},{"name":"The Witcher 3 Wild Hunt","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/292030/header.jpg"},{"name":"Cyberpunk 2077","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1091500/header.jpg"},{"name":"Red Dead Redemption 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1174180/header.jpg"},{"name":"A Plague Tale Requiem","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1182900/header.jpg"},{"name":"UNCHARTED Legacy Of Thieves Collection","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1659420/header.jpg"},{"name":"Resident Evil 4","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2050650/header.jpg"},{"name":"Dead Space","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1693980/header.jpg"},{"name":"007 First Light","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3768760/dbe86ebd2edb4c77d113e9e2feefeb90189fabc9/header.jpg?t=1782467029"},{"name":"God Of War Ragnark","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2322010/header.jpg"},{"name":"Stellar Blade","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3489700/header.jpg"},{"name":"Marvels SpiderMan 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2651280/header.jpg"},{"name":"Ghost Of Tsushima DIRECTORS CUT","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2215430/header.jpg"},{"name":"God Of War","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1593500/header.jpg"},{"name":"Resident Evil 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/883710/header.jpg"},{"name":"Resident Evil Requiem","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3764200/ce5437442768e38eb575f205ab9397d0264017b0/header.jpg?t=1779840172"},{"name":"Resident Evil 7 Biohazard","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/418370/header.jpg"},{"name":"Mafia The Old Country","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1941540/header.jpg"},{"name":"Grand Theft Auto V Version Amliore","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3240220/header.jpg"},{"name":"Grand Theft Auto San Andreas  The Definitive Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1547000/header.jpg"},{"name":"Grand Theft Auto IV The Complete Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/12210/header.jpg"},{"name":"Crimson Desert","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3321460/header.jpg"},{"name":"FINAL FANTASY VII REMAKE INTERGRADE","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1462040/header.jpg"},{"name":"HITMAN World Of Assassination","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1659040/header.jpg"},{"name":"Outer Wilds","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/753640/header.jpg"},{"name":"The Elder Scrolls V Skyrim Special Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/489830/header.jpg"},{"name":"PRAGMATA","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3357650/e32e168b25ed68a0cf6264c220c07e96c2abfb56/header.jpg?t=1777351016"},{"name":"Kingdom Come Deliverance II","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1771300/header.jpg"},{"name":"Sekiro Shadows Die Twice  GOTY Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/814380/header.jpg"},{"name":"FINAL FANTASY VII REBIRTH","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2909400/header.jpg"},{"name":"DEATH STRANDING DIRECTORS CUT","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1850570/header.jpg"},{"name":"Fallout 4","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/377160/header.jpg"},{"name":"Left 4 Dead 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/550/header.jpg"},{"name":"SILENT HILL F","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2947440/7e5d923ac622bd1775ebc9b5d4b5b0a24bf5ed40/header.jpg?t=1770169624"},{"name":"SILENT HILL 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2124490/header.jpg"},{"name":"A Plague Tale Innocence","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/752590/header.jpg"},{"name":"Resident Evil 3","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/952060/header.jpg"},{"name":"Tom Clancys The Division 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2221490/header.jpg"},{"name":"Metro Exodus","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/412020/header.jpg"},{"name":"Metro 2033 Redux","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/286690/header.jpg"},{"name":"Metro Last Light Redux","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/287390/header.jpg"},{"name":"Marvels SpiderMan Remastered","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1817070/header.jpg"},{"name":"DEATH STRANDING 2 ON THE BEACH","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3280350/6270c77b0729e2df0a17d660286eeddfd9169386/header.jpg?t=1774022345"},{"name":"Horizon Forbidden West Complete Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2420110/header.jpg"},{"name":"Ratchet  Clank Rift Apart","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1895880/header.jpg"},{"name":"Marvel’s Spider-Man: Miles Morales","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1817190/header.jpg"},{"name":"Sackboy™: A Big Adventure","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1599660/header.jpg"},{"name":"Days Gone","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1259420/header.jpg"},{"name":"Persona 3 Reload","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2161700/header.jpg"},{"name":"Persona 5 Royal","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1687950/header.jpg"},{"name":"Clair Obscur Expedition 33","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1903340/header.jpg"},{"name":"Digimon Story Time Stranger","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1984270/header.jpg"},{"name":"Sifu","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2138710/header.jpg"},{"name":"Persona 4 Golden","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1113000/header.jpg"},{"name":"Persona 5 Strikers","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1382330/header.jpg"},{"name":"Catherine Classic","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/893180/header.jpg"},{"name":"Shin Megami Tensei V Vengeance","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1875830/header.jpg"},{"name":"Red Dead Redemption","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2668510/header.jpg"},{"name":"Resident Evil 5","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/21690/header.jpg"},{"name":"Resident Evil 6","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/221040/header.jpg"},{"name":"Resident Evil Village","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1196590/header.jpg"},{"name":"Dying Light","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/239140/header.jpg"},{"name":"Borderlands 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/49520/header.jpg"},{"name":"Baldurs Gate 3","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1086940/header.jpg"},{"name":"The Forest","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/242760/header.jpg"},{"name":"Monster Hunter World","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/582010/header.jpg"},{"name":"Dragons Dogma 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2054970/header.jpg"},{"name":"Remnant From The Ashes","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/617290/header.jpg"},{"name":"Portal 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/620/header.jpg"},{"name":"Ready Or Not","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1144200/header.jpg"},{"name":"Saints Row IV ReElected","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/206420/header.jpg"},{"name":"Halo The Master Chief Collection","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/976730/header.jpg"},{"name":"Dead Island 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/934700/header.jpg"},{"name":"Dead Island Definitive Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/383150/header.jpg"},{"name":"Dead Island Riptide Definitive Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/383180/header.jpg"},{"name":"Far Cry 5","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/552520/header.jpg"},{"name":"STAR WARS Jedi Survivor","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1774580/header.jpg"},{"name":"STAR WARS Jedi Fallen Order","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1172380/header.jpg"},{"name":"Star Wars Outlaws","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2842040/header.jpg"},{"name":"NieRAutomata","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/524220/header.jpg"},{"name":"NieR Replicant Ver122474487139","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1113560/header.jpg"},{"name":"Devil May Cry 5","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/601150/header.jpg"},{"name":"Devil May Cry HD Collection","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/631510/header.jpg"},{"name":"Devil May Cry 4 Special Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/329050/header.jpg"},{"name":"DmC Devil May Cry","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/220440/header.jpg"},{"name":"LA Noire","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/110800/header.jpg"},{"name":"It Takes Two","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1426210/header.jpg"},{"name":"Sleeping Dogs Definitive Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/307690/header.jpg"},{"name":"Lords Of The Fallen","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1501750/header.jpg"},{"name":"Kingdom Come Deliverance","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/379430/header.jpg"},{"name":"Project Zomboid","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/108600/header.jpg"},{"name":"The Outlast Trials","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1304930/header.jpg"},{"name":"Life Is Strange  Episode 1","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/319630/header.jpg"},{"name":"Life Is Strange Before The Storm","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/554620/header.jpg"},{"name":"Saints Row The Third","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/55230/header.jpg"},{"name":"PAYDAY 3","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1272080/header.jpg"},{"name":"PAYDAY 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/218620/header.jpg"},{"name":"Saints Row 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/9480/header.jpg"},{"name":"Back 4 Blood","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/924970/header.jpg"},{"name":"Left 4 Dead","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/500/header.jpg"},{"name":"World War Z","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/699130/header.jpg"},{"name":"Life is Strange 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/532210/header.jpg"},{"name":"Banishers: Ghosts of New Eden","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1493640/header.jpg"},{"name":"Twin Mirror","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1552810/header.jpg"},{"name":"Tell Me Why","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1180660/header.jpg"},{"name":"Saints Row","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/742420/header.jpg"},{"name":"Saints Row Gat Out Of Hell","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/301910/header.jpg"},{"name":"Middleearth Shadow Of Mordor","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/241930/header.jpg"},{"name":"Middleearth Shadow Of War","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/356190/header.jpg"},{"name":"The Walking Dead","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/207610/header.jpg"},{"name":"The Walking Dead The Final Season","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/866800/header.jpg"},{"name":"The Walking Dead A New Frontier","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/536220/header.jpg"},{"name":"The Walking Dead Season Two","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/261030/header.jpg"},{"name":"Before Your Eyes","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1082430/header.jpg"},{"name":"The Walking Dead Michonne  A Telltale Miniseries","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/429570/header.jpg"},{"name":"Until Dawn","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2172010/header.jpg"},{"name":"Invincible Presents Atom Eve","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2060870/header.jpg"},{"name":"Dispatch","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2592160/header.jpg"},{"name":"The Stanley Parable Ultra Deluxe","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1703340/header.jpg"},{"name":"Resident Evil","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/304240/header.jpg"},{"name":"Resident Evil Revelations 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/287290/header.jpg"},{"name":"Resident Evil Revelations","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/222480/header.jpg"},{"name":"Slay The Princess  The Pristine Cut","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1989270/header.jpg"},{"name":"Detroit Become Human","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1222140/header.jpg"},{"name":"Road 96","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1466640/header.jpg"},{"name":"Heavy Rain","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/960910/header.jpg"},{"name":"Beyond: Two Souls","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/960990/header.jpg"},{"name":"Resident Evil 0","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/339340/header.jpg"},{"name":"Remember Me","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/228300/header.jpg"},{"name":"BioShock Infinite","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/8870/header.jpg"},{"name":"BioShock 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/8850/header.jpg"},{"name":"BioShock","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/7670/header.jpg"},{"name":"Bayonetta","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/460790/header.jpg"},{"name":"Contrast","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/224460/header.jpg"},{"name":"INAZUMA ELEVEN  Victory Road","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2799860/header.jpg"},{"name":"Mirrors Edge","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/17410/header.jpg"},{"name":"Mirrors Edge Catalyst","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1233570/header.jpg"},{"name":"Max Payne 3","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/204100/header.jpg"},{"name":"Mixtape","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2582320/header.jpg"},{"name":"REPLACED","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1663850/header.jpg"},{"name":"Ryse Son Of Rome","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/302510/header.jpg"},{"name":"Spec Ops The Line","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/50300/header.jpg"},{"name":"The Dark Pictures Anthology House Of Ashes","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1281590/header.jpg"},{"name":"The Dark Pictures Anthology The Devil In Me","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1567020/header.jpg"},{"name":"The Dark Pictures Anthology Little Hope","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1194630/header.jpg"},{"name":"The Dark Pictures Anthology Man Of Medan","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/939850/header.jpg"},{"name":"Directive 8020","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2255370/header.jpg"},{"name":"The Quarry","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1577120/header.jpg"},{"name":"Eternights","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1402110/header.jpg"},{"name":"GRIS","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/683320/header.jpg"},{"name":"Neva","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2420660/header.jpg"},{"name":"Hogwarts Legacy : L'Héritage de Poudlard","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/990080/header.jpg"},{"name":"Mouthwashing","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2475490/header.jpg"},{"name":"Batman Arkham Knight","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/208650/header.jpg"},{"name":"Batman Arkham Origins","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/209000/header.jpg"},{"name":"Mad Max","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/234140/header.jpg"},{"name":"Batman: Arkham City - Game of the Year Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/200260/header.jpg"},{"name":"Batman: Arkham Asylum Game of the Year Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/35140/header.jpg"},{"name":"Split Fiction","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2001120/header.jpg"},{"name":"A Way Out","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1222700/header.jpg"},{"name":"Mafia Definitive Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1030840/header.jpg"},{"name":"Mafia II Definitive Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1030830/header.jpg"},{"name":"Mass Effect 2007","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/17460/header.jpg"},{"name":"Mass Effect 3 Dition De Luxe Numrique N7 2012","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1238020/header.jpg"},{"name":"Mass Effect 2 2010 Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2362420/header.jpg"},{"name":"Blacksad Under The Skin","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1003890/header.jpg"},{"name":"Doki Doki Literature Club","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/698780/header.jpg"},{"name":"Freedom Fighters","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1347780/header.jpg"},{"name":"Haven","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/983970/header.jpg"},{"name":"INSIDE","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/304430/header.jpg"},{"name":"Little Nightmares","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/424840/header.jpg"},{"name":"Little Nightmares II","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/860510/header.jpg"},{"name":"Little Nightmares III","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1392860/header.jpg"},{"name":"REANIMAL","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2129530/header.jpg"},{"name":"The Elder Scrolls IV Oblivion Remastered","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2623190/a7cee9165bb1bfc092c390c5cff215ce0e381dfc/header.jpg?t=1761681073"},{"name":"Viewfinder","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1382070/header.jpg"},{"name":"No Im Not A Human","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3180070/header.jpg"},{"name":"Resident Evil Operation Raccoon City","src":"https://steamrip.com/wp-content/uploads/2025/07/Resident-Evil-Operation-Raccoon-City_featured_final.jpg"},{"name":"Mafia III Definitive Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/360430/header.jpg"},{"name":"Borderlands 4","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1285190/header.jpg"},{"name":"Borderlands 3","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/397540/header.jpg"},{"name":"Borderlands The PreSequel","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/261640/header.jpg"},{"name":"Borderlands Game Of The Year Enhanced","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/729040/header.jpg"},{"name":"The Wolf Among Us","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/250320/header.jpg"},{"name":"DARK SOULS REMASTERED","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/570940/header.jpg"},{"name":"DARK SOULS II","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/236430/header.jpg"},{"name":"DARK SOULS III","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/374320/header.jpg"},{"name":"ELDEN RING","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg"},{"name":"Hollow Knight Silksong","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1030300/header.jpg"},{"name":"Hollow Knight","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/367520/header.jpg"},{"name":"Cuphead","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/268910/header.jpg"},{"name":"Black Myth Wukong","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2358720/header.jpg"},{"name":"The Darkness II","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/67370/header.jpg"},{"name":"Amnesia The Dark Descent","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/57300/header.jpg"},{"name":"Journey To The Savage Planet","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/973810/header.jpg"},{"name":"Revenge of the Savage Planet","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2787320/header.jpg"},{"name":"Stray Gods The Roleplaying Musical","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1920780/header.jpg"},{"name":"Fallout 76","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1151340/header.jpg"},{"name":"Fallout New Vegas","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/22380/header.jpg"},{"name":"Fallout 3","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/22300/header.jpg"},{"name":"Outlast 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/414700/header.jpg"},{"name":"Outlast","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/238320/header.jpg"},{"name":"Hellblade Senuas Sacrifice","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/414340/header.jpg"},{"name":"Layers Of Fear 2 2019","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1029890/header.jpg"},{"name":"Layers Of Fear 2016","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/391720/header.jpg"},{"name":"Vampire: The Masquerade - Bloodlines","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2600/header.jpg"},{"name":"Vampire: The Masquerade® - Bloodlines™ 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/532790/header.jpg"},{"name":"LOLLIPOP CHAINSAW RePOP","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2658450/header.jpg"},{"name":"Obscure II Obscure The Aftermath","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/254480/header.jpg"},{"name":"Obscure","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/254460/header.jpg"},{"name":"Half-Life: Alyx","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/546560/header.jpg"},{"name":"The Long Dark","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/305620/header.jpg"},{"name":"Bayonetta 2","src":"https://imgs.search.brave.com/berg90jUmC6c2_JlQyUEBWIc3zZVg2t_wLbvA60E_YU/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly93d3cu/bmludGVuZG8tZGlm/ZmVyZW5jZS5jb20v/d3AtY29udGVudC91/cGxvYWRzL29sZHNp/dGUvNDEwMjYvYXJ0/d29ya3MvNDU0NTRi/OTViNGQzYzdhZjg2/OWZjNzExMThhY2M1/NDctNDczeDI2NS5q/cGc"},{"name":"Twelve Minutes","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1097200/header.jpg"},{"name":"Stray","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1332010/header.jpg"},{"name":"What Remains Of Edith Finch","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/501300/header.jpg"},{"name":"Journey","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/638230/header.jpg"},{"name":"Lorelei And The Laser Eyes","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2008920/header.jpg"},{"name":"Ori And The Will Of The Wisps","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1057090/header.jpg"},{"name":"Avatar Frontiers Of Pandora","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2840770/header.jpg"},{"name":"Cairn","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1588550/header.jpg"},{"name":"Chants Of Sennaar","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1931770/header.jpg"},{"name":"The Witness","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/210970/header.jpg"},{"name":"Firewatch","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/383870/header.jpg"},{"name":"Subnautica","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/264710/header.jpg"},{"name":"Subnautica 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1962700/header.jpg"},{"name":"Subnautica Below Zero","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/848450/header.jpg"},{"name":"Sons Of The Forest","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1326470/header.jpg"},{"name":"Grounded","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/962130/header.jpg"},{"name":"Grounded 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2661300/c4fc47c7e6ece14e438f0957d066dc9ab2a3412a/header.jpg?t=1776193476"},{"name":"Sea of Thieves: 2026 Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1172620/header.jpg"},{"name":"Fable Anniversary","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/288470/header.jpg"},{"name":"Forza Horizon 6","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2483190/744a52b2f79bb03825dea2c0fcfa29e330bb2f1e/header_alt_assets_1.jpg?t=1782238812"},{"name":"Sunset Overdrive","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/847370/header.jpg"},{"name":"As Dusk Falls","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1341820/header.jpg"},{"name":"Quantum Break","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/474960/header.jpg"},{"name":"Horizon Zero Dawn Complete Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1151640/header.jpg"},{"name":"STALKER 2 Heart Of Chornobyl","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1643320/header.jpg"},{"name":"Megabonk","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3405340/header.jpg"},{"name":"Hades II","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1145350/header.jpg"},{"name":"Hades","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1145360/header.jpg"},{"name":"Far Cry 4","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/298110/header.jpg"},{"name":"Far Cry 3","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/220240/header.jpg"},{"name":"Far Cry 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/19900/header.jpg"},{"name":"Lies Of P","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1627720/header.jpg"},{"name":"Hell Is Us","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1620730/header.jpg"},{"name":"FINAL FANTASY XVI","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2515020/header.jpg"},{"name":"FINAL FANTASY XV WINDOWS EDITION","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/637650/header.jpg"},{"name":"RoboCop Rogue City","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1681430/header.jpg"},{"name":"GreedFall The Dying World","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1997660/header.jpg"},{"name":"GreedFall","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/606880/header.jpg"},{"name":"Steelrising","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1283400/header.jpg"},{"name":"Tormented Souls","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1367590/header.jpg"},{"name":"SONG OF HORROR COMPLETE EDITION","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1096570/header.jpg"},{"name":"Them And Us","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/915600/header.jpg"},{"name":"Tormented Souls 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2464280/header.jpg"},{"name":"The Evil Within","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/268050/header.jpg"},{"name":"The Evil Within 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/601430/header.jpg"},{"name":"Tchia","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1496590/header.jpg"},{"name":"Tales Of ARISE","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/740130/header.jpg"},{"name":"State Of Decay YOSE","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/329430/header.jpg"},{"name":"State Of Decay 2 Juggernaut Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/495420/header.jpg"},{"name":"Solo Leveling ARISE OVERDRIVE","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2373990/header.jpg"},{"name":"SCARLET NEXUS","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/775500/header.jpg"},{"name":"RimWorld","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/294100/header.jpg"},{"name":"Ori And The Blind Forest","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/261570/header.jpg"},{"name":"METAL GEAR SOLID V THE PHANTOM PAIN","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/287700/header.jpg"},{"name":"METAL GEAR RISING REVENGEANCE","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/235460/header.jpg"},{"name":"Manhunt","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/12130/header.jpg"},{"name":"Marvels Guardians Of The Galaxy","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1088850/header.jpg"},{"name":"Just Cause 3","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/225540/header.jpg"},{"name":"Just Cause 4 Reloaded","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/517630/header.jpg"},{"name":"InZOI","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2456740/header.jpg"},{"name":"High On Life","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1583230/header.jpg"},{"name":"High On Life 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2069250/e2a95e35378e6e0e0b29173a340381489d8205ad/header_alt_assets_0_french.jpg?t=1782498352"},{"name":"Grand Theft Auto Vice City","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/12110/header.jpg"},{"name":"Grand Theft Auto III","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/12100/header.jpg"},{"name":"Fear & Hunger","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1002300/header.jpg"},{"name":"DRAGON BALL FighterZ","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/678950/header.jpg"},{"name":"DRAGON BALL Z KAKAROT","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/851850/header.jpg"},{"name":"Dishonored","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/205100/header.jpg"},{"name":"Dishonored 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/403640/header.jpg"},{"name":"Dishonored Death Of The Outsider","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/614570/header.jpg"},{"name":"Destroy All Humans 2  Reprobed","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1266700/header.jpg"},{"name":"Daymare 1998","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/842100/header.jpg"},{"name":"Crysis Remastered","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1715130/header.jpg"},{"name":"Crysis 2 Remastered","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2096600/header.jpg"},{"name":"Crysis 3 Remastered","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2096610/header.jpg"},{"name":"BIOMUTANT","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/597820/header.jpg"},{"name":"Atomic Heart","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/668580/header.jpg"},{"name":"Another Crabs Treasure","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1887840/header.jpg"},{"name":"Zero Hour","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1359090/header.jpg"},{"name":"Alan Wakes American Nightmare","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/202750/header.jpg"},{"name":"Alien Isolation","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/214490/header.jpg"},{"name":"BONEWORKS","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/823500/header.jpg"},{"name":"Bully Scholarship Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/12200/header.jpg"},{"name":"Call Of Duty Black Ops II","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/202970/header.jpg"},{"name":"Call Of Duty 4 Modern Warfare 2007","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/7940/header.jpg"},{"name":"Call Of Duty World At War","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/10090/header.jpg"},{"name":"Prototype","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/10150/header.jpg"},{"name":"Call Of Duty Modern Warfare 2 2009","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/10180/header.jpg"},{"name":"Call Of Duty Black Ops","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/42700/header.jpg"},{"name":"Call Of Duty Ghosts","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/209160/header.jpg"},{"name":"Call Of Duty Black Ops III","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/311210/header.jpg"},{"name":"Call Of Duty Modern Warfare 3 2011","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/42680/header.jpg"},{"name":"Assassins Creed Unity","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/289650/header.jpg"},{"name":"Assassins Creed Rogue","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/311560/header.jpg"},{"name":"Assassins Creed Syndicate","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/368500/header.jpg"},{"name":"Assassins Creed IV Black Flag","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/242050/header.jpg"},{"name":"Assassins Creed Directors Cut Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/15100/header.jpg"},{"name":"Assassins Creed 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/33230/header.jpg"},{"name":"Assassins Creed III Remastered","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/911400/header.jpg"},{"name":"Assassins Creed Freedom Cry","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/277590/header.jpg"},{"name":"Assassins Creed Origins","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/582160/header.jpg"},{"name":"Assassins Creed Odyssey","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/812140/header.jpg"},{"name":"Assassins Creed Valhalla","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2208920/header.jpg"},{"name":"Assassins Creed Brotherhood","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/48190/header.jpg"},{"name":"Assassins Creed Revelations","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/201870/header.jpg"},{"name":"Assassins Creed Liberation HD","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/260210/header.jpg"},{"name":"Assassins Creed Mirage","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3035570/header.jpg"},{"name":"Assassins Creed Shadows","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3159330/header.jpg"},{"name":"Hitman: Blood Money","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/6860/header.jpg"},{"name":"Hitman 2: Silent Assassin","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/6850/header.jpg"},{"name":"Hitman: Absolution™","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/203140/header.jpg"},{"name":"Castle Crashers","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/204360/header.jpg"},{"name":"Crash Bandicoot N Sane Trilogy","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/731490/header.jpg"},{"name":"Crime Boss Rockay City","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2933080/header.jpg"},{"name":"Cry Of Fear","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/223710/header.jpg"},{"name":"Dead Rising 2 Off The Record","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/45770/header.jpg"},{"name":"Dead Rising 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/45740/header.jpg"},{"name":"Dead Rising 3 Apocalypse Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/265550/header.jpg"},{"name":"Dead Rising 4","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/543460/header.jpg"},{"name":"Dead Rising Deluxe Remaster","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2527390/header.jpg"},{"name":"Dont Starve Together","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/322330/header.jpg"},{"name":"Dungeons Of Sundaria","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/587520/header.jpg"},{"name":"Emily Wants To Play","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/416590/header.jpg"},{"name":"Enter The Gungeon","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/311690/header.jpg"},{"name":"ENDLESS Legend","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/289130/header.jpg"},{"name":"Escape First","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/850450/header.jpg"},{"name":"Escape First 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1094060/header.jpg"},{"name":"Fahrenheit Indigo Prophecy Remastered","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/312840/header.jpg"},{"name":"Killing Floor","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1250/header.jpg"},{"name":"Killing Floor 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/232090/header.jpg"},{"name":"The Escapists","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/298630/header.jpg"},{"name":"The Escapists 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/641990/header.jpg"},{"name":"Terraria","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/105600/header.jpg"},{"name":"Tales From The Borderlands","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/330830/header.jpg"},{"name":"SUPERHOT","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/322500/header.jpg"},{"name":"STAY","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/753230/header.jpg"},{"name":"Stardew Valley","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/413150/header.jpg"},{"name":"Spyro Reignited Trilogy","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/996580/header.jpg"},{"name":"SpeedRunners","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/207140/header.jpg"},{"name":"Space Engineers","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/244850/header.jpg"},{"name":"Sniper Elite 3","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/238090/header.jpg"},{"name":"Sniper Elite 4","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/312660/header.jpg"},{"name":"Sniper Elite V2 Remastered","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/728740/header.jpg"},{"name":"Sniper Elite 5","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1029690/header.jpg"},{"name":"Road 96 Mile 0","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2095340/header.jpg"},{"name":"Risk Of Rain 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/632360/header.jpg"},{"name":"Remothered Broken Porcelain","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1142390/header.jpg"},{"name":"Remothered: Tormented Fathers","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/633360/header.jpg"},{"name":"Propagation VR","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1363430/header.jpg"},{"name":"Portal","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/400/header.jpg"},{"name":"Pine","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1042780/header.jpg"},{"name":"HalfLife 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/220/header.jpg"},{"name":"HalfLife","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/70/header.jpg"},{"name":"Gods Trigger","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/488730/header.jpg"},{"name":"LIMBO","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/48000/header.jpg"},{"name":"Monster Hunter Wilds","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2246340/header.jpg"},{"name":"Onimusha Warlords","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/761600/header.jpg"},{"name":"Onimusha 2 Samurais Destiny","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3046600/header.jpg"},{"name":"FEAR","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/21090/header.jpg"},{"name":"FEAR 2 Project Origin","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/16450/header.jpg"},{"name":"FEAR 3","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/21100/header.jpg"},{"name":"Dead Space 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/47780/header.jpg"},{"name":"ENSLAVED Odyssey To The West Premium Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/245280/header.jpg"},{"name":"Divinity Original Sin  Enhanced Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/373420/header.jpg"},{"name":"Divinity Original Sin 2  Definitive Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/435150/header.jpg"},{"name":"Alice Madness Returns","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/19680/header.jpg"},{"name":"Abiotic Factor","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/427410/header.jpg"},{"name":"ANIMAL WELL","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/813230/header.jpg"},{"name":"TUNIC","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/553420/header.jpg"},{"name":"The Binding Of Isaac Rebirth","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/250900/header.jpg"},{"name":"HELLDIVERS 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/553850/header.jpg"},{"name":"Blue Prince","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1569580/header.jpg"},{"name":"Vampire Survivors","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1794680/header.jpg"},{"name":"Slay The Spire 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2868840/header.jpg"},{"name":"Slay The Spire","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/646570/header.jpg"},{"name":"DEATHLOOP","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1252330/header.jpg"},{"name":"Dying Light 2 Stay Human Reloaded Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/534380/header.jpg"},{"name":"Balatro","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2379780/header.jpg"},{"name":"Buckshot Roulette","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2835570/header.jpg"},{"name":"Prey","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/480490/header.jpg"},{"name":"Kenshi","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/233860/header.jpg"},{"name":"FTL Faster Than Light","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/212680/header.jpg"},{"name":"METAL GEAR SOLID  Master Collection Version","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2131630/header.jpg"},{"name":"METAL GEAR SOLID D SNAKE EATER","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2417610/header.jpg"},{"name":"Orcs Must Die 3","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1522820/header.jpg"},{"name":"Orcs Must Die","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/102600/header.jpg"},{"name":"Orcs Must Die 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/201790/header.jpg"},{"name":"SIGNALIS","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1262350/header.jpg"},{"name":"Undertale","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/391540/header.jpg"},{"name":"DELTARUNE","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1671210/header.jpg"},{"name":"Call Of Juarez Gunslinger","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/204450/header.jpg"},{"name":"Broforce","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/274190/header.jpg"},{"name":"Prince Of Persia Warrior Within","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/13500/header.jpg"},{"name":"Prince Of Persia The Two Thrones","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/13530/header.jpg"},{"name":"Prince Of Persia The Sands Of Time","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/13600/header.jpg"},{"name":"Prince Of Persia","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/19980/header.jpg"},{"name":"Prince Of Persia The Lost Crown","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2751000/header.jpg"},{"name":"The Rogue Prince Of Persia","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2717880/header.jpg"},{"name":"Prince Of Persia The Forgotten Sands","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/33320/header.jpg"},{"name":"Rise Of The Tomb Raider","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/391220/header.jpg"},{"name":"Shadow Of The Tomb Raider Definitive Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/750920/header.jpg"},{"name":"Tomb Raider Game Of The Year","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/203160/header.jpg"},{"name":"Tomb Raider IIII Remastered Starring Lara Croft","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2478970/header.jpg"},{"name":"Tomb Raider IVVI Remastered","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2525380/header.jpg"},{"name":"Gothic 1 Remake","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1297900/header.jpg"},{"name":"STAR WARS™: Bounty Hunter™","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2419090/header.jpg"},{"name":"Legacy of Kain™ Soul Reaver 1&2 Remastered","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2521380/header.jpg"},{"name":"FINAL FANTASY IX","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/377840/header.jpg"},{"name":"FINAL FANTASY XX2 HD Remaster","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/359870/header.jpg"},{"name":"FINAL FANTASY XII THE ZODIAC AGE","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/595520/header.jpg"},{"name":"LIGHTNING RETURNS FINAL FANTASY XIII","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/345350/header.jpg"},{"name":"South Park The Stick Of Truth","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/213670/header.jpg"},{"name":"SOUTH PARK SNOW DAY","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1214650/header.jpg"},{"name":"South Park The Fractured But Whole","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/488790/header.jpg"},{"name":"Cult Of The Lamb","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1313140/header.jpg"},{"name":"The Callisto Protocol","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1544020/header.jpg"},{"name":"Disco Elysium  The Final Cut","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/632470/header.jpg"},{"name":"ZERO PARADES: For Dead Spies","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2863680/55688bad6bad01f23f02e25f1b8cca90f9ea7ae9/header_alt_assets_1.jpg?t=1782118741"},{"name":"Superliminal","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1049410/header.jpg"},{"name":"Punch Club","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/394310/header.jpg"},{"name":"Punch Club 2 Fast Forward","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1161590/header.jpg"},{"name":"Sol Cesto","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2738490/header.jpg"},{"name":"Ghostrunner","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1139900/header.jpg"},{"name":"Ghostrunner 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2144740/header.jpg"},{"name":"CONTROL Ultimate Edition","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/870780/header.jpg"},{"name":"Watch Dogs 2","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/447040/header.jpg"},{"name":"Hotline Miami","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/219150/header.jpg"},{"name":"Ghostwire Tokyo","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1475810/header.jpg"},{"name":"Watch Dogs","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/243470/header.jpg"},{"name":"Watch Dogs Legion","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2239550/header.jpg"},{"name":"Hotline Miami 2 Wrong Number","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/274170/header.jpg"},{"name":"A Short Hike","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1055540/header.jpg"},{"name":"A Little To The Left","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1629520/header.jpg"},{"name":"Unpacking","src":"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1135690/header.jpg"}];
+
+const TIERS = ['S','A','B','C','D','E','F','N'];
+const SCALE = ['S','A','B','C','D','E','F']; // ordre pour la moyenne (N est hors échelle)
+const TIER_LABELS = {S:'LÉGENDAIRE',A:'INCROYABLE',B:'TRÈS BIEN',C:'BIEN',D:'MOYEN',E:'DÉCEVANT',F:'MAUVAIS',N:"JAMAIS JOUÉ"};
+const RATE_OPTIONS = ['S','A','B','C','D','E','F','N'];
+const LS_KEY = 'tierlist_369_sniikks_v1';
+
+let allGames = {};      // id -> {name, src}
+let ratings  = {};      // id -> {g369:null|letter, sniikks:null|letter}
+let customGames = {};   // id -> {name, src}  (jeux ajoutés à la main ou importés)
+let overrides = {};     // id (des jeux de base) -> {name?, src?} édités
+let nextCustomId = 1;
+let editingId = null;
+let customImgData = null, resolvedSrc = '';
+let pendingDeleteId = null;
+
+// ── UTILS ─────────────────────────────────────────
+function escapeHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmt(s) { return s.replace(/\b\w/g, c => c.toUpperCase()); }
+
+function computeTier(r) {
+  if (!r || !r.g369 || !r.sniikks) return null; // en attente d'au moins un des deux avis
+  if (r.g369 === 'N' && r.sniikks === 'N') return 'N';
+  if (r.g369 === 'N') return r.sniikks;   // un des deux n'a jamais joué -> on garde l'avis de l'autre
+  if (r.sniikks === 'N') return r.g369;
+  const i1 = SCALE.indexOf(r.g369), i2 = SCALE.indexOf(r.sniikks);
+  return SCALE[Math.round((i1 + i2) / 2)];
+}
+
+// ── INIT ─────────────────────────────────────────
+function init() {
+  BASE_GAMES.forEach((g, i) => { allGames['base_'+i] = { name: g.name, src: g.src }; });
+  loadFromStorage();
+  buildTierRows();
+  renderAll();
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (s.custom) { customGames = s.custom; Object.entries(s.custom).forEach(([id,g]) => allGames[id] = g); }
+    if (s.overrides) {
+      overrides = s.overrides;
+      Object.entries(s.overrides).forEach(([id, ov]) => {
+        if (allGames[id]) allGames[id] = { ...allGames[id], ...ov };
+      });
+    }
+    if (s.ratings) ratings = s.ratings;
+    if (s.nextCustomId) nextCustomId = s.nextCustomId;
+  } catch(e) { console.warn('Erreur localStorage:', e); }
+}
+
+function saveToStorage() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({ ratings, custom: customGames, overrides, nextCustomId }));
+  } catch(e) { showToast('⚠ Sauvegarde impossible (stockage plein)'); }
+}
+
+// ── DOM : TIER ROWS ───────────────────────────────
+function buildTierRows() {
+  const sec = document.getElementById('tierSection');
+  sec.innerHTML = '';
+  TIERS.forEach(tier => {
+    const row = document.createElement('div');
+    row.className = 'tier-row'; row.dataset.tier = tier;
+    row.innerHTML = `
+      <div class="tier-label">
+        <span class="tier-letter">${tier}</span>
+        <span class="tier-desc">${TIER_LABELS[tier]}</span>
+        <span class="tier-count" id="tier-count-${tier}">0</span>
+      </div>
+      <div class="tier-content" id="tier-${tier}"></div>`;
+    sec.appendChild(row);
+  });
+}
+
+// ── RENDER ────────────────────────────────────────
+function renderAll() {
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  const groups = {}; TIERS.forEach(t => groups[t] = []);
+  const pending = [];
+
+  Object.keys(allGames).forEach(id => {
+    const g = allGames[id]; if (!g) return;
+    if (q && !g.name.toLowerCase().includes(q)) return;
+    const r = ratings[id] || { g369:null, sniikks:null };
+    const tier = computeTier(r);
+    if (tier) groups[tier].push(id); else pending.push(id);
+  });
+
+  const byName = (a,b) => allGames[a].name.localeCompare(allGames[b].name, 'fr', {sensitivity:'base'});
+  pending.sort(byName);
+  TIERS.forEach(t => groups[t].sort(byName));
+
+  TIERS.forEach(t => renderTierContent(t, groups[t]));
+  renderPending(pending);
+}
+
+function renderTierContent(tier, ids) {
+  const cont = document.getElementById('tier-' + tier);
+  const countEl = document.getElementById('tier-count-' + tier);
+  cont.innerHTML = '';
+  countEl.textContent = ids.length;
+  if (!ids.length) { cont.innerHTML = '<div class="tier-empty">—</div>'; return; }
+  ids.forEach(id => cont.appendChild(makeCard(id)));
+}
+
+function renderPending(ids) {
+  const grid = document.getElementById('pendingGrid');
+  document.getElementById('pendingCount').textContent = ids.length;
+  grid.innerHTML = '';
+  if (!ids.length) { grid.innerHTML = '<div class="pending-empty">Aucun jeu en attente</div>'; return; }
+  ids.forEach(id => grid.appendChild(makeCard(id)));
+}
+
+function rateFieldHtml(ev, label, val) {
+  return `
+    <div class="rate-field">
+      <span class="rate-tag rate-${ev}">${label}</span>
+      <div class="select-wrap">
+        <select data-ev="${ev}">
+          <option value="" ${!val ? 'selected' : ''}>—</option>
+          ${RATE_OPTIONS.map(o => `<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('')}
+        </select>
+        <span class="select-arrow"></span>
+      </div>
+    </div>`;
+}
+
+function makeCard(id) {
+  const g = allGames[id];
+  const r = ratings[id] || { g369:null, sniikks:null };
+  const div = document.createElement('div');
+  div.className = 'game-card'; div.dataset.id = id;
+  div.innerHTML = `
+    <button class="card-del" title="Supprimer">✕</button>
+    <img src="${g.src}" alt="${escapeHtml(g.name)}" loading="lazy" onerror="this.style.background='#222'">
+    <div class="card-name" title="Double-clic pour modifier">${escapeHtml(g.name)}</div>
+    <div class="card-ratings">
+      ${rateFieldHtml('g369', '369', r.g369)}
+      ${rateFieldHtml('sniikks', 'Snk', r.sniikks)}
+    </div>`;
+  div.querySelector('.card-del').addEventListener('click', e => { e.stopPropagation(); openDeleteConfirm(id); });
+  div.querySelector('.card-name').addEventListener('dblclick', () => openEditModal(id));
+  div.querySelectorAll('select').forEach(sel => {
+    sel.addEventListener('change', () => onRateChange(id, sel.dataset.ev, sel.value));
+  });
+  return div;
+}
+
+function onRateChange(id, ev, val) {
+  if (!ratings[id]) ratings[id] = { g369:null, sniikks:null };
+  ratings[id][ev] = val || null;
+  saveToStorage();
+  renderAll();
+}
+
+function filterGames() { renderAll(); }
+
+// ── SUPPRESSION ───────────────────────────────────
+function openDeleteConfirm(id) {
+  pendingDeleteId = id;
+  document.getElementById('deleteGameName').textContent = allGames[id]?.name || '';
+  document.getElementById('deleteOverlay').classList.add('open');
+}
+function confirmDeleteGame() {
+  if (!pendingDeleteId) return;
+  const name = allGames[pendingDeleteId]?.name || '';
+  delete allGames[pendingDeleteId]; delete ratings[pendingDeleteId];
+  delete customGames[pendingDeleteId]; delete overrides[pendingDeleteId];
+  pendingDeleteId = null;
+  document.getElementById('deleteOverlay').classList.remove('open');
+  saveToStorage(); renderAll(); showToast(`"${name}" supprimé ✓`);
+}
+
+// ── RÉINITIALISER LES AVIS ────────────────────────
+function confirmResetRatings() {
+  ratings = {};
+  document.getElementById('resetOverlay').classList.remove('open');
+  saveToStorage(); renderAll(); showToast('Tous les avis ont été réinitialisés ✓');
+}
+
+// ── AJOUT / ÉDITION ───────────────────────────────
+function resetModal() {
+  document.getElementById('newGameName').value = '';
+  document.getElementById('newGameUrl').value = '';
+  document.getElementById('newGameFile').value = '';
+  document.getElementById('modalPreview').style.display = 'none';
+  document.getElementById('urlHint').style.display = 'block';
+  document.getElementById('urlDetect').style.display = 'none';
+  customImgData = null; resolvedSrc = '';
+}
+function openAddModal() {
+  editingId = null; resetModal();
+  document.getElementById('modalTitle').textContent = 'Ajouter un jeu';
+  document.getElementById('modalConfirmBtn').textContent = 'Ajouter';
+  document.getElementById('addOverlay').classList.add('open');
+  document.getElementById('newGameName').focus();
+}
+function openEditModal(id) {
+  const g = allGames[id]; if (!g) return;
+  editingId = id; resetModal();
+  document.getElementById('modalTitle').textContent = 'Modifier le jeu';
+  document.getElementById('modalConfirmBtn').textContent = 'Enregistrer';
+  document.getElementById('newGameName').value = g.name;
+  if (!g.src.startsWith('data:')) { document.getElementById('newGameUrl').value = g.src; resolvedSrc = g.src; }
+  const prev = document.getElementById('modalPreview');
+  prev.src = g.src; prev.style.display = 'block';
+  document.getElementById('urlHint').style.display = 'none';
+  document.getElementById('addOverlay').classList.add('open');
+  document.getElementById('newGameName').focus();
+}
+function closeAddModal() { document.getElementById('addOverlay').classList.remove('open'); editingId = null; }
+function confirmModal() { editingId ? saveEdit() : addCustomGame(); }
+
+function getFinalSrc(fallback) {
+  return customImgData || resolvedSrc || fallback ||
+    'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#161619"/><text x="40" y="48" font-size="32" text-anchor="middle" fill="#e8b84b">🎮</text></svg>');
+}
+
+function saveEdit() {
+  const name = document.getElementById('newGameName').value.trim();
+  if (!name) { alert('Entrez un nom.'); return; }
+  const src = getFinalSrc(allGames[editingId]?.src);
+  allGames[editingId] = { name, src };
+  if (customGames[editingId]) customGames[editingId] = { name, src };
+  else overrides[editingId] = { name, src }; // jeu de base édité -> on mémorise la modif
+  saveToStorage(); closeAddModal(); renderAll(); showToast(`"${name}" mis à jour ✓`);
+}
+
+function addCustomGame() {
+  const name = document.getElementById('newGameName').value.trim();
+  if (!name) { alert('Entrez un nom de jeu.'); return; }
+  const nameLower = name.toLowerCase();
+  const dup = Object.values(allGames).find(g => g.name.toLowerCase() === nameLower);
+  if (dup) { alert(`⚠ "${dup.name}" est déjà dans la liste.`); return; }
+
+  const src = getFinalSrc('');
+  const id = 'custom_' + (nextCustomId++);
+  const game = { name, src };
+  customGames[id] = game; allGames[id] = game; ratings[id] = { g369:null, sniikks:null };
+  saveToStorage(); closeAddModal(); renderAll(); showToast(`"${name}" ajouté, en attente d'avis ✓`);
+}
+
+// ── STEAM (détection auto du visuel) ──────────────
+function extractSteamAppId(url) {
+  const m = url.match(/store\.steampowered\.com(?:\/agecheck)?\/app\/(\d+)/i);
+  return m ? m[1] : null;
+}
+function buildSteamUrl(appId) { return `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`; }
+
+let urlTimer = null;
+function onUrlInput() {
+  clearTimeout(urlTimer);
+  const url = document.getElementById('newGameUrl').value.trim();
+  const hint = document.getElementById('urlHint'), detect = document.getElementById('urlDetect'), prev = document.getElementById('modalPreview');
+  customImgData = null; resolvedSrc = '';
+  if (!url) { hint.style.display='block'; detect.style.display='none'; prev.style.display='none'; return; }
+  urlTimer = setTimeout(() => {
+    const appId = extractSteamAppId(url);
+    if (appId) {
+      const imgUrl = buildSteamUrl(appId);
+      resolvedSrc = imgUrl; prev.src = imgUrl; prev.style.display = 'block';
+      prev.onload = () => { hint.style.display='none'; detect.textContent='✅ Image Steam détectée !'; detect.style.display='block'; };
+      prev.onerror = () => {
+        const fb = `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`;
+        resolvedSrc = fb; prev.src = fb;
+        prev.onload = () => { hint.style.display='none'; detect.textContent='✅ Image Steam détectée !'; detect.style.display='block'; };
+        prev.onerror = () => { detect.textContent="⚠ Image non trouvée — colle l'URL directe de l'image"; detect.style.display='block'; hint.style.display='none'; };
+      };
+      const nameField = document.getElementById('newGameName');
+      if (!nameField.value) {
+        const parts = url.split('/').filter(Boolean);
+        let slug = parts[parts.length-1];
+        if (slug && isNaN(slug)) {
+          try { slug = decodeURIComponent(slug); } catch(e) {}
+          nameField.value = slug.replace(/_/g,' ').replace(/(?:^|\s)\S/g, c => c.toUpperCase());
+        }
+      }
+    } else {
+      resolvedSrc = url; prev.src = url; prev.style.display = 'block';
+      hint.style.display = 'none'; detect.style.display = 'none';
+    }
+  }, 350);
+}
+function loadFilePreview(input) {
+  const file = input.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    customImgData = e.target.result; resolvedSrc = '';
+    const prev = document.getElementById('modalPreview');
+    prev.src = customImgData; prev.style.display = 'block';
+    document.getElementById('newGameUrl').value = '';
+    document.getElementById('urlHint').style.display = 'none';
+    document.getElementById('urlDetect').style.display = 'none';
+  };
+  r.readAsDataURL(file);
+}
+
+// ── EXPORT / IMPORT ───────────────────────────────
+function saveToJSON() {
+  const state = { ratings, custom: customGames, overrides, nextCustomId };
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], {type:'application/json'}));
+  a.download = 'tierlistjeux.json'; a.click();
+  showToast('Export JSON téléchargé ✓');
+}
+
+function importJSON(input) {
+  const file = input.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      let text = e.target.result.trim();
+      if (!text.startsWith('[') && !text.startsWith('{')) text = '[' + text + ']';
+      text = text.replace(/,\s*\]/g, ']');
+      const s = JSON.parse(text);
+
+      // Format liste brute de jeux : [{name, src}, ...] -> ajoute uniquement les nouveaux, sans jamais toucher à l'existant
+      if (Array.isArray(s)) {
+        let added = 0;
+        s.forEach(g => {
+          if (!g.name || !g.src) return;
+          const nameLower = g.name.toLowerCase();
+          const exists = Object.values(allGames).some(x => x.name.toLowerCase() === nameLower);
+          if (exists) return;
+          const id = 'custom_' + (nextCustomId++);
+          const game = { name: fmt(g.name), src: g.src };
+          customGames[id] = game; allGames[id] = game; ratings[id] = { g369:null, sniikks:null };
+          added++;
+        });
+        saveToStorage(); renderAll();
+        showToast(`${added} nouveau(x) jeu(x) ajouté(s), en attente d'avis ✓`);
+        return;
+      }
+
+      // Format sauvegarde complète : {ratings, custom, overrides}
+      if (s.custom) Object.entries(s.custom).forEach(([id,g]) => {
+        if (!allGames[id]) { customGames[id]=g; allGames[id]=g; }
+      });
+      if (s.overrides) Object.entries(s.overrides).forEach(([id,ov]) => {
+        overrides[id] = ov;
+        if (allGames[id]) allGames[id] = { ...allGames[id], ...ov };
+      });
+      if (s.ratings) Object.entries(s.ratings).forEach(([id,r]) => { if (allGames[id]) ratings[id] = r; });
+      saveToStorage(); renderAll(); showToast('Import réussi ✓');
+    } catch(err) { alert('Erreur import : ' + err.message); }
+  };
+  r.readAsText(file); input.value = '';
+}
+
+// ── TOAST ─────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  clearTimeout(toastTimer);
+  t.textContent = msg; t.classList.add('show');
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+// ── EVENTS ────────────────────────────────────────
+document.getElementById('searchInput').addEventListener('input', filterGames);
+document.getElementById('addBtn').addEventListener('click', openAddModal);
+document.getElementById('modalCancelBtn').addEventListener('click', closeAddModal);
+document.getElementById('modalConfirmBtn').addEventListener('click', confirmModal);
+document.getElementById('newGameUrl').addEventListener('input', onUrlInput);
+document.getElementById('newGameFile').addEventListener('change', () => loadFilePreview(document.getElementById('newGameFile')));
+document.getElementById('exportBtn').addEventListener('click', saveToJSON);
+document.getElementById('importInput').addEventListener('change', () => importJSON(document.getElementById('importInput')));
+document.getElementById('resetRatingsBtn').addEventListener('click', () => document.getElementById('resetOverlay').classList.add('open'));
+document.getElementById('resetCancelBtn').addEventListener('click', () => document.getElementById('resetOverlay').classList.remove('open'));
+document.getElementById('resetConfirmBtn').addEventListener('click', confirmResetRatings);
+document.getElementById('deleteCancelBtn').addEventListener('click', () => { pendingDeleteId=null; document.getElementById('deleteOverlay').classList.remove('open'); });
+document.getElementById('deleteConfirmBtn').addEventListener('click', confirmDeleteGame);
+
+init();
+</script>
+</body>
+</html>
