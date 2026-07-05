@@ -50,7 +50,7 @@
   .text-action-btn:hover { color:var(--text); background:var(--bg3); border-color:var(--gold-dim); }
 
   /* ══════════════ TOOLBAR ══════════════ */
-  .sticky-header { position:sticky; top:65px; z-index:50; background:rgba(10,10,12,.88); backdrop-filter:blur(16px) saturate(140%); -webkit-backdrop-filter:blur(16px) saturate(140%); border-bottom:1px solid var(--border-soft); }
+  .sticky-header { position:sticky; top:var(--header-h, 65px); z-index:50; background:rgba(10,10,12,.88); backdrop-filter:blur(16px) saturate(140%); -webkit-backdrop-filter:blur(16px) saturate(140%); border-bottom:1px solid var(--border-soft); }
   .toolbar-row { display:flex; align-items:center; gap:14px; max-width:1320px; margin:0 auto; padding:12px 32px; flex-wrap:wrap; padding-left:max(32px, env(safe-area-inset-left)); padding-right:max(32px, env(safe-area-inset-right)); }
   .search-wrap { position:relative; flex-shrink:0; }
   .search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-faint); font-size:13px; pointer-events:none; }
@@ -184,7 +184,6 @@
     .header-io { position:static; transform:none; }
     .brand h1 { font-size:15px; }
     .page-header { flex-wrap:wrap; gap:8px; justify-content:space-between; }
-    .sticky-header { top:0; }
     .toolbar-row { padding:10px 16px; gap:10px; }
     .search-wrap, .search-box { width:100%; }
     .evaluators-legend { order:3; width:100%; }
@@ -734,6 +733,19 @@ document.getElementById('infoEditBtn').addEventListener('click', () => { const i
 document.getElementById('infoDeleteBtn').addEventListener('click', () => { const id = infoModalId; closeInfoModal(); openDeleteConfirm(id); });
 
 init();
+
+// ── HAUTEUR D'EN-TÊTE DYNAMIQUE ───────────────────
+// L'en-tête peut passer sur 2 lignes sur mobile/tablette : on mesure sa vraie
+// hauteur pour que la barre de recherche se colle juste en dessous, sans jamais
+// la chevaucher, quelle que soit la taille d'écran.
+function syncHeaderHeight() {
+  const header = document.querySelector('.app-header');
+  if (!header) return;
+  document.documentElement.style.setProperty('--header-h', header.offsetHeight + 'px');
+}
+syncHeaderHeight();
+window.addEventListener('resize', syncHeaderHeight);
+window.addEventListener('orientationchange', () => setTimeout(syncHeaderHeight, 200));
 </script>
 </body>
 </html>
