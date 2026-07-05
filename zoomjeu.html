@@ -207,11 +207,6 @@
   }
   .suggestion-item.top-match .sugg-year { color:#6b5d47; }
   .suggestion-item.top-match:hover { background:#e7d9c2; color:#221a10; }
-  .suggestion-item.top-match .sugg-badge {
-    font-family:'Sora',sans-serif; font-size:.72rem; font-weight:700; letter-spacing:.03em;
-    color:#f1e9dc; background:#2a2118; border-radius:7px; padding:5px 12px; flex-shrink:0;
-  }
-  .suggestion-item.top-match .sugg-badge:hover { background:#3a2f22; }
 
   .result-box {
     padding:1rem; border-radius:12px;
@@ -518,6 +513,7 @@
   let realtimeChannel = null;
   let suggestTimer = null;
   let suggestRequestId = 0;
+  let suggestAbortController = null;
   let currentSuggestions = [];
   let pendingFlash = null; // 'good' | 'bad' | 'close' | 'skip' — déclenché uniquement par une action locale
   let lastZoomFactor = null; // dernier zoom affiché, pour animer un vrai dézoom entre deux essais
@@ -797,18 +793,30 @@
   function onInputChange(e) {
     const q = e.target.value.trim();
     clearTimeout(suggestTimer);
-    if (q.length < 2) { hideSuggestions(); suggestRequestId++; return; }
-    suggestTimer = setTimeout(() => fetchSuggestions(q), 30);
+    if (q.length < 2) {
+      hideSuggestions();
+      suggestRequestId++;
+      if (suggestAbortController) { suggestAbortController.abort(); suggestAbortController = null; }
+      return;
+    }
+    suggestTimer = setTimeout(() => fetchSuggestions(q), 120);
   }
   async function fetchSuggestions(q) {
+    // On annule la requête précédente si elle n'a pas encore répondu : sans ça, une réponse lente
+    // sur une frappe antérieure peut rester en file (limite de connexions du navigateur) et retarder
+    // la requête la plus récente — c'est ce qui donnait cette impression de blocage aléatoire.
+    if (suggestAbortController) suggestAbortController.abort();
+    const controller = new AbortController();
+    suggestAbortController = controller;
     const reqId = ++suggestRequestId;
     try {
-      const res = await fetch('/api/search-games?q=' + encodeURIComponent(q));
+      const res = await fetch('/api/search-games?q=' + encodeURIComponent(q), { signal: controller.signal });
       const data = await res.json();
       if (reqId !== suggestRequestId) return; // une saisie plus récente a déjà pris le relais
       currentSuggestions = data.suggestions || [];
       renderSuggestions();
     } catch (e) {
+      if (e.name === 'AbortError') return; // requête annulée volontairement, une plus récente prend le relais
       if (reqId === suggestRequestId) hideSuggestions();
     }
   }
@@ -819,7 +827,6 @@
     box.innerHTML = currentSuggestions.map((s, i) => `
       <div class="suggestion-item${i === 0 ? ' top-match' : ''}">
         <span>${escapeHtml(s.name)}${s.year ? ` <span class="sugg-year">(${s.year})</span>` : ''}</span>
-        ${i === 0 ? '<span class="sugg-badge">↵</span>' : ''}
       </div>
     `).join('');
     box.style.display = 'block';
