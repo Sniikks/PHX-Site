@@ -1035,6 +1035,11 @@ function confirmModal(){
   const platform=document.getElementById('inputPlatform').value||'Steam';
   const support=document.getElementById('inputSupport').value||null;
   if(!title){alert('Le nom est requis.');return;}
+  const dup=games.find(g=>g.id!==editingId&&(
+    (g.title||'').trim().toUpperCase()===title||
+    (steamId&&g.steamId&&g.steamId.trim()===steamId.trim())
+  ));
+  if(dup){alert(`Doublon détecté : "${dup.title}" est déjà dans la liste (même titre ou même lien/image).`);return;}
   const isEdit=!!editingId;const name=title;
   if(editingId){const g=games.find(g=>g.id===editingId);if(g){g.title=title;g.status=status;g.note=note;g.dateFin=dateFin;g.steamId=steamId;g.platform=platform;g.support=support||null;}}
   else{games.push({id:genId(),title,status,note,dateFin,steamId,notePerso:null,platform,support:support||null,addedAt:Date.now()});}

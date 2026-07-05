@@ -806,11 +806,13 @@ function openModal(game){
 function closeModal(){ document.getElementById('overlay').classList.remove('open'); editingId=null; }
 function saveGame(){
   const name=document.getElementById('f-name').value.trim(); if(!name){document.getElementById('f-name').focus();return;}
-  const dup=games.find(x=>x.id!==editingId && x.name.trim().toLowerCase()===name.toLowerCase());
-  if(dup){ alert(`"${name}" existe déjà dans la liste.`); document.getElementById('f-name').focus(); return; }
-  const sv=parseFloat(slider.value);
-  // Priorité : resolvedImgSrc (détecté depuis URL) ou valeur brute du champ
   const imgVal=resolvedImgSrc||document.getElementById('f-img').value.trim();
+  const dup=games.find(x=>x.id!==editingId && (
+    x.name.trim().toLowerCase()===name.toLowerCase() ||
+    (imgVal && x.img && x.img.trim()===imgVal.trim())
+  ));
+  if(dup){ alert(`Doublon détecté : "${dup.name}" est déjà dans la liste (même nom ou même lien/image).`); document.getElementById('f-name').focus(); return; }
+  const sv=parseFloat(slider.value);
   const g={
     id:editingId||uid(), name,
     annee:parseInt(document.getElementById('f-annee').value)||null,
