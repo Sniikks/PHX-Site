@@ -781,6 +781,54 @@ function renderTab2(){
 async function loadTab1(){const d=await sbGet('jeux_a_faire');if(Array.isArray(d)){_g1=d;renderTab1();}}
 async function loadTab2(){const d=await sbGet('proposition');if(Array.isArray(d)){_g2=d;renderTab2();}}
 
+// ── SYNC VERS LES LISTES PERSO (369 & Sniikks) ────────────────────────────────
+// 369_liste_de_jeux.html et Sniikks_liste_de_jeux.html stockent toute leur liste
+// comme un seul blob JSON dans la table "app_data" (clé backlog_cards_v1 / backlog_jeux_v4).
+// Cette fonction y ajoute automatiquement le jeu, sans toucher aux 2 fichiers HTML.
+function genPersonalId(){return Math.random().toString(36).substr(2,8);}
+
+async function sbGetAppData(key){
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/app_data?id=eq.${encodeURIComponent(key)}&select=data`,{headers:H});
+    const rows=await r.json();
+    return(Array.isArray(rows)&&rows[0]&&Array.isArray(rows[0].data))?rows[0].data:[];
+  }catch(e){return[];}
+}
+async function sbUpsertAppData(key,dataArr){
+  try{
+    await fetch(`${SUPA_URL}/rest/v1/app_data?on_conflict=id`,{
+      method:'POST',
+      headers:{...H,'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({id:key,data:dataArr,updated_at:new Date().toISOString()})
+    });
+  }catch(e){}
+}
+
+async function syncNewGameToPersonalLists(jeu,lien){
+  const name=(jeu||'').trim();
+  if(!name)return;
+
+  // 369 — clé backlog_cards_v1, schéma {title, status, steamId, ...}
+  try{
+    const list369=await sbGetAppData('backlog_cards_v1');
+    const already369=list369.some(g=>(g.title||'').trim().toUpperCase()===name.toUpperCase());
+    if(!already369){
+      list369.push({id:genPersonalId(),title:name.toUpperCase(),status:'A faire',note:null,dateFin:null,steamId:lien||null,notePerso:null,platform:'PC',support:null,addedAt:Date.now()});
+      await sbUpsertAppData('backlog_cards_v1',list369);
+    }
+  }catch(e){}
+
+  // Sniikks — clé backlog_jeux_v4, schéma {name, status, img, ...}
+  try{
+    const listSniikks=await sbGetAppData('backlog_jeux_v4');
+    const alreadySniikks=listSniikks.some(g=>(g.name||'').trim().toLowerCase()===name.toLowerCase());
+    if(!alreadySniikks){
+      listSniikks.push({id:genPersonalId(),name,annee:null,platform:'steam',support:'',status:'afaire',note:null,img:lien||'',noteperso:''});
+      await sbUpsertAppData('backlog_jeux_v4',listSniikks);
+    }
+  }catch(e){}
+}
+
 // ── AUTO TRANSFER ─────────────────────────────────────────────────────────────
 async function checkAndTransfer(obj,id){
   if(obj.v369!=='Oui'||obj.sniikks!=='Oui')return false;
@@ -793,6 +841,7 @@ async function checkAndTransfer(obj,id){
     if(!res2||res2.code){showToast('⚠️ Erreur lors du transfert');return false;}
   }
   await sbDelete('proposition',id);
+  await syncNewGameToPersonalLists(obj.jeu,obj.lien);
   await Promise.all([loadTab1(),loadTab2()]);
   showToast(`"${obj.jeu}" transféré dans Jeux à faire !`,true);
   return true;
@@ -878,7 +927,7 @@ async function saveGame1(){
   const id=document.getElementById('edit-id1').value;
   const obj={ordre:document.getElementById('f1-ordre').value.trim(),jeu,statut:document.getElementById('f1-statut').value,date_sortie:document.getElementById('f1-date').value,lien:document.getElementById('f1-lien').value.trim(),note:document.getElementById('f1-note-perso').value.trim()};
   closeModal(1);
-  if(id)await sbUpdate('jeux_a_faire',id,obj);else await sbInsert('jeux_a_faire',obj);
+  if(id)await sbUpdate('jeux_a_faire',id,obj);else{await sbInsert('jeux_a_faire',obj);await syncNewGameToPersonalLists(obj.jeu,obj.lien);}
   await loadTab1();showToast(id?'Jeu modifié':'Jeu ajouté',!id);
 }
 function editGame1Populate(id){
