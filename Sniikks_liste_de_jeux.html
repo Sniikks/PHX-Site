@@ -87,9 +87,16 @@
   .add-btn-main:hover { background:#f0c563; transform:translateY(-1px); }
 
   .stats-years { display:flex; align-items:center; justify-content:center; gap:18px; flex-wrap:wrap; min-width:0; }
-  .year-filters { display:flex; align-items:center; gap:4px; flex-wrap:wrap; min-width:0; }
+  .year-filters {
+    display:flex; align-items:center; gap:4px; flex-wrap:nowrap; min-width:0;
+    overflow-x:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch;
+    scrollbar-width:thin; scrollbar-color:var(--gold-dim) transparent;
+  }
+  .year-filters::-webkit-scrollbar { height:4px; }
+  .year-filters::-webkit-scrollbar-track { background:transparent; }
+  .year-filters::-webkit-scrollbar-thumb { background:var(--gold-dim); border-radius:4px; }
   .yf-label { display:none; }
-  .year-pill { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:var(--radius); color:var(--text-dim); cursor:pointer; font-size:12px; font-weight:600; border:1px solid transparent; transition:all .15s; background:transparent; font-family:inherit; }
+  .year-pill { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:var(--radius); color:var(--text-dim); cursor:pointer; font-size:12px; font-weight:600; border:1px solid transparent; transition:all .15s; background:transparent; font-family:inherit; flex-shrink:0; }
   .year-pill:hover { color:var(--text); background:var(--bg3); transform:none; }
   .year-pill.active { color:var(--gold); background:var(--gold-soft); border-color:var(--gold-ring); }
   .year-pill .yp-count { color:var(--text-faint); font-size:10.5px; }
@@ -175,6 +182,15 @@
   }
   .form-row input:focus, .form-row select:focus, .form-row textarea:focus { border-color:var(--gold-dim); background:var(--bg3); box-shadow:0 0 0 3px var(--violet-soft); }
   .form-row select option { background:var(--bg2); }
+  .select-wrap { position:relative; }
+  .select-wrap select { padding-right:34px; }
+  .select-wrap .select-arrow {
+    position:absolute; right:12px; top:50%; transform:translateY(-50%);
+    font-size:10px; color:var(--text-dim); pointer-events:none; transition:color .15s;
+  }
+  .select-wrap .select-arrow::before { content:'▾'; }
+  .select-wrap:focus-within .select-arrow { color:var(--gold-dim); }
+  .select-wrap:focus-within .select-arrow::before { content:'▴'; }
   .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .note-hint { color:var(--text-faint); font-weight:400; text-transform:none; letter-spacing:0; }
   .note-bar-row { display:flex; align-items:center; gap:14px; margin-top:6px; }
@@ -288,14 +304,14 @@
     .inline-stats { justify-content:center; gap:16px; }
     .top-stat-num { font-size:14px; }
     .top-stat-label { font-size:9px; }
-    .year-filters, .platform-row {
+    .platform-row {
       justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap;
       width:100%; max-width:100%; padding-bottom:6px;
       scrollbar-width:thin; scrollbar-color:var(--gold-dim) transparent;
     }
-    .year-filters::-webkit-scrollbar, .platform-row::-webkit-scrollbar { height:4px; }
-    .year-filters::-webkit-scrollbar-track, .platform-row::-webkit-scrollbar-track { background:transparent; }
-    .year-filters::-webkit-scrollbar-thumb, .platform-row::-webkit-scrollbar-thumb { background:var(--gold-dim); border-radius:4px; }
+    .platform-row::-webkit-scrollbar { height:4px; }
+    .platform-row::-webkit-scrollbar-track { background:transparent; }
+    .platform-row::-webkit-scrollbar-thumb { background:var(--gold-dim); border-radius:4px; }
     .year-pill, .filter-btn { flex-shrink:0; padding:5px 10px; font-size:11px; }
 
     .search-wrap, .search-box { width:100%; }
@@ -411,31 +427,40 @@
       <div class="form-row"><label>ANNÉE</label><input type="number" id="f-annee" placeholder="2025" min="1990" max="2099"></div>
       <div class="form-row">
         <label>PLATEFORME</label>
-        <select id="f-platform">
-          <option value="steam">Steam</option>
-          <option value="gog">GOG</option>
-          <option value="epic">Epic Games</option>
-          <option value="pirate">Pirate 🏴‍☠️</option>
-        </select>
+        <div class="select-wrap">
+          <select id="f-platform">
+            <option value="steam">Steam</option>
+            <option value="gog">GOG</option>
+            <option value="epic">Epic Games</option>
+            <option value="pirate">Pirate 🏴‍☠️</option>
+          </select>
+          <span class="select-arrow"></span>
+        </div>
       </div>
       <div class="form-row">
         <label>SUPPORT</label>
-        <select id="f-support">
-          <option value="">—</option>
-          <option value="DLC">DLC</option>
-          <option value="Famille">Famille</option>
-          <option value="Famille DLC">Famille DLC</option>
-        </select>
+        <div class="select-wrap">
+          <select id="f-support">
+            <option value="">—</option>
+            <option value="DLC">DLC</option>
+            <option value="Famille">Famille</option>
+            <option value="Famille DLC">Famille DLC</option>
+          </select>
+          <span class="select-arrow"></span>
+        </div>
       </div>
       <div class="form-row">
         <label>STATUT</label>
-        <select id="f-status">
-          <option value="afaire">À faire</option>
-          <option value="encours">En cours</option>
-          <option value="fini">Terminé</option>
-          <option value="attente">En attente / Bug</option>
-          <option value="abandonne">Abandonné</option>
-        </select>
+        <div class="select-wrap">
+          <select id="f-status">
+            <option value="afaire">À faire</option>
+            <option value="encours">En cours</option>
+            <option value="fini">Terminé</option>
+            <option value="attente">En attente / Bug</option>
+            <option value="abandonne">Abandonné</option>
+          </select>
+          <span class="select-arrow"></span>
+        </div>
       </div>
     </div>
     <div class="form-row" style="margin-top:.4rem">

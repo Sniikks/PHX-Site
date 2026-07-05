@@ -8,4 +8,3 @@
 - `config.js` — les clés 
 - `db.js` — petit module qui lit/écrit le JSON dans Supabase
 - `supabase-schema.sql` — script SQL à exécuter dans Supabase
-- 
