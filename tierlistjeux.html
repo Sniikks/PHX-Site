@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>PHX - Tier List Jeux</title>
 <link rel="shortcut icon" href="https://cdn.discordapp.com/icons/1030553621252821053/2e7356a5d822245ad7953afdb143581a.webp?size=160&quality=lossless">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="db.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap');
 
@@ -365,19 +368,19 @@ function computeTier(r, id) {
 }
 
 // ── INIT ─────────────────────────────────────────
-function init() {
+async function init() {
   BASE_GAMES.forEach((g, i) => { allGames['base_'+i] = { name: g.name, src: g.src }; });
-  loadFromStorage();
   buildTierRows();
   populateInfoSelects();
+  await RemoteStore.init([LS_KEY]);
+  loadFromStorage();
   renderAll();
 }
 
 function loadFromStorage() {
   try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return;
-    const s = JSON.parse(raw);
+    const s = RemoteStore.get(LS_KEY, null);
+    if (!s) return;
     if (s.custom) { customGames = s.custom; Object.entries(s.custom).forEach(([id,g]) => allGames[id] = g); }
     if (s.overrides) {
       overrides = s.overrides;
@@ -387,13 +390,13 @@ function loadFromStorage() {
     }
     if (s.ratings) ratings = s.ratings;
     if (s.nextCustomId) nextCustomId = s.nextCustomId;
-  } catch(e) { console.warn('Erreur localStorage:', e); }
+  } catch(e) { console.warn('Erreur de chargement:', e); }
 }
 
 function saveToStorage() {
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify({ ratings, custom: customGames, overrides, nextCustomId }));
-  } catch(e) { showToast('⚠ Sauvegarde impossible (stockage plein)'); }
+    RemoteStore.set(LS_KEY, { ratings, custom: customGames, overrides, nextCustomId });
+  } catch(e) { showToast('⚠ Sauvegarde impossible'); }
 }
 
 // ── DOM : TIER ROWS ───────────────────────────────
