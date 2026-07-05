@@ -54,9 +54,17 @@
   .toolbar-row { display:flex; align-items:center; gap:14px; max-width:1320px; margin:0 auto; padding:12px 32px; flex-wrap:wrap; padding-left:max(32px, env(safe-area-inset-left)); padding-right:max(32px, env(safe-area-inset-right)); }
   .search-wrap { position:relative; flex-shrink:0; }
   .search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-faint); font-size:13px; pointer-events:none; }
-  .search-box { background:var(--bg2); border:1px solid var(--border); color:var(--text); padding:8px 14px 8px 32px; font-family:'Manrope',sans-serif; font-size:13px; outline:none; border-radius:var(--radius); width:220px; transition:border-color .15s,background .15s,box-shadow .15s; }
+  .search-box { background:var(--bg2); border:1px solid var(--border); color:var(--text); padding:8px 30px 8px 32px; font-family:'Manrope',sans-serif; font-size:13px; outline:none; border-radius:var(--radius); width:220px; transition:border-color .15s,background .15s,box-shadow .15s; }
   .search-box:focus { border-color:var(--gold-dim); background:var(--bg3); box-shadow:0 0 0 3px var(--violet-soft); }
   .search-box::placeholder { color:var(--text-faint); }
+  .search-clear {
+    position:absolute; right:6px; top:50%; transform:translateY(-50%);
+    background:transparent; border:none; color:var(--text-faint);
+    font-size:11px; cursor:pointer; padding:5px 6px; line-height:1;
+    display:none; border-radius:5px; transition:color .15s, background .15s;
+  }
+  .search-clear:hover { color:var(--text); background:var(--bg3); }
+  .search-clear.show { display:block; }
 
   .evaluators-legend { display:flex; align-items:center; gap:8px; flex:1; min-width:0; color:var(--text-faint); font-size:11.5px; flex-wrap:wrap; }
   .ev-chip { display:inline-flex; align-items:center; padding:3px 9px; border-radius:20px; font-family:'Sora',sans-serif; font-size:11px; font-weight:700; letter-spacing:.02em; }
@@ -99,26 +107,10 @@
   .tier-content { flex:1; display:flex; flex-wrap:wrap; gap:8px; padding:10px; align-content:flex-start; min-height:96px; }
 
   /* ══════════════ GAME CARD ══════════════ */
-  .game-card { width:128px; position:relative; background:var(--bg3); border:1px solid var(--border-soft); border-radius:var(--radius); overflow:hidden; transition:border-color .15s, transform .15s; flex-shrink:0; }
-  .game-card:hover { border-color:var(--gold-dim); }
-  .game-card img { width:100%; height:60px; object-fit:cover; display:block; background:var(--bg); }
-  .card-name { font-size:10.5px; font-weight:600; padding:6px 7px 4px; line-height:1.25; color:var(--text); overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; height:30px; cursor:default; }
-  .card-ratings { display:flex; flex-direction:column; gap:4px; padding:0 7px 8px; }
-  .rate-field { display:flex; align-items:center; gap:5px; }
-  .rate-tag { font-size:8.5px; font-weight:700; letter-spacing:.02em; width:38px; flex-shrink:0; text-transform:uppercase; }
-  .rate-tag.rate-g369 { color:#7fa8ee; }
-  .rate-tag.rate-sniikks { color:var(--gold); }
-  .select-wrap { position:relative; flex:1; min-width:0; }
-  .select-wrap select {
-    width:100%; background:var(--bg2); border:1px solid var(--border); color:var(--text);
-    font-family:inherit; font-size:10.5px; font-weight:600; padding:3px 18px 3px 6px;
-    border-radius:6px; outline:none; appearance:none; -webkit-appearance:none; cursor:pointer;
-    transition:border-color .15s;
-  }
-  .select-wrap select:focus { border-color:var(--gold-dim); }
-  .select-wrap .select-arrow { position:absolute; right:6px; top:50%; transform:translateY(-50%); font-size:8px; color:var(--text-faint); pointer-events:none; }
-  .select-wrap .select-arrow::before { content:'▾'; }
-  .select-wrap:focus-within .select-arrow::before { content:'▴'; }
+  .game-card { width:120px; position:relative; background:var(--bg3); border:1px solid var(--border-soft); border-radius:var(--radius); overflow:hidden; transition:border-color .15s, transform .15s; flex-shrink:0; cursor:pointer; }
+  .game-card:hover { border-color:var(--gold-dim); transform:translateY(-2px); }
+  .game-card img { width:100%; height:70px; object-fit:cover; display:block; background:var(--bg); }
+  .card-name { font-size:10.5px; font-weight:600; padding:7px 8px 8px; line-height:1.25; color:var(--text); overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; height:33px; }
   .card-del { position:absolute; top:4px; right:4px; width:18px; height:18px; border-radius:50%; border:none; background:rgba(0,0,0,.55); color:#ff8080; font-size:10px; cursor:pointer; display:none; align-items:center; justify-content:center; line-height:1; z-index:2; }
   .game-card:hover .card-del { display:flex; }
 
@@ -126,6 +118,31 @@
   .overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(2px); display:none; align-items:center; justify-content:center; z-index:200; padding:20px; }
   .overlay.open { display:flex; }
   @keyframes modalIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  /* Fenêtre d'infos / notation d'un jeu */
+  .info-modal { background:var(--bg2); border:1px solid var(--border); width:min(360px,100%); border-radius:var(--radius-lg); box-shadow:0 30px 70px -20px rgba(0,0,0,.7); animation:modalIn .2s ease; overflow:hidden; }
+  .info-modal img { width:100%; height:150px; object-fit:cover; display:block; background:var(--bg); }
+  .info-modal-body { padding:18px 20px 20px; }
+  .info-modal-name { font-family:'Sora',sans-serif; font-size:15px; font-weight:600; color:var(--text); margin-bottom:6px; }
+  .info-tier-badge { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; margin-bottom:16px; }
+  .info-tier-badge.pending { background:rgba(140,140,148,.15); color:var(--text-dim); }
+  .info-rate-field { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .info-rate-tag { font-size:11px; font-weight:700; letter-spacing:.02em; width:60px; flex-shrink:0; }
+  .info-rate-tag.rate-g369 { color:#7fa8ee; }
+  .info-rate-tag.rate-sniikks { color:var(--gold); }
+  .select-wrap { position:relative; flex:1; min-width:0; }
+  .select-wrap select {
+    width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text);
+    font-family:inherit; font-size:12.5px; font-weight:600; padding:8px 26px 8px 10px;
+    border-radius:var(--radius); outline:none; appearance:none; -webkit-appearance:none; cursor:pointer;
+    transition:border-color .15s;
+  }
+  .select-wrap select:focus { border-color:var(--gold-dim); }
+  .select-wrap .select-arrow { position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:10px; color:var(--text-faint); pointer-events:none; }
+  .select-wrap .select-arrow::before { content:'▾'; }
+  .select-wrap:focus-within .select-arrow::before { content:'▴'; }
+  .info-modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
+
   .modal { background:var(--bg2); border:1px solid var(--border); padding:26px 28px; width:min(440px,100%); max-height:90vh; overflow-y:auto; border-radius:var(--radius-lg); box-shadow:0 30px 70px -20px rgba(0,0,0,.7); animation:modalIn .2s ease; }
   .modal h2 { font-family:'Sora',sans-serif; font-size:14px; font-weight:600; color:var(--text); margin-bottom:20px; display:flex; align-items:center; gap:8px; }
   .modal h2::before { content:''; width:4px; height:14px; background:var(--gold); border-radius:2px; }
@@ -199,6 +216,7 @@
     <div class="search-wrap">
       <span class="search-icon">⌕</span>
       <input class="search-box" id="searchInput" placeholder="Rechercher un jeu…">
+      <button type="button" class="search-clear" id="searchClear" title="Effacer">✕</button>
     </div>
     <div class="evaluators-legend">
       <span class="ev-chip ev-369">369</span>
@@ -225,6 +243,39 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="overlay" id="infoOverlay">
+  <div class="info-modal">
+    <img id="infoImg" alt="">
+    <div class="info-modal-body">
+      <div class="info-modal-name" id="infoName"></div>
+      <div class="info-tier-badge" id="infoTierBadge"></div>
+      <div class="info-rate-field">
+        <span class="info-rate-tag rate-g369">369</span>
+        <div class="select-wrap">
+          <select id="infoRateG369" data-ev="g369">
+            <option value="">—</option>
+          </select>
+          <span class="select-arrow"></span>
+        </div>
+      </div>
+      <div class="info-rate-field">
+        <span class="info-rate-tag rate-sniikks">Sniikks</span>
+        <div class="select-wrap">
+          <select id="infoRateSniikks" data-ev="sniikks">
+            <option value="">—</option>
+          </select>
+          <span class="select-arrow"></span>
+        </div>
+      </div>
+      <div class="info-modal-actions">
+        <button class="btn-danger" id="infoDeleteBtn">✕ Supprimer</button>
+        <button class="btn-cancel" id="infoEditBtn">✎ Modifier</button>
+        <button class="btn-primary" id="infoCloseBtn">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="overlay" id="addOverlay">
   <div class="modal">
@@ -309,6 +360,7 @@ function init() {
   BASE_GAMES.forEach((g, i) => { allGames['base_'+i] = { name: g.name, src: g.src }; });
   loadFromStorage();
   buildTierRows();
+  populateInfoSelects();
   renderAll();
 }
 
@@ -392,38 +444,16 @@ function renderPending(ids) {
   ids.forEach(id => grid.appendChild(makeCard(id)));
 }
 
-function rateFieldHtml(ev, label, val) {
-  return `
-    <div class="rate-field">
-      <span class="rate-tag rate-${ev}">${label}</span>
-      <div class="select-wrap">
-        <select data-ev="${ev}">
-          <option value="" ${!val ? 'selected' : ''}>—</option>
-          ${RATE_OPTIONS.map(o => `<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('')}
-        </select>
-        <span class="select-arrow"></span>
-      </div>
-    </div>`;
-}
-
 function makeCard(id) {
   const g = allGames[id];
-  const r = ratings[id] || { g369:null, sniikks:null };
   const div = document.createElement('div');
   div.className = 'game-card'; div.dataset.id = id;
   div.innerHTML = `
     <button class="card-del" title="Supprimer">✕</button>
     <img src="${g.src}" alt="${escapeHtml(g.name)}" loading="lazy" onerror="this.style.background='#222'">
-    <div class="card-name" title="Double-clic pour modifier">${escapeHtml(g.name)}</div>
-    <div class="card-ratings">
-      ${rateFieldHtml('g369', '369', r.g369)}
-      ${rateFieldHtml('sniikks', 'Snk', r.sniikks)}
-    </div>`;
+    <div class="card-name">${escapeHtml(g.name)}</div>`;
   div.querySelector('.card-del').addEventListener('click', e => { e.stopPropagation(); openDeleteConfirm(id); });
-  div.querySelector('.card-name').addEventListener('dblclick', () => openEditModal(id));
-  div.querySelectorAll('select').forEach(sel => {
-    sel.addEventListener('change', () => onRateChange(id, sel.dataset.ev, sel.value));
-  });
+  div.addEventListener('click', () => openInfoModal(id));
   return div;
 }
 
@@ -432,6 +462,44 @@ function onRateChange(id, ev, val) {
   ratings[id][ev] = val || null;
   saveToStorage();
   renderAll();
+}
+
+// ── FENÊTRE D'INFOS / NOTATION ────────────────────
+const TIER_COLORS = { S:'#e8b84b', A:'#e8a04b', B:'#e8cf4b', C:'#5fbf86', D:'#6699e8', E:'#a78bfa', F:'#e2685f', N:'#55555c' };
+let infoModalId = null;
+
+function populateInfoSelects() {
+  const opts = '<option value="">—</option>' + RATE_OPTIONS.map(o => `<option value="${o}">${o}</option>`).join('');
+  document.getElementById('infoRateG369').innerHTML = opts;
+  document.getElementById('infoRateSniikks').innerHTML = opts;
+}
+
+function openInfoModal(id) {
+  const g = allGames[id]; if (!g) return;
+  infoModalId = id;
+  const img = document.getElementById('infoImg');
+  img.src = g.src; img.alt = g.name;
+  document.getElementById('infoName').textContent = g.name;
+  const r = ratings[id] || { g369:null, sniikks:null };
+  document.getElementById('infoRateG369').value = r.g369 || '';
+  document.getElementById('infoRateSniikks').value = r.sniikks || '';
+  updateInfoBadge(r);
+  document.getElementById('infoOverlay').classList.add('open');
+}
+function updateInfoBadge(r) {
+  const badge = document.getElementById('infoTierBadge');
+  const tier = computeTier(r);
+  if (!tier) { badge.className = 'info-tier-badge pending'; badge.textContent = "En attente d'avis"; return; }
+  badge.className = 'info-tier-badge';
+  badge.style.background = TIER_COLORS[tier] + '22';
+  badge.style.color = TIER_COLORS[tier];
+  badge.textContent = tier === 'N' ? 'Jamais joué' : `Rang ${tier} — ${TIER_LABELS[tier]}`;
+}
+function closeInfoModal() { document.getElementById('infoOverlay').classList.remove('open'); infoModalId = null; }
+function onInfoRateChange(ev, val) {
+  if (!infoModalId) return;
+  onRateChange(infoModalId, ev, val);
+  updateInfoBadge(ratings[infoModalId] || { g369:null, sniikks:null });
 }
 
 function filterGames() { renderAll(); }
@@ -638,7 +706,15 @@ function showToast(msg) {
 }
 
 // ── EVENTS ────────────────────────────────────────
-document.getElementById('searchInput').addEventListener('input', filterGames);
+document.getElementById('searchInput').addEventListener('input', e => {
+  document.getElementById('searchClear').classList.toggle('show', !!e.target.value);
+  filterGames();
+});
+document.getElementById('searchClear').addEventListener('click', () => {
+  const input = document.getElementById('searchInput');
+  input.value = ''; document.getElementById('searchClear').classList.remove('show');
+  input.focus(); filterGames();
+});
 document.getElementById('addBtn').addEventListener('click', openAddModal);
 document.getElementById('modalCancelBtn').addEventListener('click', closeAddModal);
 document.getElementById('modalConfirmBtn').addEventListener('click', confirmModal);
@@ -651,6 +727,11 @@ document.getElementById('resetCancelBtn').addEventListener('click', () => docume
 document.getElementById('resetConfirmBtn').addEventListener('click', confirmResetRatings);
 document.getElementById('deleteCancelBtn').addEventListener('click', () => { pendingDeleteId=null; document.getElementById('deleteOverlay').classList.remove('open'); });
 document.getElementById('deleteConfirmBtn').addEventListener('click', confirmDeleteGame);
+document.getElementById('infoRateG369').addEventListener('change', e => onInfoRateChange('g369', e.target.value));
+document.getElementById('infoRateSniikks').addEventListener('change', e => onInfoRateChange('sniikks', e.target.value));
+document.getElementById('infoCloseBtn').addEventListener('click', closeInfoModal);
+document.getElementById('infoEditBtn').addEventListener('click', () => { const id = infoModalId; closeInfoModal(); openEditModal(id); });
+document.getElementById('infoDeleteBtn').addEventListener('click', () => { const id = infoModalId; closeInfoModal(); openDeleteConfirm(id); });
 
 init();
 </script>
