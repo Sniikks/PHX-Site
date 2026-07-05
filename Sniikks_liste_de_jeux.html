@@ -202,6 +202,12 @@
   .confirm-actions { display:flex; gap:10px; margin-top:18px; }
   .confirm-actions .btn-cancel, .confirm-actions .btn-danger, .confirm-actions .btn-primary { flex:1; }
 
+  /* ══════════════ TOAST ══════════════ */
+  #toastContainer { position:fixed; bottom:24px; right:24px; z-index:500; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
+  .toast { background:var(--bg2); border:1px solid var(--gold-ring); color:var(--text); padding:11px 18px; border-radius:var(--radius); font-family:'Manrope',sans-serif; font-size:13px; font-weight:600; box-shadow:0 0 14px rgba(232,184,75,.15), 0 8px 24px rgba(0,0,0,.6); opacity:0; transform:translateY(10px); transition:opacity .25s, transform .25s; }
+  .toast.show { opacity:1; transform:translateY(0); }
+  .toast.green { border-color:rgba(76,175,120,.4); }
+
   .url-hint { font-size:11px; color:var(--text-faint); margin-top:6px; }
   .url-detect { font-size:11px; color:var(--gold); margin-top:6px; display:none; font-weight:600; }
   .img-preview-wrap { margin-top:10px; display:none; }
@@ -491,6 +497,8 @@
     </div>
   </div>
 </div>
+
+<div id="toastContainer"></div>
 
 <script>
 const STORAGE_KEY = 'backlog_jeux_v4';
@@ -856,9 +864,11 @@ function saveGame(){
     img:imgVal,
     noteperso:document.getElementById('f-notepersonne').value.trim(),
   };
+  const isEdit=!!editingId;
   if(editingId){const idx=games.findIndex(x=>x.id===editingId);if(idx!==-1)games[idx]=g;}
   else{games.push(g);}
   save();closeModal();renderGrid();
+  showToast(isEdit?'Jeu modifié':'Jeu ajouté',!isEdit);
 }
 function editGame(id){const g=games.find(x=>x.id===id);if(g)openModal(g);}
 let pendingDeleteId=null;
@@ -869,6 +879,12 @@ function delGame(id){
   document.getElementById('confirmDeleteOverlay').classList.add('open');
 }
 function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function showToast(msg,green=false){
+  const c=document.getElementById('toastContainer');
+  const t=document.createElement('div');t.className='toast'+(green?' green':'');t.textContent=msg;c.appendChild(t);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add('show')));
+  setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300);},2800);
+}
 
 // ── FILTERS ──
 document.querySelectorAll('[data-filter]').forEach(btn=>{btn.addEventListener('click',()=>{document.querySelectorAll('[data-filter]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');filterStatus=btn.dataset.filter;renderGrid();});});
@@ -902,7 +918,12 @@ document.getElementById('saveBtn').addEventListener('click',saveGame);
 document.getElementById('infoClose').addEventListener('click',closeInfo);
 document.getElementById('btnCancelDelete').addEventListener('click',()=>{pendingDeleteId=null;document.getElementById('confirmDeleteOverlay').classList.remove('open');});
 document.getElementById('btnConfirmDelete').addEventListener('click',()=>{
-  if(pendingDeleteId){games=games.filter(x=>x.id!==pendingDeleteId);save();renderGrid();}
+  if(pendingDeleteId){
+    const g=games.find(x=>x.id===pendingDeleteId);
+    games=games.filter(x=>x.id!==pendingDeleteId);
+    save();renderGrid();
+    showToast(`"${g?g.name:'Jeu'}" supprimé`);
+  }
   pendingDeleteId=null;
   document.getElementById('confirmDeleteOverlay').classList.remove('open');
 });
