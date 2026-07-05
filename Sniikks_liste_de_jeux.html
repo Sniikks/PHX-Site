@@ -81,9 +81,16 @@
   .add-btn-main:hover { background:#f0c563; transform:translateY(-1px); }
 
   .stats-years { display:flex; align-items:center; justify-content:center; gap:18px; flex-wrap:wrap; min-width:0; }
-  .year-filters { display:flex; align-items:center; gap:4px; flex-wrap:wrap; min-width:0; }
+  .year-filters {
+    display:flex; align-items:center; gap:4px; flex-wrap:nowrap; min-width:0;
+    overflow-x:auto; padding-bottom:8px; -webkit-overflow-scrolling:touch;
+    scrollbar-width:thin; scrollbar-color:var(--gold-dim) transparent;
+  }
+  .year-filters::-webkit-scrollbar { height:4px; }
+  .year-filters::-webkit-scrollbar-track { background:transparent; }
+  .year-filters::-webkit-scrollbar-thumb { background:var(--gold-dim); border-radius:4px; }
   .yf-label { display:none; }
-  .year-pill { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:var(--radius); color:var(--text-dim); cursor:pointer; font-size:12px; font-weight:600; border:1px solid transparent; transition:all .15s; background:transparent; font-family:inherit; }
+  .year-pill { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:var(--radius); color:var(--text-dim); cursor:pointer; font-size:12px; font-weight:600; border:1px solid transparent; transition:all .15s; background:transparent; font-family:inherit; flex-shrink:0; }
   .year-pill:hover { color:var(--text); background:var(--bg3); transform:none; }
   .year-pill.active { color:var(--gold); background:var(--gold-soft); border-color:var(--gold-ring); }
   .year-pill .yp-count { color:var(--text-faint); font-size:10.5px; }
@@ -287,7 +294,6 @@
     .view-toggle button, .view-btn { width:28px; height:28px; font-size:12px; }
     .add-btn-main { padding:7px 12px; font-size:11.5px; }
 
-    .year-filters { justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap; padding-bottom:8px; }
     .platform-row {
       justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap;
       width:100%; max-width:100%; padding-bottom:6px;
