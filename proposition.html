@@ -466,6 +466,7 @@ function switchTab(id,btn){
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function normName(s){return String(s||'').trim().toLowerCase();}
 function showToast(msg,green=false){
   const c=document.getElementById('toastContainer');
   const t=document.createElement('div');t.className='toast'+(green?' green':'');t.textContent=msg;c.appendChild(t);
@@ -846,18 +847,21 @@ async function syncNewGameToPersonalLists(jeu,lien){
 // ── AUTO TRANSFER ─────────────────────────────────────────────────────────────
 async function checkAndTransfer(obj,id){
   if(obj.v369!=='Oui'||obj.sniikks!=='Oui')return false;
-  // Insert into jeux_a_faire (without note_num to avoid column errors)
-  const newGame={ordre:'',jeu:obj.jeu,statut:'',lien:obj.lien||'',note:obj.note||'',note_num:null,date_sortie:obj.date_sortie||''};
-  const res=await sbInsert('jeux_a_faire',newGame);
-  if(!res||res.code||res.error){
-    // Try without optional fields
-    const res2=await sbInsert('jeux_a_faire',{jeu:obj.jeu,statut:'',lien:obj.lien||''});
-    if(!res2||res2.code){showToast('⚠️ Erreur lors du transfert');return false;}
+  const alreadyInJeuxAFaire=_g1.some(g=>normName(g.jeu)===normName(obj.jeu));
+  if(!alreadyInJeuxAFaire){
+    // Insert into jeux_a_faire (without note_num to avoid column errors)
+    const newGame={ordre:'',jeu:obj.jeu,statut:'',lien:obj.lien||'',note:obj.note||'',note_num:null,date_sortie:obj.date_sortie||''};
+    const res=await sbInsert('jeux_a_faire',newGame);
+    if(!res||res.code||res.error){
+      // Try without optional fields
+      const res2=await sbInsert('jeux_a_faire',{jeu:obj.jeu,statut:'',lien:obj.lien||''});
+      if(!res2||res2.code){showToast('⚠️ Erreur lors du transfert');return false;}
+    }
+    await syncNewGameToPersonalLists(obj.jeu,obj.lien);
   }
   await sbDelete('proposition',id);
-  await syncNewGameToPersonalLists(obj.jeu,obj.lien);
   await Promise.all([loadTab1(),loadTab2()]);
-  showToast(`"${obj.jeu}" transféré dans Jeux à faire !`,true);
+  showToast(alreadyInJeuxAFaire?`"${obj.jeu}" était déjà dans Jeux à faire, retiré des propositions.`:`"${obj.jeu}" transféré dans Jeux à faire !`,true);
   return true;
 }
 
@@ -939,10 +943,15 @@ function openModal1(id){
 async function saveGame1(){
   const jeu=document.getElementById('f1-jeu').value.trim();if(!jeu){showToast('⚠️ Le nom est obligatoire.');return;}
   const id=document.getElementById('edit-id1').value;
+  const dupInJeuxAFaire=_g1.find(g=>String(g.id)!==String(id)&&normName(g.jeu)===normName(jeu));
+  if(dupInJeuxAFaire){showToast(`⚠️ "${jeu}" est déjà dans Jeux à faire.`);return;}
   const obj={ordre:document.getElementById('f1-ordre').value.trim(),jeu,statut:document.getElementById('f1-statut').value,date_sortie:document.getElementById('f1-date').value,lien:document.getElementById('f1-lien').value.trim(),note:document.getElementById('f1-note-perso').value.trim()};
   closeModal(1);
+  const matchInProposition=_g2.filter(g=>normName(g.jeu)===normName(jeu));
   if(id)await sbUpdate('jeux_a_faire',id,obj);else{await sbInsert('jeux_a_faire',obj);await syncNewGameToPersonalLists(obj.jeu,obj.lien);}
-  await loadTab1();showToast(id?'Jeu modifié':'Jeu ajouté',!id);
+  if(matchInProposition.length){await Promise.all(matchInProposition.map(g=>sbDelete('proposition',g.id)));await loadTab2();}
+  await loadTab1();
+  showToast(id?'Jeu modifié':(matchInProposition.length?`Jeu ajouté (retiré des propositions)`:'Jeu ajouté'),!id);
 }
 function editGame1Populate(id){
   const g=_g1.find(x=>String(x.id)===String(id));if(!g)return;
@@ -967,6 +976,10 @@ function openModal2(id){
 async function saveGame2(){
   const jeu=document.getElementById('f2-jeu').value.trim();if(!jeu){showToast('⚠️ Le nom est obligatoire.');return;}
   const id=document.getElementById('edit-id2').value;
+  const dupInJeuxAFaire=_g1.find(g=>normName(g.jeu)===normName(jeu));
+  if(dupInJeuxAFaire){showToast(`⚠️ "${jeu}" est déjà dans Jeux à faire.`);return;}
+  const dupInProposition=_g2.find(g=>String(g.id)!==String(id)&&normName(g.jeu)===normName(jeu));
+  if(dupInProposition){showToast(`⚠️ "${jeu}" est déjà dans les propositions.`);return;}
   const obj={jeu,v369:document.getElementById('f2-369').value,sniikks:document.getElementById('f2-sniikks').value,date_sortie:document.getElementById('f2-date').value,lien:document.getElementById('f2-lien').value.trim(),note:document.getElementById('f2-note').value.trim()};
   closeModal(2);
   if(id){
@@ -1060,7 +1073,6 @@ document.addEventListener('keydown',e=>{
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 (async()=>{
-  await seedIfEmpty();
   await Promise.all([loadTab1(),loadTab2()]);
   connectRealtime();
 })();
