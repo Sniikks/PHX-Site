@@ -747,6 +747,18 @@ document.getElementById('infoDeleteBtn').addEventListener('click', () => { const
 
 init();
 
+// ── ACTUALISATION AUTOMATIQUE ──────────────────────
+// Toutes les 15 secondes, on recharge les données depuis Supabase pour voir
+// les votes de l'autre sans avoir à rafraîchir la page à la main.
+// On ne le fait pas si une fenêtre (modale) est ouverte, pour ne pas
+// interrompre une action en cours.
+setInterval(async () => {
+  if (document.querySelector('.overlay.open')) return;
+  await RemoteStore.init([LS_KEY]);
+  loadFromStorage();
+  renderAll();
+}, 15000);
+
 // ── HAUTEUR D'EN-TÊTE DYNAMIQUE ───────────────────
 // L'en-tête peut passer sur 2 lignes sur mobile/tablette : on mesure sa vraie
 // hauteur pour que la barre de recherche se colle juste en dessous, sans jamais
