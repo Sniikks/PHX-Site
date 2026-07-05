@@ -777,11 +777,11 @@ function fitCardTitles(container){
     const words=full.split(/\s+/);
     let shown=words.length-1;
     while(shown>=1){
-      el.textContent=words.slice(0,shown).join(' ')+' [...]';
+      el.textContent=words.slice(0,shown).join(' ')+' ...';
       if(el.scrollHeight<=el.clientHeight+1) return;
       shown--;
     }
-    el.textContent=(words[0]||full)+' [...]';
+    el.textContent=(words[0]||full)+' ...';
   });
 }
 
