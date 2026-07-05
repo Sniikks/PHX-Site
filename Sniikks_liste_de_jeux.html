@@ -87,39 +87,9 @@
   .add-btn-main:hover { background:#f0c563; transform:translateY(-1px); }
 
   .stats-years { display:flex; align-items:center; justify-content:center; gap:18px; flex-wrap:wrap; min-width:0; }
-  .year-filters-wrap { display:flex; align-items:center; gap:4px; min-width:0; max-width:460px; }
-  .yf-arrow {
-    flex-shrink:0; width:22px; height:22px; border-radius:50%; border:1px solid var(--border);
-    background:var(--bg3); color:var(--text-dim); font-size:13px; line-height:1; cursor:pointer;
-    display:flex; align-items:center; justify-content:center; transition:all .15s; padding:0;
-  }
-  .yf-arrow:hover:not(:disabled) { color:var(--gold); border-color:var(--gold-dim); }
-  .yf-arrow:disabled { opacity:0; visibility:hidden; pointer-events:none; }
-  .year-filters {
-    display:flex; align-items:center; gap:4px; flex-wrap:nowrap; min-width:0; flex:1;
-    overflow-x:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch;
-    scrollbar-width:thin; scrollbar-color:var(--gold-dim) transparent;
-    cursor:grab;
-  }
-  .year-filters.has-overflow {
-    mask-image:linear-gradient(to right, black calc(100% - 28px), transparent 100%);
-    -webkit-mask-image:linear-gradient(to right, black calc(100% - 28px), transparent 100%);
-  }
-  .year-filters.has-overflow-left {
-    mask-image:linear-gradient(to left, black calc(100% - 28px), transparent 100%);
-    -webkit-mask-image:linear-gradient(to left, black calc(100% - 28px), transparent 100%);
-  }
-  .year-filters.has-overflow.has-overflow-left {
-    mask-image:linear-gradient(to right, transparent 0%, black 28px, black calc(100% - 28px), transparent 100%);
-    -webkit-mask-image:linear-gradient(to right, transparent 0%, black 28px, black calc(100% - 28px), transparent 100%);
-  }
-  .year-filters.dragging { cursor:grabbing; user-select:none; scroll-snap-type:none; }
-  .year-filters.dragging .year-pill { pointer-events:none; }
-  .year-filters::-webkit-scrollbar { height:4px; }
-  .year-filters::-webkit-scrollbar-track { background:transparent; }
-  .year-filters::-webkit-scrollbar-thumb { background:var(--gold-dim); border-radius:4px; }
+  .year-filters { display:flex; align-items:center; gap:4px; flex-wrap:wrap; min-width:0; }
   .yf-label { display:none; }
-  .year-pill { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:var(--radius); color:var(--text-dim); cursor:pointer; font-size:12px; font-weight:600; border:1px solid transparent; transition:all .15s; background:transparent; font-family:inherit; flex-shrink:0; }
+  .year-pill { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:var(--radius); color:var(--text-dim); cursor:pointer; font-size:12px; font-weight:600; border:1px solid transparent; transition:all .15s; background:transparent; font-family:inherit; }
   .year-pill:hover { color:var(--text); background:var(--bg3); transform:none; }
   .year-pill.active { color:var(--gold); background:var(--gold-soft); border-color:var(--gold-ring); }
   .year-pill .yp-count { color:var(--text-faint); font-size:10.5px; }
@@ -323,11 +293,8 @@
     .view-toggle button, .view-btn { width:28px; height:28px; font-size:12px; }
     .add-btn-main { padding:7px 12px; font-size:11.5px; }
 
-    .stats-years { flex-direction:column; align-items:stretch; gap:6px; }
-    .year-filters-wrap { max-width:100%; }
-    .inline-stats { justify-content:center; gap:16px; }
-    .top-stat-num { font-size:14px; }
-    .top-stat-label { font-size:9px; }
+    .inline-stats { display:none; }
+    .year-filters { justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap; padding-bottom:8px; }
     .platform-row {
       justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap;
       width:100%; max-width:100%; padding-bottom:6px;
@@ -419,11 +386,7 @@
             <div class="top-stat"><span class="top-stat-num" id="statTotal">0</span><span class="top-stat-label">JEUX</span></div>
             <div class="top-stat is-done"><span class="top-stat-num" id="statDone">0</span><span class="top-stat-label">TERMINÉS</span></div>
           </div>
-          <div class="year-filters-wrap">
-            <button class="yf-arrow yf-arrow-left" id="yfArrowLeft" aria-label="Années précédentes">‹</button>
-            <div class="year-filters" id="yearFilters"></div>
-            <button class="yf-arrow yf-arrow-right" id="yfArrowRight" aria-label="Années suivantes">›</button>
-          </div>
+          <div class="year-filters" id="yearFilters"></div>
         </div>
         <div class="search-wrap">
           <span class="search-icon">⌕</span>
@@ -780,29 +743,8 @@ function renderYearFilters() {
     html+=`<button class="year-pill${filterYear===y?' active':''}" onclick="setYearFilter(${y})">${y} <span class="yp-count">${c}</span></button>`;
   });
   document.getElementById('yearFilters').innerHTML=html;
-  document.getElementById('yearFilters').scrollLeft=0;
-  requestAnimationFrame(updateYearFilterFade);
 }
 function setYearFilter(y){ filterYear=y; renderGrid(); }
-
-function updateYearFilterFade() {
-  const el = document.getElementById('yearFilters');
-  if (!el) return;
-  const hasRight = el.scrollWidth - el.scrollLeft > el.clientWidth + 2;
-  const hasLeft = el.scrollLeft > 2;
-  el.classList.toggle('has-overflow', hasRight);
-  el.classList.toggle('has-overflow-left', hasLeft);
-  const arrowLeft = document.getElementById('yfArrowLeft');
-  const arrowRight = document.getElementById('yfArrowRight');
-  if (arrowLeft) arrowLeft.disabled = !hasLeft;
-  if (arrowRight) arrowRight.disabled = !hasRight;
-}
-function scrollYearFilters(dir) {
-  const el = document.getElementById('yearFilters');
-  if (!el) return;
-  el.scrollBy({ left: dir * Math.round(el.clientWidth * 0.75), behavior: 'smooth' });
-}
-window.addEventListener('resize', updateYearFilterFade);
 
 // ── FILTER ──
 function getFiltered() {
@@ -1057,36 +999,6 @@ function toggleYear(yrKey) {
     const card = e.target.closest('.game-card');
     if(card) adjustOrigin(card);
   }, {passive:true});
-})();
-
-// ── Slide au clic-glisser (souris) pour la rangée d'années, comme le swipe tactile mobile ──
-(function initYearSlide() {
-  const el = document.getElementById('yearFilters');
-  if (!el) return;
-  el.addEventListener('scroll', updateYearFilterFade);
-  document.getElementById('yfArrowLeft')?.addEventListener('click', () => scrollYearFilters(-1));
-  document.getElementById('yfArrowRight')?.addEventListener('click', () => scrollYearFilters(1));
-  let isDown = false, dragged = false, startX = 0, startScroll = 0;
-  el.addEventListener('mousedown', e => {
-    isDown = true; dragged = false;
-    startX = e.pageX; startScroll = el.scrollLeft;
-    el.classList.add('dragging');
-  });
-  window.addEventListener('mousemove', e => {
-    if (!isDown) return;
-    const dx = e.pageX - startX;
-    if (Math.abs(dx) > 4) dragged = true;
-    if (dragged) e.preventDefault();
-    el.scrollLeft = startScroll - dx;
-  });
-  window.addEventListener('mouseup', () => {
-    isDown = false;
-    el.classList.remove('dragging');
-  });
-  // Empêche le clic sur une pill de changer le filtre si ce clic faisait en fait partie d'un glissement
-  el.addEventListener('click', e => {
-    if (dragged) { e.preventDefault(); e.stopPropagation(); dragged = false; }
-  }, true);
 })();
 
 load().then(renderGrid);
