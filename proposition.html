@@ -205,6 +205,9 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 .toast{background:var(--surface);border:1px solid rgba(201,168,76,0.4);color:var(--text);padding:10px 18px;border-radius:10px;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:.5px;box-shadow:0 0 14px rgba(201,168,76,0.2),0 8px 24px rgba(0,0,0,.6);opacity:0;transform:translateY(10px);transition:opacity .25s,transform .25s;}
 .toast.show{opacity:1;transform:translateY(0);}
 .toast.green{border-color:rgba(76,175,120,0.4);}
+#toastContainerTop{position:fixed;top:24px;right:24px;z-index:500;display:flex;flex-direction:column;gap:8px;pointer-events:none;max-width:340px;}
+.toast-top{background:var(--surface);border:1px solid rgba(232,160,48,0.4);color:var(--text);padding:12px 16px;border-radius:10px;font-family:'Inter',sans-serif;font-size:12.5px;font-weight:500;line-height:1.4;box-shadow:0 0 14px rgba(232,160,48,0.15),0 8px 24px rgba(0,0,0,.6);opacity:0;transform:translateY(-10px);transition:opacity .25s,transform .25s;}
+.toast-top.show{opacity:1;transform:translateY(0);}
 
 /* ── RESPONSIVE ── */
 @media(max-width:640px){
@@ -393,6 +396,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 </div>
 
 <div id="toastContainer"></div>
+<div id="toastContainerTop"></div>
 
 <script src="config.js"></script>
 <script>
@@ -467,6 +471,12 @@ function showToast(msg,green=false){
   const t=document.createElement('div');t.className='toast'+(green?' green':'');t.textContent=msg;c.appendChild(t);
   requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add('show')));
   setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300);},2800);
+}
+function showToastTop(msg){
+  const c=document.getElementById('toastContainerTop');
+  const t=document.createElement('div');t.className='toast-top';t.textContent=msg;c.appendChild(t);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add('show')));
+  setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300);},7000);
 }
 function dateBadge(d){
   if(!d||d==='')return'<span style="color:var(--text-dim)">—</span>';
@@ -815,6 +825,8 @@ async function syncNewGameToPersonalLists(jeu,lien){
     if(!already369){
       list369.push({id:genPersonalId(),title:name.toUpperCase(),status:'A faire',note:null,dateFin:null,steamId:lien||null,notePerso:null,platform:'PC',support:null,addedAt:Date.now()});
       await sbUpsertAppData('backlog_cards_v1',list369);
+    }else{
+      showToastTop(`"${name}" est déjà dans la liste 369, il n'a pas été ajouté automatiquement (pas grave, juste pour prévenir).`);
     }
   }catch(e){}
 
@@ -825,6 +837,8 @@ async function syncNewGameToPersonalLists(jeu,lien){
     if(!alreadySniikks){
       listSniikks.push({id:genPersonalId(),name,annee:null,platform:'steam',support:'',status:'afaire',note:null,img:lien||'',noteperso:''});
       await sbUpsertAppData('backlog_jeux_v4',listSniikks);
+    }else{
+      showToastTop(`"${name}" est déjà dans la liste Sniikks, il n'a pas été ajouté automatiquement (pas grave, juste pour prévenir).`);
     }
   }catch(e){}
 }
