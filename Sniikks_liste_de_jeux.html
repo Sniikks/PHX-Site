@@ -150,12 +150,11 @@
   .game-card .card-no-img { width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:var(--bg3); font-size:26px; color:var(--text-faint); opacity:.6; }
   .game-card .card-name {
     font-size:11px; font-weight:600; text-align:center; padding:8px 9px; line-height:1.35; color:var(--text-dim);
-    overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; height:38px; word-break:break-word;
+    overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; height:38px; word-break:normal; overflow-wrap:break-word;
   }
   .card-note { position:absolute; top:6px; left:6px; font-family:'Sora',sans-serif; font-size:11px; font-weight:700; padding:2px 6px; line-height:1.4; background:rgba(10,10,12,.82); backdrop-filter:blur(4px); border-radius:5px; }
   .card-platform { position:absolute; top:6px; right:6px; font-size:11px; line-height:1; background:rgba(10,10,12,.82); backdrop-filter:blur(4px); border-radius:5px; padding:3px 4px; display:flex; align-items:center; justify-content:center; }
-  .card-dlc { display:block; background:rgba(232,184,75,.55); color:#0a0a0c; font-size:9px; font-weight:800; text-align:center; padding:4px 6px; letter-spacing:.08em; font-family:'Sora',sans-serif; }
-  .card-dlc + .card-name { padding-top:6px; }
+  .card-dlc { position:absolute; bottom:0; left:0; right:0; display:block; background:rgba(232,184,75,.55); backdrop-filter:blur(4px); color:#0a0a0c; font-size:9px; font-weight:800; text-align:center; padding:3px 0; letter-spacing:.08em; font-family:'Sora',sans-serif; }
 
   .cn-10{color:var(--note-10)} .cn-89{color:var(--note-89)} .cn-67{color:var(--note-67)}
   .cn-5{color:var(--note-5)} .cn-34{color:var(--note-34)} .cn-12{color:var(--note-12)}
@@ -677,10 +676,10 @@ function save() { RemoteStore.set(STORAGE_KEY, games); }
 function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
 // ── CARD RENDERING ──
-function cardImgHtml(g) {
+function cardImgInner(g) {
   const src = g.img || '';
-  if (src) return `<div class="card-img-wrap"><img src="${escHtml(src)}" alt="${escHtml(g.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="card-no-img" style="display:none">🎮</div></div>`;
-  return `<div class="card-img-wrap"><div class="card-no-img">🎮</div></div>`;
+  if (src) return `<img src="${escHtml(src)}" alt="${escHtml(g.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="card-no-img" style="display:none">🎮</div>`;
+  return `<div class="card-no-img">🎮</div>`;
 }
 
 function cardHtml(g) {
@@ -689,8 +688,10 @@ function cardHtml(g) {
   const platHtml  = `<span class="card-platform">${platformHtml(g.platform,16)}</span>`;
   const dlcHtml   = g.support ? `<span class="card-dlc">${escHtml(g.support)}</span>` : '';
   return `<div class="game-card" data-id="${g.id}" onclick="openInfo('${g.id}')" title="${escHtml(g.name)}">
-    ${cardImgHtml(g)}
-    ${noteLabel}${platHtml}${dlcHtml}
+    <div class="card-img-wrap">
+      ${cardImgInner(g)}
+      ${noteLabel}${platHtml}${dlcHtml}
+    </div>
     <div class="card-name">${escHtml(g.name)}</div>
   </div>`;
 }
