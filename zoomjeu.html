@@ -350,6 +350,7 @@
     <button id="navNext" title="Jour suivant">▶</button>
     <button id="navLast" title="Aujourd'hui">⏭</button>
     <button id="archiveToggle" class="archive-toggle" title="Archives">🗓 <span class="archive-label">Archives</span></button>
+    <button id="forceGenBtn" class="archive-toggle" title="Générer manuellement le puzzle du jour">⚡ <span class="archive-label">Générer</span></button>
   </div>
 
   <div class="card" id="cardEl">
@@ -579,6 +580,35 @@
     archiveMonth = parseInt(viewingDate.slice(5, 7), 10);
     updateNavUI();
     renderArchive();
+  });
+
+  // ── Génération manuelle du puzzle (bouton de secours si le cron a raté/tardé) ──
+  const GENERATE_URL = 'https://phx-site-sniikks369.vercel.app/api/generate-daily?key=dc635cb225376bd8209cf7d40a267b13b5f4f1dd0e2866d7&force=true';
+  document.getElementById('forceGenBtn').addEventListener('click', async () => {
+    const ok = confirm('Forcer la génération du puzzle du jour ?\nCela peut remplacer le puzzle actuel et réinitialiser les parties en cours.');
+    if (!ok) return;
+
+    const btn = document.getElementById('forceGenBtn');
+    btn.disabled = true;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '⏳ <span class="archive-label">Génération…</span>';
+
+    try {
+      // Lancé "en arrière-plan" : on n'attend pas de réponse lisible (mode no-cors),
+      // la requête part quand même vers l'API.
+      await fetch(GENERATE_URL, { method: 'GET', mode: 'no-cors' });
+      btn.innerHTML = '✅ <span class="archive-label">Envoyé</span>';
+    } catch (e) {
+      console.error('Erreur génération manuelle:', e);
+      btn.innerHTML = '⚠️ <span class="archive-label">Erreur</span>';
+    }
+
+    // On recharge le puzzle un peu après, pour laisser le temps à l'API de finir.
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+      if (mode === 'play') loadPuzzle();
+    }, 4000);
   });
 
   // ── Chargement du puzzle (+ session intégrée) depuis Supabase ──
