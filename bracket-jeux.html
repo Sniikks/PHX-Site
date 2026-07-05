@@ -484,6 +484,23 @@ html,body{height:100%;background:radial-gradient(1200px 600px at 50% -200px, rgb
   .mode-card .mode-desc{display:none;}
   .draft-rounds-input{width:44px;}
 }
+
+/* ══════════════════════════════════════════
+   FOOTER FIXE "Retour / Lancer" — mobile & tablette
+   (évite de devoir scroller tout en bas pour y accéder)
+   ══════════════════════════════════════════ */
+@media (max-width: 1180px){
+  .exclude-footer{
+    position:fixed;
+    left:0;right:0;bottom:0;
+    z-index:40;
+    box-shadow:0 -6px 18px rgba(0,0,0,.45);
+    padding-bottom:calc(.55rem + env(safe-area-inset-bottom, 0px));
+  }
+  .exclude-list{
+    padding-bottom:var(--ex-footer-h, 110px);
+  }
+}
 </style>
 </head>
 <body>
@@ -983,6 +1000,7 @@ function updateExcludeCounter(){
   btn.disabled      = active < minNeeded;
   btn.style.opacity = active < minNeeded ? '.4' : '';
   btn.style.cursor  = active < minNeeded ? 'not-allowed' : '';
+  requestAnimationFrame(syncExcludeFooterHeight);
 }
 
 function exFilter(){
@@ -1994,7 +2012,22 @@ function resetBracket(){
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  if(id==='screenExclude') requestAnimationFrame(syncExcludeFooterHeight);
 }
+
+function syncExcludeFooterHeight(){
+  const footer = document.querySelector('.exclude-footer');
+  const list   = document.getElementById('excludeList');
+  if(!footer || !list) return;
+  if(window.innerWidth > 1180){ list.style.removeProperty('--ex-footer-h'); return; }
+  list.style.setProperty('--ex-footer-h', (footer.offsetHeight + 16) + 'px');
+}
+window.addEventListener('resize', ()=>{
+  if(document.getElementById('screenExclude').classList.contains('active')) syncExcludeFooterHeight();
+});
+window.addEventListener('orientationchange', ()=>setTimeout(()=>{
+  if(document.getElementById('screenExclude').classList.contains('active')) syncExcludeFooterHeight();
+}, 200));
 
 function esc(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
