@@ -159,10 +159,14 @@ body{
 .btn-primary:active{transform:translateY(0);}
 
 .years-row{
-  display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;
-  padding:6px 0 14px;
+  display:flex;align-items:center;justify-content:flex-start;gap:4px;flex-wrap:nowrap;
+  padding:6px 0 14px; max-width:460px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin; scrollbar-color:var(--gold-dim) transparent;
 }
-.years-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin-right:6px;}
+.years-row::-webkit-scrollbar{height:4px;}
+.years-row::-webkit-scrollbar-track{background:transparent;}
+.years-row::-webkit-scrollbar-thumb{background:var(--gold-dim);border-radius:4px;}
+.years-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin-right:6px;flex-shrink:0;}
 .year-chip{
   display:inline-flex;align-items:center;gap:5px;
   padding:5px 11px;border-radius:var(--radius);
@@ -170,6 +174,7 @@ body{
   font-size:12px;font-weight:600;
   border:1px solid transparent;
   transition:all .15s;
+  flex-shrink:0;
 }
 .year-chip:hover{color:var(--text);background:var(--surface-2);}
 .year-chip.active{color:var(--gold);background:var(--gold-soft);border-color:var(--gold-ring);}
@@ -474,7 +479,6 @@ body.compact-view .card-name{
   .card-grid{grid-template-columns:repeat(auto-fill,minmax(102px,1fr));gap:9px;}
   .toolbar{justify-content:flex-start;}
   .filter-pills{overflow-x:auto;flex-wrap:nowrap;max-width:100%;padding-bottom:2px;}
-  .years-row{justify-content:flex-start;overflow-x:auto;flex-wrap:nowrap;padding-bottom:8px;}
 }
 @media(max-width:480px){
   .overlay{align-items:flex-end;padding:0;}
