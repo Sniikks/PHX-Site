@@ -245,8 +245,15 @@
   .names-toggle input { accent-color:var(--gold); cursor:pointer; }
   .archive-grid {
     display:grid; grid-template-columns:repeat(7, 1fr); gap:.4rem;
-    max-width:760px; margin:0 auto;
+    max-width:920px; margin:0 auto;
   }
+  .week-label {
+    display:none; /* affiché uniquement en mobile, où le calendrier devient une liste par semaine */
+    grid-column:1 / -1;
+    font-family:'Sora',sans-serif; font-weight:700; font-size:.78rem; color:var(--gold);
+    letter-spacing:.04em; margin:.5rem 0 .1rem; text-transform:uppercase;
+  }
+  .week-label:first-of-type { margin-top:0; }
   .archive-weekday {
     text-align:center; font-size:10px; color:var(--text2); letter-spacing:.06em; padding-bottom:.15rem;
   }
@@ -306,7 +313,16 @@
     body { padding:1.2rem .8rem 2.4rem; }
     .card { padding:1rem; }
     .date-nav .date-label { min-width:120px; font-size:.72rem; }
-    .archive-cell .cell-name { display:none; }
+
+    /* Vue calendrier -> vue "par semaine" plus lisible sur mobile */
+    .archive-weekday { display:none; }
+    .archive-cell.empty { display:none; }
+    .week-label { display:block; }
+    .archive-grid {
+      grid-template-columns:repeat(auto-fill, minmax(92px, 1fr));
+      max-width:100%;
+    }
+    .archive-cell .cell-name { font-size:10px; }
   }
   @media (max-width:400px) {
     .date-nav { gap:.3rem; }
@@ -317,6 +333,7 @@
     .archive-header .archive-nav-row { gap:.3rem; }
     .archive-header .archive-nav-row button { width:30px; height:30px; }
     .archive-header .archive-month-label { min-width:0; flex:1 1 100%; order:5; font-size:.9rem; }
+    .archive-grid { grid-template-columns:repeat(auto-fill, minmax(78px, 1fr)); }
   }
 </style>
 </head>
@@ -939,9 +956,16 @@
       const firstWeekday = (new Date(Date.UTC(archiveYear, archiveMonth - 1, 1)).getUTCDay() + 6) % 7; // 0 = lundi
 
       let cellsHtml = '';
+      let weekNum = 1;
+      cellsHtml += `<div class="week-label">Semaine ${weekNum}</div>`;
       for (let i = 0; i < firstWeekday; i++) cellsHtml += '<div class="archive-cell empty"></div>';
 
       for (let day = 1; day <= daysInMonth; day++) {
+        const posInGrid = firstWeekday + (day - 1);
+        if (posInGrid > 0 && posInGrid % 7 === 0) {
+          weekNum++;
+          cellsHtml += `<div class="week-label">Semaine ${weekNum}</div>`;
+        }
         const dateStr = `${archiveYear}-${String(archiveMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const p = puzzleByDate[dateStr];
         const isFuture = dateStr > todayStr;
