@@ -91,7 +91,10 @@
     display:flex; align-items:center; gap:4px; flex-wrap:nowrap; min-width:0;
     max-width:460px; overflow-x:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch;
     scrollbar-width:thin; scrollbar-color:var(--gold-dim) transparent;
+    cursor:grab;
   }
+  .year-filters.dragging { cursor:grabbing; user-select:none; scroll-snap-type:none; }
+  .year-filters.dragging .year-pill { pointer-events:none; }
   .year-filters::-webkit-scrollbar { height:4px; }
   .year-filters::-webkit-scrollbar-track { background:transparent; }
   .year-filters::-webkit-scrollbar-thumb { background:var(--gold-dim); border-radius:4px; }
@@ -1008,6 +1011,33 @@ function toggleYear(yrKey) {
     const card = e.target.closest('.game-card');
     if(card) adjustOrigin(card);
   }, {passive:true});
+})();
+
+// ── Slide au clic-glisser (souris) pour la rangée d'années, comme le swipe tactile mobile ──
+(function initYearSlide() {
+  const el = document.getElementById('yearFilters');
+  if (!el) return;
+  let isDown = false, dragged = false, startX = 0, startScroll = 0;
+  el.addEventListener('mousedown', e => {
+    isDown = true; dragged = false;
+    startX = e.pageX; startScroll = el.scrollLeft;
+    el.classList.add('dragging');
+  });
+  window.addEventListener('mousemove', e => {
+    if (!isDown) return;
+    const dx = e.pageX - startX;
+    if (Math.abs(dx) > 4) dragged = true;
+    if (dragged) e.preventDefault();
+    el.scrollLeft = startScroll - dx;
+  });
+  window.addEventListener('mouseup', () => {
+    isDown = false;
+    el.classList.remove('dragging');
+  });
+  // Empêche le clic sur une pill de changer le filtre si ce clic faisait en fait partie d'un glissement
+  el.addEventListener('click', e => {
+    if (dragged) { e.preventDefault(); e.stopPropagation(); dragged = false; }
+  }, true);
 })();
 
 load().then(renderGrid);
