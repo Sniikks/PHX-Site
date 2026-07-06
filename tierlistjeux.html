@@ -215,6 +215,7 @@
   <div class="page-header">
     <a href="index.html" class="menu-btn">☰ Menu</a>
     <div class="header-io">
+      <button class="text-action-btn" id="dedupeBtn" title="Retire les jeux en double (même nom)">Retirer doublons</button>
       <button class="text-action-btn" id="exportBtn">Exporter</button>
       <label class="text-action-btn" for="importInput" style="cursor:pointer">Importer</label>
       <input type="file" id="importInput" accept=".json" style="display:none">
@@ -679,6 +680,53 @@ function saveToJSON() {
   showToast('Export JSON téléchargé ✓');
 }
 
+// ── NETTOYAGE DES DOUBLONS ────────────────────────
+// Repère les jeux "custom" (ajoutés à la main ou importés) qui partagent le même nom
+// (insensible à la casse, espaces multiples ignorés) et ne garde qu'un seul exemplaire.
+// Si un doublon supprimé avait un avis renseigné et que celui qu'on garde n'en a pas,
+// l'avis est récupéré avant suppression.
+function normalizeGameName(s) {
+  return (s || '').toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+function dedupeCustomGames() {
+  const seen = new Map(); // nom normalisé -> id conservé
+  const toRemove = [];
+
+  // On trie par numéro d'id croissant pour garder en priorité le jeu ajouté en premier
+  const ids = Object.keys(customGames).sort((a, b) => {
+    const na = parseInt((a.match(/\d+/) || [0])[0], 10);
+    const nb = parseInt((b.match(/\d+/) || [0])[0], 10);
+    return na - nb;
+  });
+
+  ids.forEach(id => {
+    const g = customGames[id];
+    if (!g || !g.name) return;
+    const key = normalizeGameName(g.name);
+    if (seen.has(key)) {
+      const keepId = seen.get(key);
+      const dupRating = ratings[id];
+      const keepRating = ratings[keepId];
+      const dupHasRating = dupRating && (dupRating.g369 || dupRating.sniikks);
+      const keepHasRating = keepRating && (keepRating.g369 || keepRating.sniikks);
+      if (dupHasRating && !keepHasRating) ratings[keepId] = dupRating;
+      toRemove.push(id);
+    } else {
+      seen.set(key, id);
+    }
+  });
+
+  toRemove.forEach(id => {
+    delete customGames[id];
+    delete allGames[id];
+    delete ratings[id];
+    delete overrides[id];
+  });
+
+  return toRemove.length;
+}
+
 function importJSON(input) {
   const file = input.files[0]; if (!file) return;
   const r = new FileReader();
@@ -760,6 +808,18 @@ document.getElementById('modalCancelBtn').addEventListener('click', closeAddModa
 document.getElementById('modalConfirmBtn').addEventListener('click', confirmModal);
 document.getElementById('newGameUrl').addEventListener('input', onUrlInput);
 document.getElementById('newGameFile').addEventListener('change', () => loadFilePreview(document.getElementById('newGameFile')));
+document.getElementById('dedupeBtn').addEventListener('click', () => {
+  const nb = Object.keys(customGames).length;
+  if (!nb) { showToast('Aucun jeu importé/ajouté à vérifier'); return; }
+  if (!confirm(`Rechercher et retirer les jeux en double parmi les ${nb} jeux ajoutés/importés ?`)) return;
+  const removed = dedupeCustomGames();
+  if (removed > 0) {
+    saveToStorage(); renderAll();
+    showToast(`${removed} doublon(s) supprimé(s) ✓`);
+  } else {
+    showToast('Aucun doublon trouvé ✓');
+  }
+});
 document.getElementById('exportBtn').addEventListener('click', saveToJSON);
 document.getElementById('importInput').addEventListener('change', () => importJSON(document.getElementById('importInput')));
 document.getElementById('resetRatingsBtn').addEventListener('click', () => document.getElementById('resetOverlay').classList.add('open'));
