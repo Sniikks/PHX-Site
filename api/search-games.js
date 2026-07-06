@@ -172,17 +172,22 @@ async function handleResolve(req, res, debug) {
 
     const debugInfo = {};
 
-    // 1) RAWG d'abord : une seule requête suffit à avoir l'année.
+    // 1) RAWG d'abord. On récupère plusieurs résultats (pas juste le 1er) et on garde le
+    // premier qui a réellement une année : avant, un 1er résultat "pertinent" mais sans date
+    // connue (jeu à venir, fiche incomplète...) faisait échouer l'indice alors qu'un résultat
+    // juste derrière aurait suffi. search_precise=true (déjà utilisé pour l'autocomplétion)
+    // resserre aussi la pertinence du matching sur le nom tapé.
     if (RAWG_API_KEY) {
         try {
-            const r = await fetch(`${RAWG_BASE}/games?key=${RAWG_API_KEY}&search=${encodeURIComponent(name)}&page_size=1`, { headers: BROWSER_HEADERS });
+            const r = await fetch(`${RAWG_BASE}/games?key=${RAWG_API_KEY}&search=${encodeURIComponent(name)}&search_precise=true&page_size=5`, { headers: BROWSER_HEADERS });
             debugInfo.rawgStatus = r.status;
             if (r.ok) {
                 const d = await r.json();
-                const g = (d.results || [])[0];
-                const year = g ? yearFromDateStr(g.released) : null;
-                if (year) {
-                    return res.status(200).json(debug ? { name: g.name, year, debug: debugInfo } : { name: g.name, year });
+                debugInfo.rawgCount = (d.results || []).length;
+                const withYear = (d.results || []).find(g => g && yearFromDateStr(g.released));
+                if (withYear) {
+                    const year = yearFromDateStr(withYear.released);
+                    return res.status(200).json(debug ? { name: withYear.name, year, debug: debugInfo } : { name: withYear.name, year });
                 }
             }
         } catch (e) {
@@ -190,24 +195,25 @@ async function handleResolve(req, res, debug) {
         }
     }
 
-    // 2) Repli Steam : recherche + appdetails sur le premier résultat seulement
-    //    (un appel de plus, mais on ne le fait qu'une fois par réponse validée, pas à chaque frappe).
+    // 2) Repli Steam : avant, on ne regardait que le tout premier résultat de recherche —
+    // s'il n'avait pas de date exploitable (coming_soon, fiche incomplète), on abandonnait.
+    // On teste maintenant les 3 premiers résultats et on garde le premier avec une date.
     try {
         const sr = await fetch(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(name)}&l=english&cc=us`, { headers: BROWSER_HEADERS });
         debugInfo.steamSearchStatus = sr.status;
         if (sr.ok) {
             const sd = await sr.json();
-            const top = (sd.items || [])[0];
-            if (top && top.id) {
+            const topCandidates = (sd.items || []).slice(0, 3);
+            debugInfo.steamCandidateCount = topCandidates.length;
+            for (const top of topCandidates) {
+                if (!top || !top.id) continue;
                 const ar = await fetch(`https://store.steampowered.com/api/appdetails?appids=${top.id}`, { headers: BROWSER_HEADERS });
-                debugInfo.steamDetailsStatus = ar.status;
-                if (ar.ok) {
-                    const aj = await ar.json();
-                    const entry = aj[top.id];
-                    const year = yearFromDateStr(entry?.data?.release_date?.date);
-                    if (year) {
-                        return res.status(200).json(debug ? { name: top.name, year, debug: debugInfo } : { name: top.name, year });
-                    }
+                if (!ar.ok) continue;
+                const aj = await ar.json();
+                const entry = aj[top.id];
+                const year = yearFromDateStr(entry?.data?.release_date?.date);
+                if (year) {
+                    return res.status(200).json(debug ? { name: top.name, year, debug: debugInfo } : { name: top.name, year });
                 }
             }
         }

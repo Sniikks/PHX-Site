@@ -58,8 +58,17 @@ const MIN_OWNERS = 20000;
 
 const NON_LATIN_SCRIPT_REGEX = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\uAC00-\uD7AF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\u0590-\u05FF\u0E00-\u0E7F\u0400-\u04FF]/;
 
+// Exclut les rééditions (remaster, definitive edition, etc.) : ce sont souvent des fiches
+// à part avec leur propre date de sortie, très différente de celle du jeu d'origine que les
+// joueurs ont en tête — ça rend les indices de date (avant/après) trompeurs ou incohérents.
+const RE_RELEASE_PATTERN = /\b(remaster(?:ed)?|definitive edition|game of the year edition|goty edition|goty|anniversary edition|enhanced edition|complete edition|deluxe edition|ultimate edition|hd edition|hd remaster)\b/i;
+
 function hasNonLatinScript(name) {
     return typeof name === 'string' && NON_LATIN_SCRIPT_REGEX.test(name);
+}
+
+function isReRelease(name) {
+    return typeof name === 'string' && RE_RELEASE_PATTERN.test(name);
 }
 
 function normalize(str) {
@@ -275,6 +284,7 @@ async function pickDailyGame(usedIds, usedNames) {
             const key = `${candidate.source}:${candidate.id}`;
             if (usedIds.has(key)) continue;
             if (usedNames.has(normalize(candidate.name))) continue;
+            if (isReRelease(candidate.name)) continue;
 
             totalAttempts++;
             let details;
@@ -289,6 +299,7 @@ async function pickDailyGame(usedIds, usedNames) {
 
             const finalName = details.name || candidate.name;
             if (hasNonLatinScript(finalName)) continue;
+            if (isReRelease(finalName)) continue;
 
             return {
                 source: candidate.source,
