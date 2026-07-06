@@ -63,12 +63,21 @@ const NON_LATIN_SCRIPT_REGEX = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\
 // joueurs ont en tête — ça rend les indices de date (avant/après) trompeurs ou incohérents.
 const RE_RELEASE_PATTERN = /\b(remaster(?:ed)?|definitive edition|game of the year edition|goty edition|goty|anniversary edition|enhanced edition|complete edition|deluxe edition|ultimate edition|hd edition|hd remaster)\b/i;
 
+// Exclut les DLC/extensions. Steam est déjà filtré via son champ "type" (voir fetchAppDetails),
+// mais RAWG n'expose pas cette info dans la recherche de jeux : ce filtre par nom est le seul
+// rempart pour les candidats venant de RAWG (et une sécurité supplémentaire pour Steam).
+const DLC_NAME_PATTERN = /\b(dlc|season pass|expansion pass|expansion|add-?on|content pack|bonus content|artbook|art book|soundtrack|skin pack|costume pack|weapon pack|outfit pack)\b/i;
+
 function hasNonLatinScript(name) {
     return typeof name === 'string' && NON_LATIN_SCRIPT_REGEX.test(name);
 }
 
 function isReRelease(name) {
     return typeof name === 'string' && RE_RELEASE_PATTERN.test(name);
+}
+
+function isDlc(name) {
+    return typeof name === 'string' && DLC_NAME_PATTERN.test(name);
 }
 
 function normalize(str) {
@@ -285,6 +294,7 @@ async function pickDailyGame(usedIds, usedNames) {
             if (usedIds.has(key)) continue;
             if (usedNames.has(normalize(candidate.name))) continue;
             if (isReRelease(candidate.name)) continue;
+            if (isDlc(candidate.name)) continue;
 
             totalAttempts++;
             let details;
@@ -300,6 +310,7 @@ async function pickDailyGame(usedIds, usedNames) {
             const finalName = details.name || candidate.name;
             if (hasNonLatinScript(finalName)) continue;
             if (isReRelease(finalName)) continue;
+            if (isDlc(finalName)) continue;
 
             return {
                 source: candidate.source,

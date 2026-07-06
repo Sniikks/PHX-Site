@@ -135,7 +135,7 @@ async function handleAutocomplete(req, res, debug) {
 
     // Filet de sécurité supplémentaire par le nom (RAWG n'a pas de champ "type" DLC,
     // et certaines entrées Steam n'ont parfois pas le champ "type" non plus).
-    const DLC_NAME_PATTERN = /\b(dlc|season pass|expansion|soundtrack|artbook|art book|bonus content)\b/i;
+    const DLC_NAME_PATTERN = /\b(dlc|season pass|expansion pass|expansion|add-?on|content pack|bonus content|artbook|art book|soundtrack|skin pack|costume pack|weapon pack|outfit pack)\b/i;
 
     const push = (name, year) => {
         if (DLC_NAME_PATTERN.test(name)) return;
