@@ -708,15 +708,29 @@ function importJSON(input) {
       }
 
       // Format sauvegarde complète : {ratings, custom, overrides}
+      // -> on n'ajoute que les jeux réellement nouveaux (comparaison par nom, pas par id,
+      //    car les ids "custom_N" sont générés localement et ne correspondent pas forcément
+      //    d'un export à l'autre, même pour un jeu déjà présent).
+      let addedFull = 0;
       if (s.custom) Object.entries(s.custom).forEach(([id,g]) => {
-        if (!allGames[id]) { customGames[id]=g; allGames[id]=g; }
+        if (!g || !g.name || !g.src) return;
+        const nameLower = g.name.toLowerCase();
+        const exists = Object.values(allGames).some(x => x.name.toLowerCase() === nameLower);
+        if (exists) return;
+        // Évite d'écraser un jeu existant si l'id importé est déjà utilisé par autre chose
+        const finalId = allGames[id] ? ('custom_' + (nextCustomId++)) : id;
+        customGames[finalId] = g; allGames[finalId] = g;
+        if (!ratings[finalId]) ratings[finalId] = { g369:null, sniikks:null };
+        addedFull++;
       });
       if (s.overrides) Object.entries(s.overrides).forEach(([id,ov]) => {
+        if (!allGames[id]) return;
         overrides[id] = ov;
-        if (allGames[id]) allGames[id] = { ...allGames[id], ...ov };
+        allGames[id] = { ...allGames[id], ...ov };
       });
       if (s.ratings) Object.entries(s.ratings).forEach(([id,r]) => { if (allGames[id]) ratings[id] = r; });
-      saveToStorage(); renderAll(); showToast('Import réussi ✓');
+      saveToStorage(); renderAll();
+      showToast(s.custom ? `Import réussi ✓ (${addedFull} nouveau(x) jeu(x))` : 'Import réussi ✓');
     } catch(err) { alert('Erreur import : ' + err.message); }
   };
   r.readAsText(file); input.value = '';
