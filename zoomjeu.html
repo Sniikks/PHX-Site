@@ -982,6 +982,11 @@
   }
 
   // ── Autocomplétion ──
+  // Cache local des suggestions par saisie : si le joueur efface une lettre ou
+  // retape la même chose, la liste réapparaît instantanément, sans appel réseau.
+  const suggestCache = new Map();
+  const SUGGEST_CACHE_MAX = 80;
+
   function onInputChange(e) {
     const q = e.target.value.trim();
     clearTimeout(suggestTimer);
@@ -991,7 +996,16 @@
       if (suggestAbortController) { suggestAbortController.abort(); suggestAbortController = null; }
       return;
     }
-    suggestTimer = setTimeout(() => fetchSuggestions(q), 120);
+    // Réponse instantanée si déjà en cache (pas de debounce à attendre)
+    const cached = suggestCache.get(q.toLowerCase());
+    if (cached) {
+      suggestRequestId++;
+      if (suggestAbortController) { suggestAbortController.abort(); suggestAbortController = null; }
+      currentSuggestions = cached;
+      renderSuggestions();
+      return;
+    }
+    suggestTimer = setTimeout(() => fetchSuggestions(q), 90);
   }
   async function fetchSuggestions(q) {
     // On annule la requête précédente si elle n'a pas encore répondu : sans ça, une réponse lente
@@ -1004,8 +1018,12 @@
     try {
       const res = await fetch('/api/search-games?q=' + encodeURIComponent(q), { signal: controller.signal });
       const data = await res.json();
+      const suggestions = data.suggestions || [];
+      // Mise en cache (avec plafond pour ne pas gonfler la mémoire indéfiniment)
+      if (suggestCache.size >= SUGGEST_CACHE_MAX) suggestCache.delete(suggestCache.keys().next().value);
+      suggestCache.set(q.toLowerCase(), suggestions);
       if (reqId !== suggestRequestId) return; // une saisie plus récente a déjà pris le relais
-      currentSuggestions = data.suggestions || [];
+      currentSuggestions = suggestions;
       renderSuggestions();
     } catch (e) {
       if (e.name === 'AbortError') return; // requête annulée volontairement, une plus récente prend le relais
@@ -1035,7 +1053,9 @@
     const input = document.getElementById('guessInput');
     if (input) input.value = s.name;
     hideSuggestions();
-    submitGuess(s.name);
+    // On transmet l'année de la suggestion : l'indice avant/après s'affiche
+    // instantanément, sans repasser par l'API resolve (lente et faillible).
+    submitGuess(s.name, s.year || null);
   }
   function onInputKeydown(e) {
     if (e.key === 'Escape') { hideSuggestions(); return; }
@@ -1058,11 +1078,11 @@
     hideSuggestions();
     submitGuess(text);
   }
-  function submitGuess(text) {
+  function submitGuess(text, knownYear = null) {
     const correct = isCorrectGuess(text, puzzle.answer);
     const close = !correct && isCloseGuess(text, puzzle.answer);
     const hint = !correct ? nameHint(text, puzzle.answer) : null;
-    const guessObj = { text, correct, close, nameHint: hint, year: null, yearHint: null };
+    const guessObj = { text, correct, close, nameHint: hint, year: knownYear, yearHint: null };
     state.guesses.push(guessObj);
     if (correct) state.solved = true;
     pendingFlash = correct ? 'good' : (close ? 'close' : 'bad');
@@ -1072,15 +1092,18 @@
     if (!correct) resolveYearHint(guessObj);
   }
 
-  // Va chercher l'année du jeu tapé (via /api/search-games?resolve=1) pour donner un indice
-  // "avant/après" par rapport à l'année du vrai jeu. Best-effort : si ça échoue ou ne trouve
-  // rien, on ne montre simplement pas cet indice — le jeu reste jouable sans.
+  // Calcule l'indice "avant/après" par rapport à l'année du vrai jeu.
+  // Si l'essai vient d'une suggestion, son année est déjà connue (aucun appel
+  // réseau) ; sinon, on la demande à /api/search-games?resolve=1. Best-effort :
+  // si ça échoue ou ne trouve rien, on ne montre simplement pas cet indice.
   async function resolveYearHint(guessObj) {
     try {
-      const res = await fetch('/api/search-games?resolve=1&name=' + encodeURIComponent(guessObj.text));
-      const data = await res.json();
-      if (!data.year) return;
-      guessObj.year = data.year;
+      if (!guessObj.year) {
+        const res = await fetch('/api/search-games?resolve=1&name=' + encodeURIComponent(guessObj.text));
+        const data = await res.json();
+        if (!data.year) return;
+        guessObj.year = data.year;
+      }
 
       // Repli : si le puzzle du jour n'a pas de date de sortie enregistrée (générée sans
       // "released"), on va la chercher via cette même API, une seule fois par puzzle (mise en cache).
