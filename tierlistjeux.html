@@ -200,6 +200,13 @@
     .game-card { width:104px; }
     .card-name { padding:3px 4px; }
   }
+
+  /* ── Mobile : évite le zoom automatique de Safari iOS au focus d'un champ ──
+     iOS zoome la page dès qu'un input/select/textarea fait moins de 16px.
+     On force 16px sur écran tactile étroit ; le reste du design est inchangé. */
+  @media (max-width:760px){
+    input, select, textarea { font-size:16px !important; }
+  }
 </style>
 </head>
 <body>
@@ -754,17 +761,22 @@ document.getElementById('infoDeleteBtn').addEventListener('click', () => { const
 
 init();
 
-// ── ACTUALISATION AUTOMATIQUE ──────────────────────
-// Toutes les 15 secondes, on recharge les données depuis Supabase pour voir
-// les votes de l'autre sans avoir à rafraîchir la page à la main.
-// On ne le fait pas si une fenêtre (modale) est ouverte, pour ne pas
-// interrompre une action en cours.
-setInterval(async () => {
+// ── ACTUALISATION AUTOMATIQUE (temps réel) ─────────
+// On écoute les changements Supabase en direct : quand l'autre vote,
+// l'affichage se met à jour en quelques secondes, sans requête réseau
+// répétée toutes les 10s ni re-rendu inutile quand rien n'a changé.
+// Si une modale est ouverte, la mise à jour est mise en attente et
+// appliquée dès la fermeture (vérification légère toutes les 2s,
+// sans appel réseau : le cache est déjà à jour).
+let pendingRemoteUpdate = false;
+RemoteStore.subscribe(LS_KEY, () => { pendingRemoteUpdate = true; });
+setInterval(() => {
+  if (!pendingRemoteUpdate) return;
   if (document.querySelector('.overlay.open')) return;
-  await RemoteStore.init([LS_KEY]);
+  pendingRemoteUpdate = false;
   loadFromStorage();
   renderAll();
-}, 10000);
+}, 2000);
 
 // ── HAUTEUR D'EN-TÊTE DYNAMIQUE ───────────────────
 // L'en-tête peut passer sur 2 lignes sur mobile/tablette : on mesure sa vraie

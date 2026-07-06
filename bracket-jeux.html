@@ -503,6 +503,13 @@ html,body{height:100%;background:radial-gradient(1200px 600px at 50% -200px, rgb
     padding-bottom:var(--ex-footer-h, 110px);
   }
 }
+
+  /* ── Mobile : évite le zoom automatique de Safari iOS au focus d'un champ ──
+     iOS zoome la page dès qu'un input/select/textarea fait moins de 16px.
+     On force 16px sur écran tactile étroit ; le reste du design est inchangé. */
+  @media (max-width:760px){
+    input, select, textarea { font-size:16px !important; }
+  }
 </style>
 </head>
 <body>
@@ -2049,6 +2056,12 @@ RemoteStore.setStatusElement(document.getElementById('dbStatus'));
 RemoteStore.init([SAVED_KEY, BLACKLIST_KEY, DEFAULT_SEED_KEY]).then(()=>{
   ensureDefaultSeed();
   renderSavedList();
+
+  // ── Synchro temps réel ──
+  // Garde le cache à jour si l'autre ajoute/modifie une liste sauvegardée ou
+  // une blacklist : les sélecteurs liront toujours des données fraîches.
+  RemoteStore.subscribe(SAVED_KEY, ()=>{ renderSavedList(); });
+  RemoteStore.subscribe(BLACKLIST_KEY);
 });
 
 </script>

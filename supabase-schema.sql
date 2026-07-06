@@ -50,3 +50,7 @@ create policy "Public update access"
 -- (SQL Editor > New query > coller la ligne ci-dessous > Run)
 -- ==========================================================
 -- drop policy if exists "Public delete access" on app_data;
+
+-- Si le temps réel ne fonctionne pas (listes qui ne se mettent pas à jour
+-- entre deux appareils), vérifie que la table est bien dans la publication :
+-- alter publication supabase_realtime add table app_data;

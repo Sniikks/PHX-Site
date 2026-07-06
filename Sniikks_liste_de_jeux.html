@@ -338,6 +338,13 @@
     }
   }
 
+
+  /* ── Mobile : évite le zoom automatique de Safari iOS au focus d'un champ ──
+     iOS zoome la page dès qu'un input/select/textarea fait moins de 16px.
+     On force 16px sur écran tactile étroit ; le reste du design est inchangé. */
+  @media (max-width:760px){
+    input, select, textarea { font-size:16px !important; }
+  }
 </style>
 </head>
 <body>
@@ -1037,7 +1044,20 @@ function toggleYear(yrKey) {
   }, {passive:true});
 })();
 
-load().then(renderGrid);
+load().then(() => {
+  renderGrid();
+
+  // ── Synchro temps réel ──
+  // Si l'autre modifie la liste depuis son appareil, on met à jour l'affichage
+  // instantanément (évite d'écraser ses changements avec un vieux cache).
+  RemoteStore.subscribe(STORAGE_KEY, data => {
+    if(!Array.isArray(data)) return;
+    // Ne pas interrompre une édition en cours (modale ouverte)
+    if(document.querySelector('.overlay.open, .info-overlay.open')) return;
+    games = data.map(g => ({ img:'', ...g }));
+    renderGrid();
+  });
+});
 </script>
 <script src="nav.js" defer></script>
 </body>

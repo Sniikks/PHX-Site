@@ -375,6 +375,13 @@
     .archive-header .archive-month-label { min-width:0; flex:1 1 100%; order:5; font-size:.9rem; }
     .archive-grid { grid-template-columns:repeat(auto-fill, minmax(78px, 1fr)); }
   }
+
+  /* ── Mobile : évite le zoom automatique de Safari iOS au focus d'un champ ──
+     iOS zoome la page dès qu'un input/select/textarea fait moins de 16px.
+     On force 16px sur écran tactile étroit ; le reste du design est inchangé. */
+  @media (max-width:760px){
+    input, select, textarea { font-size:16px !important; }
+  }
 </style>
 </head>
 <body>
