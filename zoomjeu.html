@@ -580,6 +580,7 @@
   let pendingFlash = null; // 'good' | 'bad' | 'close' | 'skip' — déclenché uniquement par une action locale
   let lastZoomFactor = null; // dernier zoom affiché, pour animer un vrai dézoom entre deux essais
   let previewIndex = null; // index de la phase de zoom actuellement prévisualisée via les onglets (null = zoom réel)
+  let cachedAnswerYear; // undefined = pas encore résolu · null = résolu mais introuvable · sert de repli quand puzzle.released est vide
 
   function isValidPuzzle(p) {
     return !!(p && p.answer && p.image && p.focus && typeof p.focus.x === 'number');
@@ -704,6 +705,7 @@
     updateNavUI();
     lastZoomFactor = null;
     previewIndex = null;
+    cachedAnswerYear = undefined;
     document.getElementById('cardEl').innerHTML = '<div class="state-msg">Chargement du puzzle…</div>';
     if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
 
@@ -1022,8 +1024,13 @@
       const res = await fetch('/api/search-games?resolve=1&name=' + encodeURIComponent(guessObj.text));
       const data = await res.json();
       if (!data.year) return;
-      const answerYear = extractYear(puzzle.released);
       guessObj.year = data.year;
+
+      // Repli : si le puzzle du jour n'a pas de date de sortie enregistrée (générée sans
+      // "released"), on va la chercher via cette même API, une seule fois par puzzle (mise en cache).
+      let answerYear = extractYear(puzzle.released);
+      if (!answerYear) answerYear = await getAnswerYearFallback();
+
       if (answerYear) {
         guessObj.yearHint = data.year < answerYear ? 'after' : (data.year > answerYear ? 'before' : 'same');
       }
@@ -1037,6 +1044,20 @@
     } catch (e) {
       // silencieux : le jeu marche très bien sans cet indice
     }
+  }
+
+  // Repli quand puzzle.released est vide : résout l'année de la réponse du jour via la même
+  // API que pour les indices, une seule fois par puzzle (résultat mis en cache dans cachedAnswerYear).
+  async function getAnswerYearFallback() {
+    if (cachedAnswerYear !== undefined) return cachedAnswerYear;
+    try {
+      const res = await fetch('/api/search-games?resolve=1&name=' + encodeURIComponent(puzzle.answer));
+      const data = await res.json();
+      cachedAnswerYear = data.year || null;
+    } catch (e) {
+      cachedAnswerYear = null;
+    }
+    return cachedAnswerYear;
   }
   function onSkip() {
     state.guesses.push({ text: '', correct: false, skipped: true });
