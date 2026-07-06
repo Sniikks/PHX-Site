@@ -399,6 +399,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 
 <div id="toastContainer"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script>
 // ── CONFIG SUPABASE ──────────────────────────────────────────────────────────
@@ -414,25 +415,24 @@ async function sbUpdate(t,id,o){try{const{inserted_at,...d}=o;await fetch(`${SUP
 async function sbDelete(t,id){try{await fetch(`${SUPA_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:H});}catch(e){}}
 
 // ── REALTIME ─────────────────────────────────────────────────────────────────
+// Utilise le client supabase-js (canaux postgres_changes), qui gère lui-même
+// la reconnexion automatique. L'ancienne version ouvrait un WebSocket brut
+// avec le protocole v1 (vsn=1.0.0, topics "realtime:public:table"), qui n'est
+// plus supporté par Supabase : le point vert s'affichait mais les événements
+// n'arrivaient jamais.
 function connectRealtime(){
-  try{
-    const ws=new WebSocket(SUPA_URL.replace('https://','wss://')+'/realtime/v1/websocket?apikey='+SUPA_KEY+'&vsn=1.0.0');
-    ws.onopen=()=>{
-      setStatus(true);
-      ['jeux_a_faire','proposition'].forEach(t=>ws.send(JSON.stringify({topic:`realtime:public:${t}`,event:'phx_join',payload:{},ref:t})));
-    };
-    ws.onmessage=e=>{
-      try{const m=JSON.parse(e.data);
-        if(['INSERT','UPDATE','DELETE'].includes(m.event)){
-          if(m.topic.includes('jeux_a_faire'))loadTab1();
-          if(m.topic.includes('proposition'))loadTab2();
-        }
-      }catch(e){}
-    };
-    ws.onclose=()=>{setStatus(false);setTimeout(connectRealtime,3000);};
-    ws.onerror=()=>ws.close();
-    setInterval(()=>{if(ws.readyState===1)ws.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:null}));},30000);
-  }catch(e){setStatus(false);setTimeout(connectRealtime,5000);}
+  supabaseClient
+    .channel('proposition_tables')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'jeux_a_faire' }, () => {
+      // Ne pas re-rendre pendant qu'une modale est ouverte (édition en cours)
+      if(document.querySelector('.info-overlay.open, .confirm-overlay.open')) return;
+      loadTab1();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'proposition' }, () => {
+      if(document.querySelector('.info-overlay.open, .confirm-overlay.open')) return;
+      loadTab2();
+    })
+    .subscribe(status => setStatus(status === 'SUBSCRIBED'));
 }
 function setStatus(ok){
   const d=document.getElementById('dot');

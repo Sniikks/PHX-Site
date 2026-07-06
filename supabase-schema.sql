@@ -54,3 +54,22 @@ create policy "Public update access"
 -- Si le temps réel ne fonctionne pas (listes qui ne se mettent pas à jour
 -- entre deux appareils), vérifie que la table est bien dans la publication :
 -- alter publication supabase_realtime add table app_data;
+
+-- ==========================================================
+-- MIGRATION REALTIME (proposition.html) — à exécuter UNE FOIS
+-- Active les notifications temps réel sur les tables de la page
+-- "Proposition de Jeux". Sans ça, le point vert s'affiche mais les
+-- modifications de l'autre n'apparaissent pas en direct.
+-- (Le bloc gère le cas où une table est déjà dans la publication.)
+-- ==========================================================
+do $$
+begin
+  begin
+    alter publication supabase_realtime add table jeux_a_faire;
+  exception when duplicate_object then null;
+  end;
+  begin
+    alter publication supabase_realtime add table proposition;
+  exception when duplicate_object then null;
+  end;
+end $$;
