@@ -207,6 +207,35 @@
   @media (max-width:760px){
     input, select, textarea { font-size:16px !important; }
   }
+
+  /* ── Liste déroulante ouverte arrondie ──
+     Utilise le nouveau standard "customizable select" (Chrome/Edge récents).
+     Les autres navigateurs ignorent ce bloc sans rien casser : ils gardent
+     leur liste native. */
+  select, ::picker(select) { appearance: base-select; }
+  ::picker(select) {
+    background: var(--bg2, var(--surface2, #15161c));
+    border: 1px solid var(--border, #232327);
+    border-radius: 12px;
+    padding: 4px;
+    margin-top: 4px;
+    box-shadow: 0 14px 36px rgba(0,0,0,.55);
+  }
+  select option {
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: transparent;
+    cursor: pointer;
+  }
+  select option:hover, select option:focus { background: var(--bg3, rgba(255,255,255,.06)); }
+  select option:checked { background: var(--bg3, rgba(255,255,255,.06)); color: var(--gold, #e8b84b); font-weight: 600; }
+
+  .admin-key-input {
+    width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text);
+    border-radius:var(--radius); padding:9px 12px; font-family:inherit; font-size:16px;
+    outline:none; margin:4px 0 14px;
+  }
+  .admin-key-input:focus { border-color:var(--gold-dim); }
 </style>
 </head>
 <body>
@@ -215,7 +244,6 @@
   <div class="page-header">
     <a href="index.html" class="menu-btn">☰ Menu</a>
     <div class="header-io">
-      <button class="text-action-btn" id="dedupeBtn" title="Retire les jeux en double (même nom)">Retirer doublons</button>
       <button class="text-action-btn" id="exportBtn">Exporter</button>
       <label class="text-action-btn" for="importInput" style="cursor:pointer">Importer</label>
       <input type="file" id="importInput" accept=".json" style="display:none">
@@ -228,7 +256,7 @@
   <div class="toolbar-row">
     <div class="search-wrap">
       <span class="search-icon">⌕</span>
-      <input class="search-box" id="searchInput" placeholder="Rechercher un jeu…">
+      <input class="search-box" id="searchInput" placeholder="Rechercher un jeu…" autocomplete="off">
       <button type="button" class="search-clear" id="searchClear" title="Effacer">✕</button>
     </div>
     <div class="toolbar-actions">
@@ -314,6 +342,7 @@
   <div class="confirm-box">
     <h2>Réinitialiser les avis</h2>
     <p>Tous les avis de <strong>369</strong> et <strong>Sniikks</strong> seront effacés — tous les jeux repasseront en attente. Cette action est irréversible.</p>
+    <input type="password" id="resetKeyInput" class="admin-key-input" placeholder="Clé admin requise" autocomplete="off">
     <div class="confirm-actions">
       <button class="btn-cancel" id="resetCancelBtn">Annuler</button>
       <button class="btn-danger" id="resetConfirmBtn" style="background:var(--red);color:#fff;border-color:var(--red)">Réinitialiser</button>
@@ -548,8 +577,35 @@ function confirmDeleteGame() {
 }
 
 // ── RÉINITIALISER LES AVIS ────────────────────────
-function confirmResetRatings() {
+// La réinitialisation exige la clé admin, vérifiée côté serveur
+// (/api/verify-admin, même ADMIN_KEY que la génération du ZoomJeu).
+// La clé validée est mémorisée en sessionStorage le temps de l'onglet,
+// partagée avec le bouton "Générer" de ZoomJeu.
+async function confirmResetRatings() {
+  const input = document.getElementById('resetKeyInput');
+  const key = (input.value || sessionStorage.getItem('phx_admin_key') || '').trim();
+  if (!key) { showToast('Clé admin requise'); input.focus(); return; }
+
+  const btn = document.getElementById('resetConfirmBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/verify-admin?key=' + encodeURIComponent(key));
+    if (!res.ok) {
+      sessionStorage.removeItem('phx_admin_key');
+      showToast('Clé admin invalide ✕');
+      input.value = ''; input.focus();
+      return;
+    }
+    sessionStorage.setItem('phx_admin_key', key);
+  } catch (e) {
+    showToast('Vérification impossible (réseau ?)');
+    return;
+  } finally {
+    btn.disabled = false;
+  }
+
   ratings = {};
+  input.value = '';
   document.getElementById('resetOverlay').classList.remove('open');
   saveToStorage(); renderAll(); showToast('Tous les avis ont été réinitialisés ✓');
 }
@@ -680,69 +736,6 @@ function saveToJSON() {
   showToast('Export JSON téléchargé ✓');
 }
 
-// ── NETTOYAGE DES DOUBLONS ────────────────────────
-// Repère les jeux "custom" (ajoutés à la main ou importés) qui partagent le même nom
-// (insensible à la casse, espaces multiples ignorés) et ne garde qu'un seul exemplaire.
-// Si un doublon supprimé avait un avis renseigné et que celui qu'on garde n'en a pas,
-// l'avis est récupéré avant suppression.
-function normalizeGameName(s) {
-  return (s || '').toLowerCase().trim().replace(/\s+/g, ' ');
-}
-
-function dedupeCustomGames() {
-  // On regroupe TOUS les jeux (jeux de base "base_N" + jeux custom "custom_N") par nom normalisé,
-  // pas seulement les customs entre eux — sinon un jeu de base réimporté en double comme custom
-  // n'est jamais détecté.
-  const groups = new Map(); // nom normalisé -> [ids...]
-  Object.keys(allGames).forEach(id => {
-    const g = allGames[id];
-    if (!g || !g.name) return;
-    const key = normalizeGameName(g.name);
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(id);
-  });
-
-  let removed = 0;
-  let baseOnlyDupes = 0; // doublons détectés mais non touchés (car uniquement entre jeux de base)
-
-  groups.forEach(ids => {
-    if (ids.length < 2) return;
-    const baseIds = ids.filter(id => id.startsWith('base_'));
-    const customIds = ids.filter(id => id.startsWith('custom_'));
-
-    if (customIds.length === 0) {
-      // Doublon uniquement parmi les jeux de base : on ne supprime jamais un jeu de base ici
-      // (la liste de base vit sur Supabase / clé BASE_KEY, ça se corrige à la source).
-      if (baseIds.length > 1) baseOnlyDupes += baseIds.length - 1;
-      return;
-    }
-
-    // Priorité pour l'entrée à garder : un jeu de base (canonique) s'il y en a un,
-    // sinon le custom le plus ancien (plus petit numéro).
-    const keepId = baseIds[0] || customIds.slice().sort((a, b) => {
-      const na = parseInt((a.match(/\d+/) || [0])[0], 10);
-      const nb = parseInt((b.match(/\d+/) || [0])[0], 10);
-      return na - nb;
-    })[0];
-
-    ids.forEach(id => {
-      if (id === keepId || !id.startsWith('custom_')) return; // jamais toucher un "base_"
-      const dupRating = ratings[id];
-      const keepRating = ratings[keepId];
-      const dupHasRating = dupRating && (dupRating.g369 || dupRating.sniikks);
-      const keepHasRating = keepRating && (keepRating.g369 || keepRating.sniikks);
-      if (dupHasRating && !keepHasRating) ratings[keepId] = dupRating;
-      delete customGames[id];
-      delete allGames[id];
-      delete ratings[id];
-      delete overrides[id];
-      removed++;
-    });
-  });
-
-  return { removed, baseOnlyDupes };
-}
-
 function importJSON(input) {
   const file = input.files[0]; if (!file) return;
   const r = new FileReader();
@@ -753,16 +746,26 @@ function importJSON(input) {
       text = text.replace(/,\s*\]/g, ']');
       const s = JSON.parse(text);
 
-      // Format liste brute de jeux : [{name, src}, ...] -> ajoute uniquement les nouveaux, sans jamais toucher à l'existant
+      // Format liste de jeux : accepte plusieurs schémas pour être directement
+      // compatible avec les exports des autres pages du site :
+      //   - format natif tierlist : {name, src}
+      //   - export "Jeux de Sniikks" : {name, img, ...}
+      //   - export "Jeux de 369"    : {title, steamId, ...} (image reconstruite
+      //     depuis l'ID Steam ; sans ID, le jeu est importé sans image)
+      // N'ajoute que les nouveaux jeux, sans jamais toucher à l'existant.
       if (Array.isArray(s)) {
+        const steamHeader = id => `https://cdn.akamai.steamstatic.com/steam/apps/${id}/header.jpg`;
         let added = 0;
         s.forEach(g => {
-          if (!g.name || !g.src) return;
-          const nameLower = g.name.toLowerCase();
+          if (!g || typeof g !== 'object') return;
+          const name = g.name || g.title || g.nom || g.jeu;
+          if (!name) return;
+          const src = g.src || g.img || g.image || (g.steamId ? steamHeader(g.steamId) : '');
+          const nameLower = String(name).toLowerCase();
           const exists = Object.values(allGames).some(x => x.name.toLowerCase() === nameLower);
           if (exists) return;
           const id = 'custom_' + (nextCustomId++);
-          const game = { name: fmt(g.name), src: g.src };
+          const game = { name: fmt(String(name)), src: src || '' };
           customGames[id] = game; allGames[id] = game; ratings[id] = { g369:null, sniikks:null };
           added++;
         });
@@ -772,29 +775,15 @@ function importJSON(input) {
       }
 
       // Format sauvegarde complète : {ratings, custom, overrides}
-      // -> on n'ajoute que les jeux réellement nouveaux (comparaison par nom, pas par id,
-      //    car les ids "custom_N" sont générés localement et ne correspondent pas forcément
-      //    d'un export à l'autre, même pour un jeu déjà présent).
-      let addedFull = 0;
       if (s.custom) Object.entries(s.custom).forEach(([id,g]) => {
-        if (!g || !g.name || !g.src) return;
-        const nameLower = g.name.toLowerCase();
-        const exists = Object.values(allGames).some(x => x.name.toLowerCase() === nameLower);
-        if (exists) return;
-        // Évite d'écraser un jeu existant si l'id importé est déjà utilisé par autre chose
-        const finalId = allGames[id] ? ('custom_' + (nextCustomId++)) : id;
-        customGames[finalId] = g; allGames[finalId] = g;
-        if (!ratings[finalId]) ratings[finalId] = { g369:null, sniikks:null };
-        addedFull++;
+        if (!allGames[id]) { customGames[id]=g; allGames[id]=g; }
       });
       if (s.overrides) Object.entries(s.overrides).forEach(([id,ov]) => {
-        if (!allGames[id]) return;
         overrides[id] = ov;
-        allGames[id] = { ...allGames[id], ...ov };
+        if (allGames[id]) allGames[id] = { ...allGames[id], ...ov };
       });
       if (s.ratings) Object.entries(s.ratings).forEach(([id,r]) => { if (allGames[id]) ratings[id] = r; });
-      saveToStorage(); renderAll();
-      showToast(s.custom ? `Import réussi ✓ (${addedFull} nouveau(x) jeu(x))` : 'Import réussi ✓');
+      saveToStorage(); renderAll(); showToast('Import réussi ✓');
     } catch(err) { alert('Erreur import : ' + err.message); }
   };
   r.readAsText(file); input.value = '';
@@ -824,25 +813,14 @@ document.getElementById('modalCancelBtn').addEventListener('click', closeAddModa
 document.getElementById('modalConfirmBtn').addEventListener('click', confirmModal);
 document.getElementById('newGameUrl').addEventListener('input', onUrlInput);
 document.getElementById('newGameFile').addEventListener('change', () => loadFilePreview(document.getElementById('newGameFile')));
-document.getElementById('dedupeBtn').addEventListener('click', () => {
-  const nb = Object.keys(allGames).length;
-  if (!nb) { showToast('Aucun jeu à vérifier'); return; }
-  if (!confirm(`Rechercher et retirer les jeux en double (${nb} jeux au total) ?`)) return;
-  const { removed, baseOnlyDupes } = dedupeCustomGames();
-  if (removed > 0) {
-    saveToStorage(); renderAll();
-    let msg = `${removed} doublon(s) supprimé(s) ✓`;
-    if (baseOnlyDupes > 0) msg += ` (+ ${baseOnlyDupes} doublon(s) côté jeux de base, non touché(s))`;
-    showToast(msg);
-  } else if (baseOnlyDupes > 0) {
-    showToast(`Aucun doublon "custom" trouvé, mais ${baseOnlyDupes} doublon(s) détecté(s) parmi les jeux de base (à corriger côté BASE_KEY)`);
-  } else {
-    showToast('Aucun doublon trouvé ✓');
-  }
-});
 document.getElementById('exportBtn').addEventListener('click', saveToJSON);
 document.getElementById('importInput').addEventListener('change', () => importJSON(document.getElementById('importInput')));
-document.getElementById('resetRatingsBtn').addEventListener('click', () => document.getElementById('resetOverlay').classList.add('open'));
+document.getElementById('resetRatingsBtn').addEventListener('click', () => {
+  const input = document.getElementById('resetKeyInput');
+  input.value = sessionStorage.getItem('phx_admin_key') || '';
+  document.getElementById('resetOverlay').classList.add('open');
+  if (!input.value) input.focus();
+});
 document.getElementById('resetCancelBtn').addEventListener('click', () => document.getElementById('resetOverlay').classList.remove('open'));
 document.getElementById('resetConfirmBtn').addEventListener('click', confirmResetRatings);
 document.getElementById('deleteCancelBtn').addEventListener('click', () => { pendingDeleteId=null; document.getElementById('deleteOverlay').classList.remove('open'); });

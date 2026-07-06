@@ -345,6 +345,36 @@
   @media (max-width:760px){
     input, select, textarea { font-size:16px !important; }
   }
+
+  /* ── Liste déroulante ouverte arrondie ──
+     Utilise le nouveau standard "customizable select" (Chrome/Edge récents).
+     Les autres navigateurs ignorent ce bloc sans rien casser : ils gardent
+     leur liste native. */
+  select, ::picker(select) { appearance: base-select; }
+  ::picker(select) {
+    background: var(--bg2, var(--surface2, #15161c));
+    border: 1px solid var(--border, #232327);
+    border-radius: 12px;
+    padding: 4px;
+    margin-top: 4px;
+    box-shadow: 0 14px 36px rgba(0,0,0,.55);
+  }
+  select option {
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: transparent;
+    cursor: pointer;
+  }
+  select option:hover, select option:focus { background: var(--bg3, rgba(255,255,255,.06)); }
+  select option:checked { background: var(--bg3, rgba(255,255,255,.06)); color: var(--gold, #e8b84b); font-weight: 600; }
+
+  .platform-link {
+    display:inline-flex; align-items:center; gap:6px;
+    color:var(--text); text-decoration:none;
+    border-bottom:1px dotted var(--gold-dim);
+    transition:color .15s, border-color .15s;
+  }
+  .platform-link:hover { color:var(--gold); border-bottom-color:var(--gold); }
 </style>
 </head>
 <body>
@@ -378,11 +408,11 @@
           <div class="view-toggle">
             <button id="viewListBtn" title="Vue compacte">☰</button>
             <button id="viewGridBtn" class="active" title="Vue grille">⊞</button>
-            <button class="view-btn" onclick="collapseAllYears()" title="⬇">
+            <button class="view-btn" onclick="collapseAllYears()" title="Tout fermer">
     ⯆
 </button>
 
-<button class="view-btn" onclick="expandAllYears()" title="⬆">
+<button class="view-btn" onclick="expandAllYears()" title="Tout ouvrir">
     ⯅
 </button>
           </div>
@@ -396,7 +426,7 @@
         </div>
         <div class="search-wrap">
           <span class="search-icon">⌕</span>
-          <input class="search-box" type="text" id="search" placeholder="Rechercher un jeu...">
+          <input class="search-box" type="text" id="search" placeholder="Rechercher un jeu..." autocomplete="off">
           <button type="button" class="search-clear" id="searchClear" title="Effacer">✕</button>
         </div>
       </div>
@@ -819,6 +849,16 @@ function renderGrid() {
 }
 
 // ── INFO POPUP ──
+// Reconstruit le lien de la page magasin du jeu quand c'est possible :
+// - depuis un lien de page Steam collé tel quel dans le champ image
+// - depuis une URL d'image du CDN Steam (contient l'ID de l'app)
+function gameStoreLink(g){
+  if(!g || !g.img) return null;
+  const m = g.img.match(/store\.steampowered\.com(?:\/agecheck)?\/app\/(\d+)/i)
+         || g.img.match(/steamstatic\.com\/(?:store_item_assets\/)?steam\/apps\/(\d+)/i);
+  return m ? `https://store.steampowered.com/app/${m[1]}/` : null;
+}
+
 function openInfo(id) {
   if(document.getElementById('overlay').classList.contains('open')) return;
   const g=games.find(x=>x.id===id); if(!g) return;
@@ -828,10 +868,15 @@ function openInfo(id) {
   } else {
     imgWrap.innerHTML=`<div style="position:relative"><div class="info-no-img">🎮</div><div class="info-img-overlay"></div><div class="info-title-block"><div class="info-title">${escHtml(g.name)}</div></div></div>`;
   }
+  const storeLink=gameStoreLink(g);
+  const platformInner=`${platformHtml(g.platform,16)} ${platformName(g.platform)}`;
+  const platformVal=storeLink
+    ? `<a class="platform-link" href="${escHtml(storeLink)}" target="_blank" rel="noopener" title="Ouvrir la page du jeu">${platformInner} ↗</a>`
+    : platformInner;
   document.getElementById('infoBody').innerHTML=`
     <div class="info-row"><span class="info-label">STATUT</span><span class="info-val">${statusBadge(g.status)}</span></div>
     <div class="info-row"><span class="info-label">NOTE</span><span class="info-val">${starsHtml(g.note)}</span></div>
-    <div class="info-row"><span class="info-label">PLATEFORME</span><span class="info-val">${platformHtml(g.platform,16)} ${platformName(g.platform)}</span></div>
+    <div class="info-row"><span class="info-label">PLATEFORME</span><span class="info-val">${platformVal}</span></div>
     ${g.support?`<div class="info-row"><span class="info-label">SUPPORT</span><span class="info-val">${escHtml(g.support)}</span></div>`:''}
     ${g.annee?`<div class="info-row"><span class="info-label">ANNÉE</span><span class="info-val">${g.annee}</span></div>`:''}
     ${g.noteperso?`<div class="info-row" style="flex-direction:column;gap:.3rem"><span class="info-label">NOTE PERSO</span><div style="background:var(--bg3);border-left:2px solid var(--border);padding:.4rem .6rem;font-size:12px;color:#ccc;font-style:italic;white-space:pre-wrap">${escHtml(g.noteperso)}</div></div>`:''}

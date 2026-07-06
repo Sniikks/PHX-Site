@@ -511,8 +511,14 @@
     let matches = 0;
     guessTokens.forEach(gt => { if (baseTokens.some(bt => tokensMatch(gt, bt))) matches++; });
 
+    // Une réponse est "proche" dès que suffisamment de mots significatifs
+    // correspondent. Pas besoin d'exclure les correspondances complètes :
+    // les vraies bonnes réponses sont déjà attrapées par isCorrectGuess en
+    // amont. (L'ancienne condition "matches < baseTokens.length" empêchait
+    // l'orange sur les licences à un seul mot significatif — "Borderlands 2"
+    // pour "Borderlands 3" n'était jamais proche, car le chiffre est ignoré.)
     const threshold = Math.min(2, baseTokens.length);
-    return matches >= threshold && matches < baseTokens.length;
+    return matches >= threshold;
   }
 
   // Repère si la réponse commence par le(s) même(s) mot(s) que le vrai jeu
@@ -917,7 +923,7 @@
       sidebarHtml = `
         <form class="guess-form" id="guessForm" autocomplete="off">
           <div class="input-wrap">
-            <input id="guessInput" type="text" placeholder="Quel est ce jeu ?" />
+            <input id="guessInput" type="text" placeholder="Quel est ce jeu ?" autocomplete="off" />
             <button type="button" class="input-clear" id="clearBtn" title="Effacer">✕</button>
           </div>
           <div class="suggestions" id="suggestionsBox" style="display:none;"></div>

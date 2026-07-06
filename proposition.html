@@ -234,6 +234,28 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
   @media (max-width:760px){
     input, select, textarea { font-size:16px !important; }
   }
+
+  /* ── Liste déroulante ouverte arrondie ──
+     Utilise le nouveau standard "customizable select" (Chrome/Edge récents).
+     Les autres navigateurs ignorent ce bloc sans rien casser : ils gardent
+     leur liste native. */
+  select, ::picker(select) { appearance: base-select; }
+  ::picker(select) {
+    background: var(--bg2, var(--surface2, #15161c));
+    border: 1px solid var(--border, #232327);
+    border-radius: 12px;
+    padding: 4px;
+    margin-top: 4px;
+    box-shadow: 0 14px 36px rgba(0,0,0,.55);
+  }
+  select option {
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: transparent;
+    cursor: pointer;
+  }
+  select option:hover, select option:focus { background: var(--bg3, rgba(255,255,255,.06)); }
+  select option:checked { background: var(--bg3, rgba(255,255,255,.06)); color: var(--gold, #e8b84b); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -257,7 +279,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
     </div>
   </div>
   <div class="sh-row" id="filterRow1">
-    <input type="text" id="searchInput1" class="sh-search" placeholder="Rechercher un jeu...">
+    <input type="text" id="searchInput1" class="sh-search" placeholder="Rechercher un jeu..." autocomplete="off">
     <button class="filter-btn active" data-filter1="Tous">Tous</button>
     <button class="filter-btn" data-filter1="A faire">À faire</button>
     <button class="filter-btn" data-filter1="En cours">En cours</button>
@@ -265,7 +287,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
     <button class="btn-add-main" onclick="openModal1()">+ Ajouter</button>
   </div>
   <div class="sh-row" id="filterRow2">
-    <input type="text" id="searchInput2" class="sh-search" placeholder="Rechercher une proposition...">
+    <input type="text" id="searchInput2" class="sh-search" placeholder="Rechercher une proposition..." autocomplete="off">
     <button class="filter-btn active" data-filter2="Tous">Tous</button>
     <button class="filter-btn" data-filter2="369">369 Oui</button>
     <button class="filter-btn" data-filter2="Sniikks">Sniikks Oui</button>

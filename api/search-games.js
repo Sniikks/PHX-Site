@@ -36,7 +36,16 @@ const BROWSER_HEADERS = {
     'Accept': 'application/json, text/plain, */*'
 };
 
-const DLC_NAME_PATTERN = /\b(dlc|season pass|expansion pass|expansion|add-?on|content pack|bonus content|artbook|art book|soundtrack|skin pack|costume pack|weapon pack|outfit pack)\b/i;
+const DLC_NAME_PATTERN = /\b(dlc|season pass|expansion pass|expansion|add-?on|content pack|bonus content|artbook|art book|soundtrack|ost|skin pack|costume pack|weapon pack|outfit pack|upgrade pack|map pack|character pack|booster pack|challenge pack|premiere club|wallpaper|bundle|chapter)\b/i;
+
+// Filet de nom anti-DLC. Le mot "pack" seul est très évocateur de DLC
+// ("Mechromancer Pack", "Ultimate Vault Hunter Upgrade Pack"...), avec une
+// exception pour les vrais jeux type "The Jackbox Party Pack".
+function isDlcName(name) {
+    if (DLC_NAME_PATTERN.test(name)) return true;
+    if (/\bpack\b/i.test(name) && !/party pack/i.test(name)) return true;
+    return false;
+}
 
 function yearFromDateStr(str) {
     if (!str) return null;
@@ -124,8 +133,11 @@ async function handleAutocomplete(req, res, debug) {
     const rawgPromise = (async () => {
         if (!RAWG_API_KEY) { debugInfo.rawgSkipped = 'RAWG_API_KEY absente'; return []; }
         try {
-            // exclude_additions=true : demande à RAWG d'exclure les fiches DLC/extensions
-            // directement à la source (ex: "Captain Scarlett and Her Pirate's Booty").
+            // exclude_additions=true : demande à RAWG d'exclure les fiches DLC.
+            // ⚠️ En pratique RAWG ignore ce paramètre quand "search" est utilisé
+            // (confirmé sur le terrain) : on le garde par principe, mais le vrai
+            // filtrage des fiches DLC RAWG se fait plus bas (croisement avec les
+            // types Steam + motif de nom).
             const url = `${RAWG_BASE}/games?key=${RAWG_API_KEY}&search=${encodeURIComponent(q)}&search_precise=true&page_size=20&exclude_additions=true`;
             const r = await fetchWithTimeout(url, 3000);
             debugInfo.rawgStatus = r.status;
@@ -147,48 +159,59 @@ async function handleAutocomplete(req, res, debug) {
 
     const [steamItems, rawgResults] = await Promise.all([steamPromise, rawgPromise]);
 
-    // Années Steam, stratégie en 2 temps :
-    // 1) Héritage gratuit : si le même jeu (nom normalisé) existe côté RAWG,
-    //    on reprend son année — zéro appel réseau.
-    // 2) Pour les quelques jeux Steam encore sans année, un appel appdetails
-    //    plafonné (6 max, en parallèle, timeout 1,2 s). Bonus : appdetails
-    //    donne aussi le "type", qui attrape les DLC que storesearch ne marque
-    //    pas (ex: "The Secret Armory of General Knoxx").
+    // Vérification de type pour TOUS les résultats Steam affichables (pas
+    // seulement ceux sans année) : la recherche Steam ne marque presque jamais
+    // les DLC ("Dead by Daylight - Ghost Face" arrive en type "app"), seule la
+    // fiche appdetails est fiable. Les appels sont parallèles, mis en cache
+    // (mémoire chaude + les mêmes appids reviennent à chaque frappe) et coupés
+    // à 1,2 s — un timeout garde le jeu dans la liste (in dubio pro reo) mais
+    // sans année. Bonus : appdetails fournit aussi l'année, plus fiable que
+    // l'héritage RAWG. On garde l'héritage RAWG en secours après timeout.
     const rawgYearByName = new Map();
     rawgResults.forEach(g => {
         const y = yearFromDateStr(g.released);
         if (y) rawgYearByName.set(normalizeName(g.name), y);
     });
 
-    const steamEnriched = steamItems.map(i => ({
+    const MAX_STEAM_LOOKUPS = 12;
+    const steamEnriched = steamItems.slice(0, MAX_STEAM_LOOKUPS).map(i => ({
         name: i.name,
         id: i.id,
-        year: rawgYearByName.get(normalizeName(i.name)) || null,
+        year: null,
         dlc: false
     }));
-
-    const MAX_STEAM_DATE_LOOKUPS = 6;
-    const needLookup = steamEnriched.filter(i => !i.year).slice(0, MAX_STEAM_DATE_LOOKUPS);
-    debugInfo.steamAppdetailsCalls = needLookup.length;
-    await Promise.all(needLookup.map(async i => {
+    debugInfo.steamAppdetailsCalls = steamEnriched.length;
+    await Promise.all(steamEnriched.map(async i => {
         const info = await fetchSteamAppInfo(i.id);
-        if (!info) return;
-        i.year = info.year;
+        if (!info) { // timeout/échec : on garde le jeu, année RAWG en secours
+            i.year = rawgYearByName.get(normalizeName(i.name)) || null;
+            return;
+        }
+        i.year = info.year || rawgYearByName.get(normalizeName(i.name)) || null;
         if (info.type && info.type !== 'game') i.dlc = true; // dlc, music, demo…
     }));
 
-    // Fusion + déduplication + filet de nom anti-DLC.
+    // Les DLC confirmés côté Steam servent aussi à écarter leurs fiches jumelles
+    // côté RAWG (mêmes noms) : RAWG ignore exclude_additions quand "search" est
+    // utilisé, ses fiches DLC reviennent donc dans les résultats de recherche.
+    const steamDlcNames = new Set(
+        steamEnriched.filter(i => i.dlc).map(i => normalizeName(i.name))
+    );
+
+    // Fusion + déduplication + filets anti-DLC (nom + croisement Steam).
     const seen = new Set();
     const results = [];
     const push = (name, year) => {
-        if (DLC_NAME_PATTERN.test(name)) return;
+        if (isDlcName(name)) return;
         const key = normalizeName(name);
         if (!key || seen.has(key)) return;
+        if (steamDlcNames.has(key)) return; // fiche RAWG jumelle d'un DLC Steam confirmé
         seen.add(key);
         results.push({ name, year: year || null });
     };
 
     steamEnriched.forEach(i => { if (!i.dlc) push(i.name, i.year); });
+    steamItems.slice(MAX_STEAM_LOOKUPS).forEach(i => push(i.name, rawgYearByName.get(normalizeName(i.name)) || null));
     rawgResults.forEach(g => push(g.name, yearFromDateStr(g.released)));
 
     // Tri par date de sortie croissante ; les jeux sans date connue passent après,
