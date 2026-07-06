@@ -359,14 +359,18 @@
     margin-top: 4px;
     box-shadow: 0 14px 36px rgba(0,0,0,.55);
   }
+  /* color-scheme sombre scopé au select : force les listes NATIVES (Firefox,
+     Safari, anciens Chrome) à se rendre en sombre au lieu de blanc/noir. */
+  select, ::picker(select) { color-scheme: dark; }
   select option {
     border-radius: 8px;
     padding: 8px 10px;
-    background: transparent;
+    background: var(--bg2, var(--surface2, #15161c));
+    color: var(--text, #ededf0);
     cursor: pointer;
   }
-  select option:hover, select option:focus { background: var(--bg3, rgba(255,255,255,.06)); }
-  select option:checked { background: var(--bg3, rgba(255,255,255,.06)); color: var(--gold, #e8b84b); font-weight: 600; }
+  select option:hover, select option:focus { background: var(--bg3, #1d1e26); color: var(--text, #ededf0); }
+  select option:checked { background: var(--bg3, #1d1e26); color: var(--gold, #e8b84b); font-weight: 600; }
 
   .platform-link {
     display:inline-flex; align-items:center; gap:6px;
@@ -451,8 +455,8 @@
   <div class="modal">
     <h2 id="modalTitle">// AJOUTER UN JEU</h2>
     <div class="form-grid">
-      <div class="form-row"><label>JEU *</label><input type="text" id="f-name" placeholder="Nom du jeu"></div>
-      <div class="form-row"><label>ANNÉE</label><input type="number" id="f-annee" placeholder="2025" min="1990" max="2099"></div>
+      <div class="form-row"><label>JEU *</label><input type="text" id="f-name" placeholder="Nom du jeu" autocomplete="off"></div>
+      <div class="form-row"><label>ANNÉE</label><input type="number" id="f-annee" placeholder="2025" min="1990" max="2099" autocomplete="off"></div>
       <div class="form-row">
         <label>PLATEFORME</label>
         <div class="select-wrap">
@@ -506,7 +510,7 @@
     <!-- IMAGE FIELD -->
     <div class="form-row">
       <label>IMAGE — lien Steam ou URL directe</label>
-      <input type="text" id="f-img" placeholder="https://store.steampowered.com/app/..." oninput="onImgInput()">
+      <input type="text" id="f-img" placeholder="https://store.steampowered.com/app/..." oninput="onImgInput()" autocomplete="off">
       <div class="url-hint" id="imgHint">💡 Colle le lien de la page Steam → image + nom auto-détectés</div>
       <div class="url-detect" id="imgDetect"></div>
       <div class="img-preview-wrap" id="imgPreviewWrap"><img id="imgPreview" alt="preview"></div>

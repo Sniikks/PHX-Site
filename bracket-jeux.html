@@ -558,7 +558,7 @@ html,body{height:100%;background:radial-gradient(1200px 600px at 50% -200px, rgb
           <div class="draft-options-label">NOMBRE DE ROUNDS</div>
           <div class="draft-rounds-row" style="margin-top:0">
             <span class="draft-rounds-label">MATCHS EN PHASE 1 :</span>
-            <input class="draft-rounds-input" id="classicRoundsInput" type="number" min="1" max="500" placeholder="Auto">
+            <input class="draft-rounds-input" id="classicRoundsInput" type="number" min="1" max="500" placeholder="Auto" autocomplete="off">
             <span class="draft-rounds-hint" id="classicRoundsHint">(vide = le nb de jeux de ton json)</span>
           </div>
         </div>
@@ -568,7 +568,7 @@ html,body{height:100%;background:radial-gradient(1200px 600px at 50% -200px, rgb
           <div class="draft-options-label">NOMBRE DE ROUNDS</div>
           <div class="draft-rounds-row" style="margin-top:0">
             <span class="draft-rounds-label">DÉFIS À JOUER :</span>
-            <input class="draft-rounds-input" id="championRoundsInput" type="number" min="1" max="500" placeholder="10">
+            <input class="draft-rounds-input" id="championRoundsInput" type="number" min="1" max="500" placeholder="10" autocomplete="off">
             <span class="draft-rounds-hint" id="championRoundsHint">(vide = 10 par défaut)</span>
           </div>
         </div>
@@ -583,7 +583,7 @@ html,body{height:100%;background:radial-gradient(1200px 600px at 50% -200px, rgb
           </div>
           <div class="draft-rounds-row">
             <span class="draft-rounds-label">NOMBRE DE ROUNDS :</span>
-            <input class="draft-rounds-input" id="draftRoundsInput" type="number" min="1" max="500" placeholder="10">
+            <input class="draft-rounds-input" id="draftRoundsInput" type="number" min="1" max="500" placeholder="10" autocomplete="off">
             <span class="draft-rounds-hint" id="draftRoundsHint">(vide = 10 par défaut)</span>
           </div>
         </div>
@@ -1119,7 +1119,7 @@ function renderBlacklistModal(){
     </div>
     <div class="modal-body">
       <div class="bl-save-row">
-        <input type="text" id="blNewName" placeholder="Nom de la sauvegarde…" maxlength="60">
+        <input type="text" id="blNewName" placeholder="Nom de la sauvegarde…" maxlength="60" autocomplete="off">
         <button class="btn primary" onclick="saveCurrentExclusionAsBlacklist()">💾 Sauver l'exclusion actuelle</button>
       </div>
       <div class="bl-list" id="blList">

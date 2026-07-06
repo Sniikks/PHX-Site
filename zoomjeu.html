@@ -524,18 +524,42 @@
   // Repère si la réponse commence par le(s) même(s) mot(s) que le vrai jeu
   // (ex: "Project: Doors" -> "Project" partagé avec "Project Zomboid").
   // Renvoie { text, wordCount } ou null si aucun mot de tête ne correspond.
+  //
+  // Subtilité : la normalisation peut découper un mot affiché en plusieurs
+  // tokens ("Meier's" -> "meier" + "s"). On aligne donc chaque mot ORIGINAL
+  // sur ses sous-tokens normalisés, et un mot n'est révélé que si TOUS ses
+  // sous-tokens correspondent — sinon le comptage se décale et l'indice
+  // révèle un mot de trop (ex: "Sid Meier's Civilization® V" entièrement
+  // dévoilé pour la réponse "...Civilization® V" alors qu'on a tapé "...IV").
   function nameHint(guessRaw, answer) {
     const cleanAnswer = answer.replace(/\s*\(\d{4}\)\s*$/, '');
     const gTokens = normalize(guessRaw).split(' ').filter(Boolean);
-    const aTokensNorm = normalize(cleanAnswer).split(' ').filter(Boolean);
-    const aTokensOriginal = cleanAnswer.split(/[\s:\-]+/).filter(Boolean);
+
+    const origTokens = cleanAnswer.split(/[\s:\-]+/).filter(Boolean);
+    const subCounts = [];   // nb de sous-tokens normalisés par mot original
+    const aTokensNorm = []; // sous-tokens normalisés, à plat
+    origTokens.forEach(t => {
+      const subs = normalize(t).split(' ').filter(Boolean);
+      subCounts.push(subs.length);
+      aTokensNorm.push(...subs);
+    });
 
     let matchLen = 0;
     while (matchLen < gTokens.length && matchLen < aTokensNorm.length && tokensMatch(gTokens[matchLen], aTokensNorm[matchLen])) {
       matchLen++;
     }
-    if (matchLen === 0) return null;
-    return { text: aTokensOriginal.slice(0, matchLen).join(' '), wordCount: matchLen };
+
+    // Conversion : combien de mots ORIGINAUX sont entièrement couverts ?
+    let covered = 0, acc = 0;
+    for (const c of subCounts) {
+      if (acc + c <= matchLen) { acc += c; covered++; } else break;
+    }
+    // Garde-fou : ne jamais révéler le nom complet via l'indice (si tous les
+    // mots correspondent mais que la réponse n'était pas "correcte" — mots en
+    // trop dans la saisie, etc. — on retient le dernier mot).
+    if (covered >= origTokens.length) covered = origTokens.length - 1;
+    if (covered <= 0) return null;
+    return { text: origTokens.slice(0, covered).join(' '), wordCount: covered };
   }
 
   function extractYear(releasedStr) {
@@ -1102,10 +1126,16 @@
   // Si l'essai vient d'une suggestion, son année est déjà connue (aucun appel
   // réseau) ; sinon, on la demande à /api/search-games?resolve=1. Best-effort :
   // si ça échoue ou ne trouve rien, on ne montre simplement pas cet indice.
+  // Les symboles ®™© dans les noms officiels ("Sid Meier's Civilization® V")
+  // font parfois échouer la recherche RAWG/Steam : on les retire avant résolution.
+  function cleanForResolve(name) {
+    return String(name || '').replace(/[®™©]/g, '').replace(/\s+/g, ' ').trim();
+  }
+
   async function resolveYearHint(guessObj) {
     try {
       if (!guessObj.year) {
-        const res = await fetch('/api/search-games?resolve=1&name=' + encodeURIComponent(guessObj.text));
+        const res = await fetch('/api/search-games?resolve=1&name=' + encodeURIComponent(cleanForResolve(guessObj.text)));
         const data = await res.json();
         if (!data.year) return;
         guessObj.year = data.year;
@@ -1115,10 +1145,21 @@
       // "released"), on va la chercher via cette même API, une seule fois par puzzle (mise en cache).
       let answerYear = extractYear(puzzle.released);
       if (!answerYear) answerYear = await getAnswerYearFallback();
+      if (!answerYear) return;
 
-      if (answerYear) {
-        guessObj.yearHint = data.year < answerYear ? 'after' : (data.year > answerYear ? 'before' : 'same');
-      }
+      // ⚠️ Bien comparer guessObj.year (toujours défini ici) et non "data.year" :
+      // quand l'année vient d'une suggestion cliquée, aucun appel réseau n'a eu
+      // lieu et "data" n'existe pas — c'était la cause des indices manquants.
+      const hintFor = y => y < answerYear ? 'after' : (y > answerYear ? 'before' : 'same');
+      guessObj.yearHint = hintFor(guessObj.year);
+
+      // Rattrapage rétroactif : si des essais précédents avaient une année mais
+      // pas d'indice (année de la réponse indisponible à ce moment-là), on les
+      // complète maintenant que l'année de la réponse est connue.
+      state.guesses.forEach(g => {
+        if (!g.correct && !g.skipped && g.year && !g.yearHint) g.yearHint = hintFor(g.year);
+      });
+
       saveSession();
       // Ne remplace que la liste des essais (pas tout le panneau), pour ne pas
       // effacer une saisie en cours si le joueur a déjà commencé le prochain essai.
@@ -1132,13 +1173,18 @@
   }
 
   // Repli quand puzzle.released est vide : résout l'année de la réponse du jour via la même
-  // API que pour les indices, une seule fois par puzzle (résultat mis en cache dans cachedAnswerYear).
+  // API que pour les indices, une seule fois par puzzle (cache mémoire + localStorage, pour
+  // survivre aux rechargements de page et aux échecs transitoires).
   async function getAnswerYearFallback() {
     if (cachedAnswerYear !== undefined) return cachedAnswerYear;
+    const lsKey = 'zoomjeu_answer_year_' + viewingDate;
+    const stored = localStorage.getItem(lsKey);
+    if (stored) { cachedAnswerYear = parseInt(stored, 10) || null; return cachedAnswerYear; }
     try {
-      const res = await fetch('/api/search-games?resolve=1&name=' + encodeURIComponent(puzzle.answer));
+      const res = await fetch('/api/search-games?resolve=1&name=' + encodeURIComponent(cleanForResolve(puzzle.answer)));
       const data = await res.json();
       cachedAnswerYear = data.year || null;
+      if (cachedAnswerYear) localStorage.setItem(lsKey, String(cachedAnswerYear));
     } catch (e) {
       cachedAnswerYear = null;
     }

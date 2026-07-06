@@ -221,14 +221,18 @@
     margin-top: 4px;
     box-shadow: 0 14px 36px rgba(0,0,0,.55);
   }
+  /* color-scheme sombre scopé au select : force les listes NATIVES (Firefox,
+     Safari, anciens Chrome) à se rendre en sombre au lieu de blanc/noir. */
+  select, ::picker(select) { color-scheme: dark; }
   select option {
     border-radius: 8px;
     padding: 8px 10px;
-    background: transparent;
+    background: var(--bg2, var(--surface2, #15161c));
+    color: var(--text, #ededf0);
     cursor: pointer;
   }
-  select option:hover, select option:focus { background: var(--bg3, rgba(255,255,255,.06)); }
-  select option:checked { background: var(--bg3, rgba(255,255,255,.06)); color: var(--gold, #e8b84b); font-weight: 600; }
+  select option:hover, select option:focus { background: var(--bg3, #1d1e26); color: var(--text, #ededf0); }
+  select option:checked { background: var(--bg3, #1d1e26); color: var(--gold, #e8b84b); font-weight: 600; }
 
   .admin-key-input {
     width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text);
@@ -244,6 +248,7 @@
   <div class="page-header">
     <a href="index.html" class="menu-btn">☰ Menu</a>
     <div class="header-io">
+      <button class="text-action-btn" id="dedupeBtn" title="Retire les jeux en double (même nom)">Retirer doublons</button>
       <button class="text-action-btn" id="exportBtn">Exporter</button>
       <label class="text-action-btn" for="importInput" style="cursor:pointer">Importer</label>
       <input type="file" id="importInput" accept=".json" style="display:none">
@@ -318,11 +323,11 @@
     <h2 id="modalTitle">Ajouter un jeu</h2>
     <div class="form-row">
       <label>Nom du jeu</label>
-      <input type="text" id="newGameName" placeholder="ex : Resident Evil 2">
+      <input type="text" id="newGameName" placeholder="ex : Resident Evil 2" autocomplete="off">
     </div>
     <div class="form-row">
       <label>Photo (lien Steam ou URL image directe)</label>
-      <input type="text" id="newGameUrl" placeholder="https://store.steampowered.com/app/...">
+      <input type="text" id="newGameUrl" placeholder="https://store.steampowered.com/app/..." autocomplete="off">
       <div class="url-hint" id="urlHint">💡 Colle un lien de page Steam ou l'URL directe d'une image (.jpg/.png)</div>
       <div class="url-detect" id="urlDetect"></div>
     </div>
@@ -434,6 +439,14 @@ function loadFromStorage() {
     }
     if (s.ratings) ratings = s.ratings;
     if (s.nextCustomId) nextCustomId = s.nextCustomId;
+    // Garde-fou : si le compteur sauvegardé est en retard sur les IDs réellement
+    // présents (vu en vrai : 464 jeux custom_1..custom_472 mais compteur à 1),
+    // le prochain ajout ÉCRASERAIT un jeu existant et son avis. On réaligne
+    // toujours le compteur sur le plus grand ID existant + 1.
+    Object.keys(customGames).forEach(id => {
+      const m = id.match(/^custom_(\d+)$/);
+      if (m) nextCustomId = Math.max(nextCustomId, parseInt(m[1], 10) + 1);
+    });
   } catch(e) { console.warn('Erreur de chargement:', e); }
 }
 
@@ -666,7 +679,8 @@ function addCustomGame() {
   if (dup) { alert(`⚠ "${dup.name}" est déjà dans la liste.`); return; }
 
   const src = getFinalSrc('');
-  const id = 'custom_' + (nextCustomId++);
+  while (allGames['custom_' + nextCustomId]) nextCustomId++; // saute les IDs déjà pris
+          const id = 'custom_' + (nextCustomId++);
   const game = { name, src };
   customGames[id] = game; allGames[id] = game; ratings[id] = { g369:null, sniikks:null };
   saveToStorage(); closeAddModal(); renderAll(); showToast(`"${name}" ajouté, en attente d'avis ✓`);
@@ -736,6 +750,69 @@ function saveToJSON() {
   showToast('Export JSON téléchargé ✓');
 }
 
+// ── NETTOYAGE DES DOUBLONS ────────────────────────
+// Repère les jeux "custom" (ajoutés à la main ou importés) qui partagent le même nom
+// (insensible à la casse, espaces multiples ignorés) et ne garde qu'un seul exemplaire.
+// Si un doublon supprimé avait un avis renseigné et que celui qu'on garde n'en a pas,
+// l'avis est récupéré avant suppression.
+function normalizeGameName(s) {
+  return (s || '').toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+function dedupeCustomGames() {
+  // On regroupe TOUS les jeux (jeux de base "base_N" + jeux custom "custom_N") par nom normalisé,
+  // pas seulement les customs entre eux — sinon un jeu de base réimporté en double comme custom
+  // n'est jamais détecté.
+  const groups = new Map(); // nom normalisé -> [ids...]
+  Object.keys(allGames).forEach(id => {
+    const g = allGames[id];
+    if (!g || !g.name) return;
+    const key = normalizeGameName(g.name);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(id);
+  });
+
+  let removed = 0;
+  let baseOnlyDupes = 0; // doublons détectés mais non touchés (car uniquement entre jeux de base)
+
+  groups.forEach(ids => {
+    if (ids.length < 2) return;
+    const baseIds = ids.filter(id => id.startsWith('base_'));
+    const customIds = ids.filter(id => id.startsWith('custom_'));
+
+    if (customIds.length === 0) {
+      // Doublon uniquement parmi les jeux de base : on ne supprime jamais un jeu de base ici
+      // (la liste de base vit sur Supabase / clé BASE_KEY, ça se corrige à la source).
+      if (baseIds.length > 1) baseOnlyDupes += baseIds.length - 1;
+      return;
+    }
+
+    // Priorité pour l'entrée à garder : un jeu de base (canonique) s'il y en a un,
+    // sinon le custom le plus ancien (plus petit numéro).
+    const keepId = baseIds[0] || customIds.slice().sort((a, b) => {
+      const na = parseInt((a.match(/\d+/) || [0])[0], 10);
+      const nb = parseInt((b.match(/\d+/) || [0])[0], 10);
+      return na - nb;
+    })[0];
+
+    ids.forEach(id => {
+      if (id === keepId || !id.startsWith('custom_')) return; // jamais toucher un "base_"
+      const dupRating = ratings[id];
+      const keepRating = ratings[keepId];
+      const dupHasRating = dupRating && (dupRating.g369 || dupRating.sniikks);
+      const keepHasRating = keepRating && (keepRating.g369 || keepRating.sniikks);
+      if (dupHasRating && !keepHasRating) ratings[keepId] = dupRating;
+      delete customGames[id];
+      delete allGames[id];
+      delete ratings[id];
+      delete overrides[id];
+      removed++;
+    });
+  });
+
+  return { removed, baseOnlyDupes };
+}
+
 function importJSON(input) {
   const file = input.files[0]; if (!file) return;
   const r = new FileReader();
@@ -764,6 +841,7 @@ function importJSON(input) {
           const nameLower = String(name).toLowerCase();
           const exists = Object.values(allGames).some(x => x.name.toLowerCase() === nameLower);
           if (exists) return;
+          while (allGames['custom_' + nextCustomId]) nextCustomId++; // saute les IDs déjà pris
           const id = 'custom_' + (nextCustomId++);
           const game = { name: fmt(String(name)), src: src || '' };
           customGames[id] = game; allGames[id] = game; ratings[id] = { g369:null, sniikks:null };
@@ -813,6 +891,22 @@ document.getElementById('modalCancelBtn').addEventListener('click', closeAddModa
 document.getElementById('modalConfirmBtn').addEventListener('click', confirmModal);
 document.getElementById('newGameUrl').addEventListener('input', onUrlInput);
 document.getElementById('newGameFile').addEventListener('change', () => loadFilePreview(document.getElementById('newGameFile')));
+document.getElementById('dedupeBtn').addEventListener('click', () => {
+  const nb = Object.keys(allGames).length;
+  if (!nb) { showToast('Aucun jeu à vérifier'); return; }
+  if (!confirm(`Rechercher et retirer les jeux en double (${nb} jeux au total) ?`)) return;
+  const { removed, baseOnlyDupes } = dedupeCustomGames();
+  if (removed > 0) {
+    saveToStorage(); renderAll();
+    let msg = `${removed} doublon(s) supprimé(s) ✓`;
+    if (baseOnlyDupes > 0) msg += ` (+ ${baseOnlyDupes} doublon(s) côté jeux de base, non touché(s))`;
+    showToast(msg);
+  } else if (baseOnlyDupes > 0) {
+    showToast(`Aucun doublon "custom" trouvé, mais ${baseOnlyDupes} doublon(s) détecté(s) parmi les jeux de base (à corriger côté BASE_KEY)`);
+  } else {
+    showToast('Aucun doublon trouvé ✓');
+  }
+});
 document.getElementById('exportBtn').addEventListener('click', saveToJSON);
 document.getElementById('importInput').addEventListener('change', () => importJSON(document.getElementById('importInput')));
 document.getElementById('resetRatingsBtn').addEventListener('click', () => {

@@ -559,11 +559,11 @@ body.compact-view .card-name{
   <div class="form-row">
     <div class="form-col">
       <label>Jeu *</label>
-      <input type="text" id="inputTitle" placeholder="Nom du jeu">
+      <input type="text" id="inputTitle" placeholder="Nom du jeu" autocomplete="off">
     </div>
     <div class="form-col form-col-sm">
       <label>Année</label>
-      <input type="number" id="inputDate" min="1990" max="2099" placeholder="2025">
+      <input type="number" id="inputDate" min="1990" max="2099" placeholder="2025" autocomplete="off">
     </div>
   </div>
   <div class="form-row">
@@ -609,7 +609,7 @@ body.compact-view .card-name{
     </div>
   </div>
   <label>Lien Steam <span style="text-transform:none;color:var(--text-faint);font-weight:500">(le nom sera rempli automatiquement)</span></label>
-  <input type="text" id="inputSteamId" placeholder="https://store.steampowered.com/app/..." oninput="onImgInput()">
+  <input type="text" id="inputSteamId" placeholder="https://store.steampowered.com/app/..." oninput="onImgInput()" autocomplete="off">
   <div class="url-hint" id="imgHint">Colle le lien de la page Steam → image + nom auto-détectés</div>
   <div class="url-detect" id="imgDetect"></div>
   <div class="img-preview-wrap" id="imgPreviewWrap"><img id="imgPreview" alt="preview"></div>
