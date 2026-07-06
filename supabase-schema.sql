@@ -21,10 +21,15 @@ create table if not exists app_data (
 -- Active la Row Level Security (bonne pratique même en accès public)
 alter table app_data enable row level security;
 
--- Politique simple : lecture et écriture ouvertes via la clé "anon".
--- ⚠️ Cela veut dire que quiconque a ton URL + clé anon peut lire/écrire
--- ces données. C'est acceptable pour un usage perso sans compte utilisateur,
+-- Politique : lecture, insertion et mise à jour ouvertes via la clé "anon".
+-- ⚠️ Quiconque a ton URL + clé anon peut lire/écrire ces données.
+-- C'est acceptable pour un usage perso sans compte utilisateur,
 -- mais NE mets jamais de données sensibles dans cette table.
+--
+-- 🔒 La suppression (DELETE) n'est PAS autorisée : le code du site
+-- n'en a pas besoin (il ne fait que select/upsert), et cela empêche
+-- un visiteur malveillant de vider toute la table en une requête.
+--
 -- Si tu veux restreindre plus tard, remplace ces policies par une
 -- vérification d'authentification Supabase (auth.uid()).
 
@@ -40,6 +45,8 @@ create policy "Public update access"
   on app_data for update
   using (true);
 
-create policy "Public delete access"
-  on app_data for delete
-  using (true);
+-- ==========================================================
+-- MIGRATION — à exécuter UNE FOIS sur ta base existante
+-- (SQL Editor > New query > coller la ligne ci-dessous > Run)
+-- ==========================================================
+-- drop policy if exists "Public delete access" on app_data;
