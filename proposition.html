@@ -163,6 +163,27 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 .form-group textarea{resize:vertical;min-height:80px;}
 .form-group select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237a7d8e'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer;}
 .form-group select option{background:#1e2028;}
+
+/* ── CUSTOM SELECT (style 369) ── */
+.cselect{position:relative;width:100%;}
+.cselect-trigger{
+  width:100%;background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);padding:9px 12px;font-family:'Inter',sans-serif;font-size:13px;
+  border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;justify-content:space-between;
+  box-sizing:border-box;transition:border-color .2s;user-select:none;
+}
+.cselect-trigger:hover,.cselect.open .cselect-trigger{border-color:var(--gold);}
+.cselect-arrow{font-size:9px;opacity:.5;transition:transform .2s;}
+.cselect.open .cselect-arrow{transform:rotate(180deg);}
+.cselect-dropdown{
+  display:none;position:absolute;top:calc(100% + 5px);left:0;right:0;
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);
+  overflow:hidden;z-index:400;box-shadow:0 12px 30px rgba(0,0,0,.6);
+}
+.cselect.open .cselect-dropdown{display:block;}
+.cselect-option{padding:10px 12px;font-size:13px;cursor:pointer;color:var(--text);transition:background .1s;}
+.cselect-option:hover{background:var(--surface);}
+.cselect-option.selected{color:var(--gold);background:var(--gold-glow);}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;padding-top:16px;border-top:1px solid var(--border);}
 .btn-cancel-modal{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'Rajdhani',sans-serif;font-weight:600;font-size:13px;letter-spacing:1px;text-transform:uppercase;border-radius:var(--radius);padding:9px 20px;cursor:pointer;transition:all .2s;}
@@ -336,11 +357,15 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
     <div class="form-row">
       <div class="form-group"><label>Ordre</label><input type="number" id="f1-ordre" placeholder="1, 2, 3…" min="1" autocomplete="off"></div>
       <div class="form-group"><label>Statut</label>
-        <select id="f1-statut">
-          <option value="">À faire</option>
-          <option value="En cours">En cours</option>
-          <option value="Attente/Bug">Attente/Bug</option>
-        </select>
+        <div class="cselect" id="cselect-f1-statut">
+          <input type="hidden" id="f1-statut" value="">
+          <div class="cselect-trigger"><span class="cselect-label">À faire</span><span class="cselect-arrow">▼</span></div>
+          <div class="cselect-dropdown">
+            <div class="cselect-option selected" data-value="">À faire</div>
+            <div class="cselect-option" data-value="En cours">En cours</div>
+            <div class="cselect-option" data-value="Attente/Bug">Attente/Bug</div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="form-group">
@@ -348,13 +373,17 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
       <input type="text" id="f1-jeu" placeholder="Nom du jeu…" autocomplete="off">
     </div>
     <div class="form-group"><label>Dispo</label>
-      <select id="f1-date">
-        <option value="">-</option>
-        <option value="🟢">🟢 Disponible</option>
-        <option value="🟠">🟠 Partiel</option>
-        <option value="🔴">🔴 Non dispo</option>
-        <option value="SORTIE">🆕 Vient de sortir</option>
-      </select>
+      <div class="cselect" id="cselect-f1-date">
+        <input type="hidden" id="f1-date" value="">
+        <div class="cselect-trigger"><span class="cselect-label">-</span><span class="cselect-arrow">▼</span></div>
+        <div class="cselect-dropdown">
+          <div class="cselect-option selected" data-value="">-</div>
+          <div class="cselect-option" data-value="🟢">🟢 Disponible</div>
+          <div class="cselect-option" data-value="🟠">🟠 Partiel</div>
+          <div class="cselect-option" data-value="🔴">🔴 Non dispo</div>
+          <div class="cselect-option" data-value="SORTIE">🆕 Vient de sortir</div>
+        </div>
+      </div>
     </div>
     <div class="form-group">
       <label>Lien Steam <span style="color:var(--text-dim);font-size:10px;">(le nom sera rempli automatiquement)</span></label>
@@ -387,20 +416,40 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
     </div>
     <div class="form-row">
       <div class="form-group"><label>369</label>
-        <select id="f2-369"><option value="">-</option><option value="Oui">Oui</option><option value="Non">Non</option></select>
+        <div class="cselect" id="cselect-f2-369">
+          <input type="hidden" id="f2-369" value="">
+          <div class="cselect-trigger"><span class="cselect-label">-</span><span class="cselect-arrow">▼</span></div>
+          <div class="cselect-dropdown">
+            <div class="cselect-option selected" data-value="">-</div>
+            <div class="cselect-option" data-value="Oui">Oui</div>
+            <div class="cselect-option" data-value="Non">Non</div>
+          </div>
+        </div>
       </div>
       <div class="form-group"><label>Sniikks</label>
-        <select id="f2-sniikks"><option value="">-</option><option value="Oui">Oui</option><option value="Non">Non</option></select>
+        <div class="cselect" id="cselect-f2-sniikks">
+          <input type="hidden" id="f2-sniikks" value="">
+          <div class="cselect-trigger"><span class="cselect-label">-</span><span class="cselect-arrow">▼</span></div>
+          <div class="cselect-dropdown">
+            <div class="cselect-option selected" data-value="">-</div>
+            <div class="cselect-option" data-value="Oui">Oui</div>
+            <div class="cselect-option" data-value="Non">Non</div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="form-group"><label>Dispo</label>
-      <select id="f2-date">
-        <option value="">-</option>
-        <option value="🟢">🟢 Disponible</option>
-        <option value="🟠">🟠 Partiel</option>
-        <option value="🔴">🔴 Non dispo</option>
-        <option value="SORTIE">🆕 Vient de sortir</option>
-      </select>
+      <div class="cselect" id="cselect-f2-date">
+        <input type="hidden" id="f2-date" value="">
+        <div class="cselect-trigger"><span class="cselect-label">-</span><span class="cselect-arrow">▼</span></div>
+        <div class="cselect-dropdown">
+          <div class="cselect-option selected" data-value="">-</div>
+          <div class="cselect-option" data-value="🟢">🟢 Disponible</div>
+          <div class="cselect-option" data-value="🟠">🟠 Partiel</div>
+          <div class="cselect-option" data-value="🔴">🔴 Non dispo</div>
+          <div class="cselect-option" data-value="SORTIE">🆕 Vient de sortir</div>
+        </div>
+      </div>
     </div>
     <div class="form-group"><label>Note perso</label><textarea id="f2-note" placeholder="Impressions rapides…"></textarea></div>
     <div class="modal-footer">
@@ -963,7 +1012,7 @@ function openModal1(id){
   openModal(1,id);
   if(!id){
     ['f1-ordre','f1-jeu','f1-lien','f1-note-perso'].forEach(x=>document.getElementById(x).value='');
-    document.getElementById('f1-statut').value='';document.getElementById('f1-date').value='';
+    setCSelectValue('f1-statut','');setCSelectValue('f1-date','');
     resetLienField(1);
   }
   setTimeout(()=>document.getElementById('f1-lien').focus(),50);
@@ -985,8 +1034,8 @@ function editGame1Populate(id){
   const g=_g1.find(x=>String(x.id)===String(id));if(!g)return;
   document.getElementById('f1-ordre').value=g.ordre||'';
   document.getElementById('f1-jeu').value=g.jeu;
-  document.getElementById('f1-statut').value=g.statut||'';
-  document.getElementById('f1-date').value=g.date_sortie||'';
+  setCSelectValue('f1-statut',g.statut||'');
+  setCSelectValue('f1-date',g.date_sortie||'');
   document.getElementById('f1-lien').value=g.lien||'';
   document.getElementById('f1-note-perso').value=g.note||'';
 }
@@ -996,7 +1045,7 @@ function openModal2(id){
   openModal(2,id);
   if(!id){
     ['f2-jeu','f2-lien','f2-note'].forEach(x=>document.getElementById(x).value='');
-    ['f2-369','f2-sniikks','f2-date'].forEach(x=>document.getElementById(x).value='');
+    ['f2-369','f2-sniikks','f2-date'].forEach(x=>setCSelectValue(x,''));
     resetLienField(2);
   }
   setTimeout(()=>document.getElementById('f2-lien').focus(),50);
@@ -1023,9 +1072,9 @@ async function saveGame2(){
 function editGame2Populate(id){
   const g=_g2.find(x=>String(x.id)===String(id));if(!g)return;
   document.getElementById('f2-jeu').value=g.jeu;
-  document.getElementById('f2-369').value=g.v369||'';
-  document.getElementById('f2-sniikks').value=g.sniikks||'';
-  document.getElementById('f2-date').value=g.date_sortie||'';
+  setCSelectValue('f2-369',g.v369||'');
+  setCSelectValue('f2-sniikks',g.sniikks||'');
+  setCSelectValue('f2-date',g.date_sortie||'');
   document.getElementById('f2-lien').value=g.lien||'';
   document.getElementById('f2-note').value=g.note||'';
 }
@@ -1098,6 +1147,45 @@ document.getElementById('f2-lien').addEventListener('input',()=>onLienInput(2));
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeInfo(1);closeInfo(2);closeModal(1);closeModal(2);closeConfirm();}
 });
+
+// ── CUSTOM SELECT (style 369) ─────────────────────────────────────────────────
+function initCSelects(){
+  document.querySelectorAll('.cselect').forEach(wrap=>{
+    if(wrap.dataset.csInit)return;wrap.dataset.csInit='1';
+    const trigger=wrap.querySelector('.cselect-trigger');
+    trigger.addEventListener('click',e=>{
+      e.stopPropagation();
+      document.querySelectorAll('.cselect.open').forEach(el=>{if(el!==wrap)el.classList.remove('open');});
+      wrap.classList.toggle('open');
+    });
+    wrap.querySelector('.cselect-dropdown').addEventListener('click',e=>{
+      const opt=e.target.closest('.cselect-option');
+      if(!opt)return;
+      e.stopPropagation();
+      const hidden=wrap.querySelector('input[type="hidden"]');
+      const label=wrap.querySelector('.cselect-label');
+      hidden.value=opt.dataset.value;
+      label.textContent=opt.textContent;
+      wrap.querySelectorAll('.cselect-option').forEach(o=>o.classList.remove('selected'));
+      opt.classList.add('selected');
+      wrap.classList.remove('open');
+      hidden.dispatchEvent(new Event('change',{bubbles:true}));
+    });
+  });
+}
+document.addEventListener('click',()=>document.querySelectorAll('.cselect.open').forEach(el=>el.classList.remove('open')));
+function setCSelectValue(hiddenId,value){
+  const hidden=document.getElementById(hiddenId);if(!hidden)return;
+  const wrap=hidden.closest('.cselect');if(!wrap)return;
+  const label=wrap.querySelector('.cselect-label');
+  hidden.value=value||'';
+  wrap.querySelectorAll('.cselect-option').forEach(opt=>{
+    const match=opt.dataset.value===(value||'');
+    opt.classList.toggle('selected',match);
+    if(match)label.textContent=opt.textContent;
+  });
+}
+initCSelects();
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 (async()=>{

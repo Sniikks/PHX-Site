@@ -148,6 +148,27 @@
   .select-wrap:focus-within .select-arrow::before { content:'▴'; }
   .info-modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
 
+  /* ══════════════ CUSTOM SELECT ══════════════ */
+  .cselect { position:relative; flex:1; min-width:0; }
+  .cselect-trigger {
+    width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text);
+    font-family:inherit; font-size:12.5px; font-weight:600; padding:8px 10px;
+    border-radius:var(--radius); cursor:pointer; display:flex; align-items:center; justify-content:space-between;
+    box-sizing:border-box; transition:border-color .15s; user-select:none;
+  }
+  .cselect-trigger:hover, .cselect.open .cselect-trigger { border-color:var(--gold-dim); }
+  .cselect-arrow { font-size:9px; opacity:.5; transition:transform .2s; }
+  .cselect.open .cselect-arrow { transform:rotate(180deg); }
+  .cselect-dropdown {
+    display:none; position:absolute; top:calc(100% + 5px); left:0; right:0;
+    background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius);
+    overflow:hidden; z-index:400; box-shadow:0 12px 30px rgba(0,0,0,.6);
+  }
+  .cselect.open .cselect-dropdown { display:block; }
+  .cselect-option { padding:9px 10px; font-size:12.5px; font-weight:600; cursor:pointer; color:var(--text); transition:background .1s; }
+  .cselect-option:hover { background:var(--bg2); }
+  .cselect-option.selected { color:var(--gold); background:var(--gold-soft); }
+
   .modal { background:var(--bg2); border:1px solid var(--border); padding:26px 28px; width:min(440px,100%); max-height:90vh; overflow-y:auto; border-radius:var(--radius-lg); box-shadow:0 30px 70px -20px rgba(0,0,0,.7); animation:modalIn .2s ease; }
   .modal h2 { font-family:'Sora',sans-serif; font-size:14px; font-weight:600; color:var(--text); margin-bottom:20px; display:flex; align-items:center; gap:8px; }
   .modal h2::before { content:''; width:4px; height:14px; background:var(--gold); border-radius:2px; }
@@ -293,20 +314,22 @@
       <div class="info-tier-badge" id="infoTierBadge"></div>
       <div class="info-rate-field">
         <span class="info-rate-tag rate-g369">369</span>
-        <div class="select-wrap">
-          <select id="infoRateG369" data-ev="g369">
-            <option value="">—</option>
-          </select>
-          <span class="select-arrow"></span>
+        <div class="cselect" id="cselect-infoRateG369" data-ev="g369">
+          <input type="hidden" id="infoRateG369" value="">
+          <div class="cselect-trigger"><span class="cselect-label">—</span><span class="cselect-arrow">▼</span></div>
+          <div class="cselect-dropdown">
+            <div class="cselect-option selected" data-value="">—</div>
+          </div>
         </div>
       </div>
       <div class="info-rate-field">
         <span class="info-rate-tag rate-sniikks">Sniikks</span>
-        <div class="select-wrap">
-          <select id="infoRateSniikks" data-ev="sniikks">
-            <option value="">—</option>
-          </select>
-          <span class="select-arrow"></span>
+        <div class="cselect" id="cselect-infoRateSniikks" data-ev="sniikks">
+          <input type="hidden" id="infoRateSniikks" value="">
+          <div class="cselect-trigger"><span class="cselect-label">—</span><span class="cselect-arrow">▼</span></div>
+          <div class="cselect-dropdown">
+            <div class="cselect-option selected" data-value="">—</div>
+          </div>
         </div>
       </div>
       <div class="info-modal-actions">
@@ -538,9 +561,13 @@ const TIER_COLORS = { S:'#e8b84b', A:'#e8a04b', B:'#e8cf4b', C:'#5fbf86', D:'#66
 let infoModalId = null;
 
 function populateInfoSelects() {
-  const opts = '<option value="">—</option>' + RATE_OPTIONS.map(o => `<option value="${o}">${o}</option>`).join('');
-  document.getElementById('infoRateG369').innerHTML = opts;
-  document.getElementById('infoRateSniikks').innerHTML = opts;
+  ['infoRateG369','infoRateSniikks'].forEach(id=>{
+    const wrap=document.getElementById('cselect-'+id);
+    const dropdown=wrap.querySelector('.cselect-dropdown');
+    dropdown.innerHTML='<div class="cselect-option selected" data-value="">—</div>'
+      + RATE_OPTIONS.map(o=>`<div class="cselect-option" data-value="${o}">${o}</div>`).join('');
+  });
+  initCSelects();
 }
 
 function openInfoModal(id) {
@@ -550,8 +577,8 @@ function openInfoModal(id) {
   img.src = g.src; img.alt = g.name;
   document.getElementById('infoName').textContent = g.name;
   const r = ratings[id] || { g369:null, sniikks:null };
-  document.getElementById('infoRateG369').value = r.g369 || '';
-  document.getElementById('infoRateSniikks').value = r.sniikks || '';
+  setCSelectValue('infoRateG369', r.g369 || '');
+  setCSelectValue('infoRateSniikks', r.sniikks || '');
   updateInfoBadge(r, id);
   document.getElementById('infoOverlay').classList.add('open');
 }
@@ -943,6 +970,44 @@ setInterval(() => {
   loadFromStorage();
   renderAll();
 }, 2000);
+
+// ── CUSTOM SELECT (style 369) ─────────────────────────────────────────────────
+function initCSelects(){
+  document.querySelectorAll('.cselect').forEach(wrap=>{
+    if(wrap.dataset.csInit)return;wrap.dataset.csInit='1';
+    const trigger=wrap.querySelector('.cselect-trigger');
+    trigger.addEventListener('click',e=>{
+      e.stopPropagation();
+      document.querySelectorAll('.cselect.open').forEach(el=>{if(el!==wrap)el.classList.remove('open');});
+      wrap.classList.toggle('open');
+    });
+    wrap.querySelector('.cselect-dropdown').addEventListener('click',e=>{
+      const opt=e.target.closest('.cselect-option');
+      if(!opt)return;
+      e.stopPropagation();
+      const hidden=wrap.querySelector('input[type="hidden"]');
+      const label=wrap.querySelector('.cselect-label');
+      hidden.value=opt.dataset.value;
+      label.textContent=opt.textContent;
+      wrap.querySelectorAll('.cselect-option').forEach(o=>o.classList.remove('selected'));
+      opt.classList.add('selected');
+      wrap.classList.remove('open');
+      hidden.dispatchEvent(new Event('change',{bubbles:true}));
+    });
+  });
+}
+document.addEventListener('click',()=>document.querySelectorAll('.cselect.open').forEach(el=>el.classList.remove('open')));
+function setCSelectValue(hiddenId,value){
+  const hidden=document.getElementById(hiddenId);if(!hidden)return;
+  const wrap=hidden.closest('.cselect');if(!wrap)return;
+  const label=wrap.querySelector('.cselect-label');
+  hidden.value=value||'';
+  wrap.querySelectorAll('.cselect-option').forEach(opt=>{
+    const match=opt.dataset.value===(value||'');
+    opt.classList.toggle('selected',match);
+    if(match)label.textContent=opt.textContent;
+  });
+}
 
 // ── HAUTEUR D'EN-TÊTE DYNAMIQUE ───────────────────
 // L'en-tête peut passer sur 2 lignes sur mobile/tablette : on mesure sa vraie

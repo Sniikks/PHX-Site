@@ -190,6 +190,27 @@
   .select-wrap:focus-within .select-arrow { color:var(--gold-dim); }
   .select-wrap:focus-within .select-arrow::before { content:'▴'; }
   .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+  /* ══════════════ CUSTOM SELECT ══════════════ */
+  .cselect { position:relative; width:100%; }
+  .cselect-trigger {
+    width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text);
+    padding:10px 12px; font-family:'Manrope',sans-serif; font-size:13.5px; border-radius:var(--radius);
+    cursor:pointer; display:flex; align-items:center; justify-content:space-between;
+    box-sizing:border-box; transition:border-color .15s; user-select:none;
+  }
+  .cselect-trigger:hover, .cselect.open .cselect-trigger { border-color:var(--gold-dim); }
+  .cselect-arrow { font-size:9px; opacity:.5; transition:transform .2s; }
+  .cselect.open .cselect-arrow { transform:rotate(180deg); }
+  .cselect-dropdown {
+    display:none; position:absolute; top:calc(100% + 5px); left:0; right:0;
+    background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius);
+    overflow:hidden; z-index:400; box-shadow:0 12px 30px rgba(0,0,0,.6);
+  }
+  .cselect.open .cselect-dropdown { display:block; }
+  .cselect-option { padding:10px 12px; font-size:13px; cursor:pointer; color:var(--text); transition:background .1s; }
+  .cselect-option:hover { background:var(--bg2); }
+  .cselect-option.selected { color:var(--gold); background:var(--gold-soft); }
   .note-hint { color:var(--text-faint); font-weight:400; text-transform:none; letter-spacing:0; }
   .note-bar-row { display:flex; align-items:center; gap:14px; margin-top:6px; }
   .note-bar-wrap { position:relative; flex:1; height:15px; }
@@ -459,39 +480,42 @@
       <div class="form-row"><label>ANNÉE</label><input type="number" id="f-annee" placeholder="2025" min="1990" max="2099" autocomplete="off"></div>
       <div class="form-row">
         <label>PLATEFORME</label>
-        <div class="select-wrap">
-          <select id="f-platform">
-            <option value="steam">Steam</option>
-            <option value="gog">GOG</option>
-            <option value="epic">Epic Games</option>
-            <option value="pirate">Pirate 🏴‍☠️</option>
-          </select>
-          <span class="select-arrow"></span>
+        <div class="cselect" id="cselect-f-platform">
+          <input type="hidden" id="f-platform" value="steam">
+          <div class="cselect-trigger"><span class="cselect-label">Steam</span><span class="cselect-arrow">▼</span></div>
+          <div class="cselect-dropdown">
+            <div class="cselect-option selected" data-value="steam">Steam</div>
+            <div class="cselect-option" data-value="gog">GOG</div>
+            <div class="cselect-option" data-value="epic">Epic Games</div>
+            <div class="cselect-option" data-value="pirate">Pirate 🏴‍☠️</div>
+          </div>
         </div>
       </div>
       <div class="form-row">
         <label>SUPPORT</label>
-        <div class="select-wrap">
-          <select id="f-support">
-            <option value="">—</option>
-            <option value="DLC">DLC</option>
-            <option value="Famille">Famille</option>
-            <option value="Famille DLC">Famille DLC</option>
-          </select>
-          <span class="select-arrow"></span>
+        <div class="cselect" id="cselect-f-support">
+          <input type="hidden" id="f-support" value="">
+          <div class="cselect-trigger"><span class="cselect-label">—</span><span class="cselect-arrow">▼</span></div>
+          <div class="cselect-dropdown">
+            <div class="cselect-option selected" data-value="">—</div>
+            <div class="cselect-option" data-value="DLC">DLC</div>
+            <div class="cselect-option" data-value="Famille">Famille</div>
+            <div class="cselect-option" data-value="Famille DLC">Famille DLC</div>
+          </div>
         </div>
       </div>
       <div class="form-row">
         <label>STATUT</label>
-        <div class="select-wrap">
-          <select id="f-status">
-            <option value="afaire">À faire</option>
-            <option value="encours">En cours</option>
-            <option value="fini">Terminé</option>
-            <option value="attente">En attente / Bug</option>
-            <option value="abandonne">Abandonné</option>
-          </select>
-          <span class="select-arrow"></span>
+        <div class="cselect" id="cselect-f-status">
+          <input type="hidden" id="f-status" value="afaire">
+          <div class="cselect-trigger"><span class="cselect-label">À faire</span><span class="cselect-arrow">▼</span></div>
+          <div class="cselect-dropdown">
+            <div class="cselect-option selected" data-value="afaire">À faire</div>
+            <div class="cselect-option" data-value="encours">En cours</div>
+            <div class="cselect-option" data-value="fini">Terminé</div>
+            <div class="cselect-option" data-value="attente">En attente / Bug</div>
+            <div class="cselect-option" data-value="abandonne">Abandonné</div>
+          </div>
         </div>
       </div>
     </div>
@@ -916,9 +940,9 @@ function openModal(game){
   document.getElementById('modalTitle').textContent=game?'// ÉDITER':'// AJOUTER UN JEU';
   document.getElementById('f-name').value=game?.name||'';
   document.getElementById('f-annee').value=game?.annee||'';
-  document.getElementById('f-platform').value=game?.platform||'steam';
-  document.getElementById('f-support').value=game?.support||'';
-  document.getElementById('f-status').value=game?.status||'afaire';
+  setCSelectValue('f-platform',game?.platform||'steam');
+  setCSelectValue('f-support',game?.support||'');
+  setCSelectValue('f-status',game?.status||'afaire');
   slider.value=(game?.note!=null&&game.note>0)?game.note:0;
   document.getElementById('f-notepersonne').value=game?.noteperso||'';
   // Image field
@@ -1092,6 +1116,45 @@ function toggleYear(yrKey) {
     if(card) adjustOrigin(card);
   }, {passive:true});
 })();
+
+// ── CUSTOM SELECT (style 369) ─────────────────────────────────────────────────
+function initCSelects(){
+  document.querySelectorAll('.cselect').forEach(wrap=>{
+    if(wrap.dataset.csInit)return;wrap.dataset.csInit='1';
+    const trigger=wrap.querySelector('.cselect-trigger');
+    trigger.addEventListener('click',e=>{
+      e.stopPropagation();
+      document.querySelectorAll('.cselect.open').forEach(el=>{if(el!==wrap)el.classList.remove('open');});
+      wrap.classList.toggle('open');
+    });
+    wrap.querySelector('.cselect-dropdown').addEventListener('click',e=>{
+      const opt=e.target.closest('.cselect-option');
+      if(!opt)return;
+      e.stopPropagation();
+      const hidden=wrap.querySelector('input[type="hidden"]');
+      const label=wrap.querySelector('.cselect-label');
+      hidden.value=opt.dataset.value;
+      label.textContent=opt.textContent;
+      wrap.querySelectorAll('.cselect-option').forEach(o=>o.classList.remove('selected'));
+      opt.classList.add('selected');
+      wrap.classList.remove('open');
+      hidden.dispatchEvent(new Event('change',{bubbles:true}));
+    });
+  });
+}
+document.addEventListener('click',()=>document.querySelectorAll('.cselect.open').forEach(el=>el.classList.remove('open')));
+function setCSelectValue(hiddenId,value){
+  const hidden=document.getElementById(hiddenId);if(!hidden)return;
+  const wrap=hidden.closest('.cselect');if(!wrap)return;
+  const label=wrap.querySelector('.cselect-label');
+  hidden.value=value||'';
+  wrap.querySelectorAll('.cselect-option').forEach(opt=>{
+    const match=opt.dataset.value===(value||'');
+    opt.classList.toggle('selected',match);
+    if(match)label.textContent=opt.textContent;
+  });
+}
+initCSelects();
 
 load().then(() => {
   renderGrid();
