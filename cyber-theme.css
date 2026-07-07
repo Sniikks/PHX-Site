@@ -63,13 +63,13 @@ a.home:hover {
     0 0 36px color-mix(in srgb, var(--gold, #00f0ff) 18%, transparent);
 }
 
-/* ---------- Coins "cyber" (radius asymétrique signature) ---------- */
+/* ---------- Coins arrondis uniformes (4 côtés) ---------- */
 .tile,
 .modal-box,
 .confirm-box,
 .info-modal,
 .form-modal {
-  border-radius: 0 10px 0 10px !important;
+  border-radius: var(--radius-lg, 16px) !important;
 }
 
 /* ---------- Cartes : liseré accent au survol ---------- */
@@ -97,7 +97,7 @@ a.home:hover {
 ::-webkit-scrollbar-track { background: #0d0e14; }
 ::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--gold, #00f0ff) 30%, #1f2230);
-  border-radius: 0;
+  border-radius: var(--radius-pill, 999px);
   border: 2px solid #0d0e14;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -109,7 +109,7 @@ a.home:hover {
   padding: 9px 16px !important;
   font-size: 12.5px !important;
   font-family: 'Exo 2', sans-serif !important;
-  border-radius: 3px !important;
+  border-radius: var(--radius, 10px) !important;
 }
 @media (min-width: 769px) {
   .menu-btn {
