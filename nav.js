@@ -26,14 +26,14 @@
   function injectStyles() {
     const css = `
       /* Accessibilité clavier : contour visible sur tous les éléments focusables */
-      :focus-visible { outline: 2px solid var(--gold, #e8b84b); outline-offset: 2px; }
+      :focus-visible { outline: 2px solid var(--gold, #00f0ff); outline-offset: 2px; }
 
       .phx-nav-panel {
         position: fixed;
         min-width: 220px;
-        background: var(--bg2, #111114);
-        border: 1px solid var(--border, #232327);
-        border-radius: 12px;
+        background: var(--bg2, #12141d);
+        border: 1px solid var(--border, #2a2d3a);
+        border-radius: 4px;
         box-shadow: 0 16px 40px rgba(0,0,0,.55);
         padding: .45rem;
         z-index: 650;
@@ -45,17 +45,17 @@
       .phx-nav-panel a {
         display: block;
         padding: .55rem .75rem;
-        border-radius: 8px;
-        font-family: 'Manrope', sans-serif;
+        border-radius: 2px;
+        font-family: 'Exo 2', sans-serif;
         font-size: .85rem;
-        color: var(--text, #ededf0);
+        color: var(--text, #f0f1f5);
         text-decoration: none;
         white-space: nowrap;
       }
-      .phx-nav-panel a:hover { background: var(--bg3, #161619); color: var(--gold, #e8b84b); }
+      .phx-nav-panel a:hover { background: var(--bg3, #181a25); color: var(--gold, #00f0ff); }
       .phx-nav-panel a.current {
-        color: var(--gold, #e8b84b);
-        background: var(--bg3, #161619);
+        color: var(--gold, #00f0ff);
+        background: var(--bg3, #181a25);
         font-weight: 700;
         cursor: default;
         pointer-events: none;

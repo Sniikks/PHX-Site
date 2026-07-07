@@ -8,14 +8,14 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Exo+2:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 
   :root {
-    --bg:#0a0a0c; --bg2:#111114; --bg3:#161619;
-    --gold:#e8b84b; --gold2:#c49a30; --gold-dim:#9c7d33;
-    --text:#ededf0; --text2:#8c8c94;
-    --border:#232327;
+    --bg:#0d0e14; --bg2:#12141d; --bg3:#181a25;
+    --gold:#00f0ff; --gold2:#00c4cc; --gold-dim:#0097a7;
+    --text:#f0f1f5; --text2:#939ab0;
+    --border:#2a2d3a;
   }
   * { box-sizing:border-box; margin:0; padding:0; }
   html { overflow-x:clip; }
@@ -23,10 +23,10 @@
   body {
     overflow-x:clip; max-width:100%;
     background:
-      radial-gradient(1200px 600px at 50% -200px, rgba(232,184,75,.08), transparent 60%),
+      radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08), transparent 60%),
       var(--bg);
     color:var(--text);
-    font-family:'Manrope',sans-serif;
+    font-family:'Exo 2',sans-serif;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     min-height:100vh; padding:2rem 1.2rem;
     padding-left:max(1.2rem, env(safe-area-inset-left));
@@ -34,7 +34,7 @@
     padding-bottom:max(2rem, env(safe-area-inset-bottom));
   }
   .title {
-    font-family:'Sora',sans-serif;
+    font-family:'Rajdhani',sans-serif;
     font-size:clamp(1.4rem,4vw,2.2rem);
     font-weight:700;
     letter-spacing:.14em;
@@ -56,7 +56,7 @@
     position:relative;
     background:var(--bg2);
     border:1px solid var(--border);
-    border-radius:16px;
+    border-radius:2px;
     aspect-ratio:3/4;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:.9rem;
@@ -68,7 +68,7 @@
   .tile::before {
     content:'';
     position:absolute; inset:0;
-    background:radial-gradient(320px 220px at 50% 30%, rgba(201,168,76,.14), transparent 70%);
+    background:radial-gradient(320px 220px at 50% 30%, rgba(0,240,255,.14), transparent 70%);
     opacity:0; transition:opacity .25s ease;
   }
   .tile:not(.disabled):hover {
@@ -85,7 +85,7 @@
   }
   .tile-icon svg { width:52px; height:52px; }
   .tile-label {
-    font-family:'Sora',sans-serif;
+    font-family:'Rajdhani',sans-serif;
     font-weight:600;
     font-size:.82rem;
     letter-spacing:.06em;
@@ -118,7 +118,7 @@
       gap:.7rem;
       max-width:480px;
     }
-    .tile { aspect-ratio:1/1; border-radius:14px; gap:.55rem; }
+    .tile { aspect-ratio:1/1; border-radius:2px; gap:.55rem; }
     .tile-icon { font-size:1.9rem; }
     .tile-icon svg { width:38px; height:38px; }
     .tile-label { font-size:.72rem; }
@@ -134,6 +134,7 @@
   #dbStatus.db-ok { color:#5fbf86; }
   #dbStatus.db-error { color:#e2685f; }
 </style>
+<link rel="stylesheet" href="cyber-theme.css">
 </head>
 <body>
 

@@ -7,44 +7,44 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Exo+2:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:#0a0a0c; --bg2:#111114; --bg3:#161619;
-    --gold:#e8b84b; --gold-dim:#9c7d33;
-    --text:#ededf0; --text2:#8c8c94; --border:#232327;
+    --bg:#0d0e14; --bg2:#12141d; --bg3:#181a25;
+    --gold:#00f0ff; --gold-dim:#0097a7;
+    --text:#f0f1f5; --text2:#939ab0; --border:#2a2d3a;
     --good:#5fbf86; --bad:#e2685f;
   }
   * { box-sizing:border-box; }
   body {
-    background:var(--bg); color:var(--text); font-family:'Manrope',sans-serif;
+    background:var(--bg); color:var(--text); font-family:'Exo 2',sans-serif;
     min-height:100vh; margin:0; padding:2rem 1.2rem; display:flex; flex-direction:column; align-items:center;
   }
-  h1 { font-family:'Sora',sans-serif; color:var(--gold); font-size:1.3rem; letter-spacing:.08em; text-transform:uppercase; }
+  h1 { font-family:'Rajdhani',sans-serif; color:var(--gold); font-size:1.3rem; letter-spacing:.08em; text-transform:uppercase; }
   p.sub { color:var(--text2); font-size:.82rem; margin:.4rem 0 1.6rem; text-align:center; max-width:480px; }
-  .card { width:100%; max-width:560px; background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:1.4rem; }
+  .card { width:100%; max-width:560px; background:var(--bg2); border:1px solid var(--border); border-radius:2px; padding:1.4rem; }
   label { display:block; font-size:.75rem; color:var(--text2); margin-bottom:.3rem; margin-top:.9rem; }
   label:first-child { margin-top:0; }
   input {
     width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text);
-    border-radius:9px; padding:.6rem .8rem; font-family:'Manrope',sans-serif; font-size:.88rem; outline:none;
+    border-radius:3px; padding:.6rem .8rem; font-family:'Exo 2',sans-serif; font-size:.88rem; outline:none;
   }
   input:focus { border-color:var(--gold-dim); }
   .row { display:flex; gap:.8rem; }
   .row > div { flex:1; }
   button {
-    margin-top:1.2rem; width:100%; font-family:'Sora',sans-serif; font-weight:700; font-size:.85rem; letter-spacing:.03em;
-    border-radius:10px; border:1px solid var(--gold-dim); background:transparent; color:var(--gold);
+    margin-top:1.2rem; width:100%; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:.85rem; letter-spacing:.03em;
+    border-radius:3px; border:1px solid var(--gold-dim); background:transparent; color:var(--gold);
     padding:.8rem; cursor:pointer;
   }
   button:hover:not(:disabled) { background:var(--gold); color:#151510; }
   button:disabled { opacity:.4; cursor:default; }
-  .progress-wrap { margin-top:1rem; background:var(--bg3); border-radius:8px; height:8px; overflow:hidden; display:none; }
+  .progress-wrap { margin-top:1rem; background:var(--bg3); border-radius:3px; height:8px; overflow:hidden; display:none; }
   .progress-bar { height:100%; width:0%; background:var(--gold); transition:width .2s ease; }
   .stats { display:flex; justify-content:space-between; font-size:.72rem; color:var(--text2); margin-top:.4rem; display:none; }
   .log {
     margin-top:1rem; max-height:320px; overflow-y:auto; font-size:.78rem; font-family:monospace;
-    background:var(--bg3); border:1px solid var(--border); border-radius:9px; padding:.7rem; display:none;
+    background:var(--bg3); border:1px solid var(--border); border-radius:3px; padding:.7rem; display:none;
   }
   .log div { padding:.15rem 0; border-bottom:1px solid rgba(255,255,255,.04); }
   .log .ok { color:var(--good); }
@@ -58,6 +58,7 @@
     input, select, textarea { font-size:16px !important; }
   }
 </style>
+<link rel="stylesheet" href="cyber-theme.css">
 </head>
 <body>
   <h1>ZoomJeu — Backfill</h1>

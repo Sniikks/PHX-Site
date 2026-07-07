@@ -7,27 +7,27 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Exo+2:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:#0a0a0c; --bg2:#111114;
-    --gold:#e8b84b; --gold2:#c49a30; --gold-dim:#9c7d33;
-    --text:#ededf0; --text2:#8c8c94;
-    --border:#232327;
+    --bg:#0d0e14; --bg2:#12141d;
+    --gold:#00f0ff; --gold2:#00c4cc; --gold-dim:#0097a7;
+    --text:#f0f1f5; --text2:#939ab0;
+    --border:#2a2d3a;
   }
   * { box-sizing:border-box; margin:0; padding:0; }
   body {
     background:
-      radial-gradient(1200px 600px at 50% -200px, rgba(232,184,75,.08), transparent 60%),
+      radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08), transparent 60%),
       var(--bg);
     color:var(--text);
-    font-family:'Manrope',sans-serif;
+    font-family:'Exo 2',sans-serif;
     min-height:100vh;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     padding:2rem 1.2rem; text-align:center;
   }
   .code {
-    font-family:'Sora',sans-serif;
+    font-family:'Rajdhani',sans-serif;
     font-size:clamp(4rem,15vw,7rem);
     font-weight:700;
     color:var(--gold);
@@ -38,15 +38,16 @@
   .sub { font-size:.85rem; color:var(--text2); margin-top:.4rem; max-width:420px; }
   a.home {
     display:inline-block; margin-top:2rem;
-    font-family:'Sora',sans-serif; font-weight:700; font-size:.85rem; letter-spacing:.04em;
+    font-family:'Rajdhani',sans-serif; font-weight:700; font-size:.85rem; letter-spacing:.04em;
     color:var(--gold); text-decoration:none;
-    border:1px solid var(--gold-dim); border-radius:10px;
+    border:1px solid var(--gold-dim); border-radius:3px;
     padding:.75rem 1.6rem;
     transition:background .2s ease, color .2s ease;
   }
   a.home:hover { background:var(--gold); color:#151510; }
   :focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
 </style>
+<link rel="stylesheet" href="cyber-theme.css">
 </head>
 <body>
   <div class="code">404</div>

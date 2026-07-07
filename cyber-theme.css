@@ -1,0 +1,116 @@
+/* ==========================================================
+   cyber-theme.css — Couche visuelle Cybercore partagée
+   Inspiré de cybercore-css (https://sebyx07.github.io/cybercore-css/)
+   Chargé après les styles inline de chaque page.
+   L'accent néon s'adapte automatiquement via var(--gold) :
+   cyan par défaut, orange (Sniikks), violet (369).
+   ========================================================== */
+
+/* ---------- Grille cyberpunk en fond ---------- */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--gold, #00f0ff) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--gold, #00f0ff) 5%, transparent) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 0%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 0%, transparent 75%);
+}
+
+/* ---------- Scanlines CRT (au-dessus de tout, très subtil) ---------- */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.14) 3px,
+    transparent 4px
+  );
+  opacity: .5;
+}
+
+/* ---------- Titres : lueur néon ---------- */
+.title,
+.brand,
+.brand-text,
+.code,
+.header h1 {
+  text-shadow:
+    0 0 10px color-mix(in srgb, currentColor 55%, transparent),
+    0 0 30px color-mix(in srgb, currentColor 22%, transparent);
+}
+
+/* ---------- Boutons principaux : lueur au survol ---------- */
+.btn.primary:hover,
+.btn-primary:hover,
+.btn-gold:hover,
+.btn-save:hover,
+.btn-add-main:hover,
+.add-btn-main:hover,
+.menu-btn:hover,
+a.home:hover {
+  box-shadow:
+    0 0 14px color-mix(in srgb, var(--gold, #00f0ff) 45%, transparent),
+    0 0 36px color-mix(in srgb, var(--gold, #00f0ff) 18%, transparent);
+}
+
+/* ---------- Coins "cyber" (radius asymétrique signature) ---------- */
+.tile,
+.modal-box,
+.confirm-box,
+.info-modal,
+.form-modal {
+  border-radius: 0 10px 0 10px !important;
+}
+
+/* ---------- Cartes : liseré accent au survol ---------- */
+.game-card:hover,
+.tile:hover,
+.contestant:hover {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--gold, #00f0ff) 55%, transparent),
+    0 0 22px color-mix(in srgb, var(--gold, #00f0ff) 18%, transparent),
+    0 14px 34px rgba(0, 0, 0, .45);
+}
+
+/* ---------- Sélection de texte ---------- */
+::selection {
+  background: color-mix(in srgb, var(--gold, #00f0ff) 30%, transparent);
+  color: #f0f1f5;
+}
+
+/* ---------- Scrollbar néon ---------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--gold, #00f0ff) 35%, #1f2230) #0d0e14;
+}
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: #0d0e14; }
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--gold, #00f0ff) 30%, #1f2230);
+  border-radius: 0;
+  border: 2px solid #0d0e14;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--gold, #00f0ff) 55%, #1f2230);
+}
+
+/* ---------- Accessibilité clavier ---------- */
+:focus-visible {
+  outline: 2px solid var(--gold, #00f0ff);
+  outline-offset: 2px;
+}
+
+/* ---------- Réduction des animations si demandé ---------- */
+@media (prefers-reduced-motion: reduce) {
+  body::after { display: none; }
+}
