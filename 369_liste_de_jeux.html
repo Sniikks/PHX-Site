@@ -728,6 +728,16 @@ function getFallbackSrc(g){
   const appId=extractSteamAppId(g.steamId);
   return appId?steamFallback(appId):'';
 }
+function extractSteamAppIdFromImage(url){
+  if(!url) return null;
+  const m=url.match(/steam\/apps\/(\d+)/i);
+  return m?m[1]:null;
+}
+function getStorePageUrl(g){
+  if(!g.steamId) return '';
+  const appId=extractSteamAppId(g.steamId)||extractSteamAppIdFromImage(g.steamId);
+  return appId?`https://store.steampowered.com/app/${appId}/`:g.steamId;
+}
 function safeUrl(url){ return (url||'').replace(/"/g,'%22'); }
 function handleCardImgError(img){
   const fb=img.getAttribute('data-fallback');
@@ -994,7 +1004,7 @@ function openInfo(id){
     <div class="info-row"><span class="info-label">Plateforme</span><span class="info-val">${platHtml}</span></div>
     <div class="info-row"><span class="info-label">Support</span><span class="info-val">${supportHtml}</span></div>
     ${g.dateFin?`<div class="info-row"><span class="info-label">Année</span><span class="info-val">${g.dateFin}</span></div>`:''}
-    ${g.steamId?`<div class="info-row"><span class="info-label">Steam</span><span class="info-val"><a href="${g.steamId}" target="_blank" style="color:var(--gold);text-decoration:none;font-size:12px;font-weight:600">Voir sur Steam ↗</a></span></div>`:''}
+    ${g.steamId?`<div class="info-row"><span class="info-label">Steam</span><span class="info-val"><a href="${safeUrl(getStorePageUrl(g))}" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;font-size:12px;font-weight:600">Voir sur Steam ↗</a></span></div>`:''}
     ${g.notePerso?`<div class="info-row" style="flex-direction:column;gap:6px"><span class="info-label">Note perso</span><div class="note-perso-box">${esc(g.notePerso)}</div></div>`:''}
     <div class="info-actions">
       <button class="btn" onclick="closeInfo()">Fermer</button>
