@@ -7,15 +7,15 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 
   :root {
     --bg:#0a0a0c; --bg2:#111114; --bg3:#161619;
-    --gold:#00f0ff; --gold2:#0ba8b8; --gold-dim:#0a3a3d;
+    --gold:#e8b84b; --gold2:#c49a30; --gold-dim:#9c7d33;
     --text:#ededf0; --text2:#8c8c94;
     --border:#232327;
-    --good:#05ffa1; --bad:#ff2a6d;
+    --good:#5fbf86; --bad:#e2685f;
   }
   * { box-sizing:border-box; margin:0; padding:0; }
   html, body { height:100%; }
@@ -24,7 +24,7 @@
       radial-gradient(1200px 600px at 50% -200px, rgba(232,184,75,.08), transparent 60%),
       var(--bg);
     color:var(--text);
-    font-family:'Rajdhani',sans-serif;
+    font-family:'Manrope',sans-serif;
     min-height:100vh;
     display:flex; flex-direction:column; align-items:center;
     padding:1.6rem 1.2rem 3rem;
@@ -36,7 +36,7 @@
     padding:9px 16px;
     background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:10px;
     color:#e5e5e5;
-    font-family:'Rajdhani',sans-serif; font-size:12.5px; font-weight:600; letter-spacing:.02em;
+    font-family:'Manrope',sans-serif; font-size:12.5px; font-weight:600; letter-spacing:.02em;
     text-decoration:none; white-space:nowrap;
     margin-bottom:1rem;
     cursor:pointer; transition:all .15s ease;
@@ -44,7 +44,7 @@
   .menu-btn:hover { background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.24); color:#fff; }
 
   .title {
-    font-family:'Orbitron',sans-serif;
+    font-family:'Sora',sans-serif;
     font-size:clamp(1.3rem,4vw,1.9rem);
     font-weight:700;
     letter-spacing:.1em;
@@ -67,12 +67,12 @@
   .date-nav button:hover:not(:disabled) { border-color:var(--gold-dim); color:var(--gold); }
   .date-nav button:disabled { opacity:.3; cursor:default; }
   .date-nav .date-label {
-    font-family:'Orbitron',sans-serif; font-weight:600; font-size:.85rem; color:var(--text);
+    font-family:'Sora',sans-serif; font-weight:600; font-size:.85rem; color:var(--text);
     min-width:190px; text-align:center; letter-spacing:.02em;
   }
   .archive-toggle {
     width:auto !important; padding:0 .8rem !important; gap:.35rem; display:flex; align-items:center; flex-shrink:0;
-    font-family:'Orbitron',sans-serif; font-size:.72rem !important; font-weight:600; letter-spacing:.03em;
+    font-family:'Sora',sans-serif; font-size:.72rem !important; font-weight:600; letter-spacing:.03em;
   }
 
   .card {
@@ -133,7 +133,7 @@
   .attempt-tab {
     flex:1; padding:.65rem 0; text-align:center;
     background:var(--bg3); color:var(--text2);
-    font-family:'Orbitron',sans-serif; font-weight:600; font-size:.82rem;
+    font-family:'Sora',sans-serif; font-weight:600; font-size:.82rem;
     border-right:1px solid var(--border);
   }
   .attempt-tab:last-child { border-right:none; }
@@ -163,7 +163,7 @@
   .input-wrap { position:relative; }
   input#guessInput {
     width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text);
-    border-radius:10px; padding:.75rem 2.2rem .75rem .9rem; font-family:'Rajdhani',sans-serif; font-size:.9rem;
+    border-radius:10px; padding:.75rem 2.2rem .75rem .9rem; font-family:'Manrope',sans-serif; font-size:.9rem;
     outline:none;
   }
   input#guessInput:focus { border-color:var(--gold-dim); }
@@ -175,7 +175,7 @@
   .input-clear.visible { display:flex; }
   .input-clear:hover { background:var(--border); color:var(--text); }
   button {
-    font-family:'Orbitron',sans-serif; font-weight:600; font-size:.8rem; letter-spacing:.04em;
+    font-family:'Sora',sans-serif; font-weight:600; font-size:.8rem; letter-spacing:.04em;
     border-radius:10px; border:1px solid var(--gold-dim); background:transparent; color:var(--gold);
     padding:.75rem 1.1rem; cursor:pointer; transition:background .2s ease, color .2s ease;
     white-space:nowrap;
@@ -216,7 +216,7 @@
     text-align:center;
   }
   .result-box .answer {
-    font-family:'Orbitron',sans-serif; font-weight:700; font-size:1.05rem; color:var(--gold); margin-bottom:.3rem;
+    font-family:'Sora',sans-serif; font-weight:700; font-size:1.05rem; color:var(--gold); margin-bottom:.3rem;
   }
   .result-box .verdict { font-size:.85rem; color:var(--text2); }
   .result-box.win .verdict { color:var(--good); }
@@ -238,7 +238,7 @@
     font-size:.85rem;
   }
   .archive-header .archive-month-label {
-    font-family:'Orbitron',sans-serif; font-weight:700; font-size:1rem; color:var(--gold);
+    font-family:'Sora',sans-serif; font-weight:700; font-size:1rem; color:var(--gold);
     min-width:180px; text-align:center; text-transform:capitalize; flex-shrink:0;
   }
   .names-toggle {
@@ -252,7 +252,7 @@
   .week-label {
     display:none; /* affiché uniquement en mobile, où le calendrier devient une liste par semaine */
     grid-column:1 / -1;
-    font-family:'Orbitron',sans-serif; font-weight:700; font-size:.78rem; color:var(--gold);
+    font-family:'Sora',sans-serif; font-weight:700; font-size:.78rem; color:var(--gold);
     letter-spacing:.04em; margin:.5rem 0 .1rem; text-transform:uppercase;
   }
   .week-label:first-of-type { margin-top:0; }
@@ -281,7 +281,7 @@
     z-index:1;
   }
   .archive-cell .cell-day {
-    position:absolute; top:.25rem; left:.3rem; font-family:'Orbitron',sans-serif; font-size:.62rem; font-weight:700;
+    position:absolute; top:.25rem; left:.3rem; font-family:'Sora',sans-serif; font-size:.62rem; font-weight:700;
     color:#151510; background:var(--text2); padding:1px 4px; border-radius:4px; z-index:2;
   }
   .archive-cell.status-green .cell-day { background:var(--good); }
@@ -320,7 +320,7 @@
     box-shadow:0 20px 50px rgba(0,0,0,.5);
   }
   .modal-title {
-    font-family:'Orbitron',sans-serif; font-weight:700; font-size:1.05rem;
+    font-family:'Sora',sans-serif; font-weight:700; font-size:1.05rem;
     color:var(--gold); margin-bottom:.7rem;
   }
   .modal-title.danger { color:var(--bad); }
@@ -328,14 +328,14 @@
   .modal-sub { font-size:.75rem; color:var(--text2); margin-top:.3rem; margin-bottom:1.3rem; line-height:1.4; }
   .modal-input {
     width:100%; background:var(--bg3, #161619); border:1px solid var(--border); color:var(--text);
-    border-radius:9px; padding:.6rem .8rem; font-family:'Rajdhani',sans-serif; font-size:.88rem;
+    border-radius:9px; padding:.6rem .8rem; font-family:'Manrope',sans-serif; font-size:.88rem;
     outline:none; margin-bottom:1.1rem;
   }
   .modal-input:focus { border-color:var(--gold-dim); }
   .modal-actions { display:flex; gap:.6rem; }
   .modal-actions button {
     flex:1; padding:.7rem 0; margin:0;
-    font-family:'Orbitron',sans-serif; font-weight:600; font-size:.85rem; letter-spacing:.02em;
+    font-family:'Sora',sans-serif; font-weight:600; font-size:.85rem; letter-spacing:.02em;
     border-radius:10px; border:1px solid var(--border); background:var(--bg3); color:var(--text);
     cursor:pointer; white-space:nowrap;
   }
@@ -382,33 +382,9 @@
   @media (max-width:760px){
     input, select, textarea { font-size:16px !important; }
   }
-
-  /* --- ambiance CYBERCORE (grille HUD + glow + scanlines + bruit) --- */
-  html { overflow-x:clip; }
-  .bg-grid { position:fixed; inset:-2px; z-index:-3; pointer-events:none;
-    background-image:linear-gradient(rgba(0,240,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(0,240,255,.045) 1px, transparent 1px);
-    background-size:56px 56px;
-    mask-image:radial-gradient(ellipse 80% 60% at 50% 20%, #000 40%, transparent 90%); }
-  .bg-blob { position:fixed; z-index:-2; border-radius:50%; filter:blur(100px); opacity:.24; pointer-events:none; }
-  .bg-blob.b1 { width:42vmax; height:42vmax; top:-14vmax; left:-10vmax; background:#00f0ff; animation:phxFloat1 24s ease-in-out infinite alternate; }
-  .bg-blob.b2 { width:36vmax; height:36vmax; bottom:-15vmax; right:-9vmax; background:#ff2a6d; animation:phxFloat2 28s ease-in-out infinite alternate; }
-  @keyframes phxFloat1 { from{transform:translate(0,0);} to{transform:translate(3vmax,4vmax);} }
-  @keyframes phxFloat2 { from{transform:translate(0,0);} to{transform:translate(-3vmax,-3vmax);} }
-  .bg-grain { position:fixed; inset:-10%; z-index:-1; pointer-events:none; opacity:.04; mix-blend-mode:overlay;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"); }
-  .bg-scan { position:fixed; inset:0; z-index:-1; pointer-events:none;
-    background:repeating-linear-gradient(to bottom, rgba(0,240,255,.03) 0px, rgba(0,240,255,.03) 1px, transparent 1px, transparent 3px); opacity:.4; }
-  @media (max-width:640px){ .bg-blob{ filter:blur(60px); opacity:.18; } .bg-blob.b1{width:70vmax;height:70vmax;} .bg-blob.b2{width:60vmax;height:60vmax;} }
-  @media (prefers-reduced-motion:reduce){ .bg-blob{ animation:none !important; } }
 </style>
 </head>
 <body>
-  <div class="bg-grid"></div>
-  <div class="bg-blob b1"></div>
-  <div class="bg-blob b2"></div>
-  <div class="bg-grain"></div>
-  <div class="bg-scan"></div>
-
 
   <a class="menu-btn" href="index.html">☰ Menu</a>
   <div class="title">ZoomJeu</div>
