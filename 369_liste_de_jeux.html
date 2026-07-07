@@ -36,9 +36,10 @@
   --blue:#6699e8;
   --red:#e2685f;
 
-  --radius-sm:2px;
-  --radius:3px;
-  --radius-lg:6px;
+  --radius-sm:8px;
+  --radius:12px;
+  --radius-lg:20px;
+  --radius-pill:999px;
 }
 
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -69,10 +70,10 @@ body{
   border-bottom:1px solid var(--border-soft);
 }
 .brand{display:flex;align-items:center;gap:10px;}
-.menu-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);border-radius:3px;color:#e5e5e5;font-family:'Exo 2',sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.02em;text-decoration:none;cursor:pointer;transition:all .15s ease;white-space:nowrap;}
+.menu-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);border-radius:var(--radius);color:#e5e5e5;font-family:'Exo 2',sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.02em;text-decoration:none;cursor:pointer;transition:all .15s ease;white-space:nowrap;}
 .menu-btn:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.24);color:#fff;}
 .brand-mark{
-  width:28px;height:28px;border-radius:3px;
+  width:28px;height:28px;border-radius:var(--radius);
   background:linear-gradient(155deg,var(--gold) 0%, #c79530 100%);
   display:flex;align-items:center;justify-content:center;
   font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;color:#0d0e14;
@@ -111,7 +112,7 @@ body{
   position:absolute;right:6px;top:50%;transform:translateY(-50%);
   background:transparent;border:none;color:var(--text-faint);
   font-size:11px;cursor:pointer;padding:5px 6px;line-height:1;
-  display:none;border-radius:2px;transition:color .15s,background .15s;
+  display:none;border-radius:var(--radius-sm);transition:color .15s,background .15s;
 }
 .search-clear:hover{color:var(--text);background:var(--surface-3);}
 .search-clear.show{display:block;}
@@ -140,7 +141,7 @@ body{
   background:transparent;border:none;
   color:var(--text-dim);width:32px;height:32px;
   display:flex;align-items:center;justify-content:center;
-  cursor:pointer;border-radius:2px;font-size:14px;
+  cursor:pointer;border-radius:var(--radius-sm);font-size:14px;
   transition:all .15s;flex-shrink:0;
 }
 .icon-btn:hover{color:var(--gold);background:var(--surface-3);}
@@ -167,7 +168,7 @@ body{
 }
 .years-row::-webkit-scrollbar{height:4px;}
 .years-row::-webkit-scrollbar-track{background:transparent;}
-.years-row::-webkit-scrollbar-thumb{background:var(--gold-dim);border-radius:2px;}
+.years-row::-webkit-scrollbar-thumb{background:var(--gold-dim);border-radius:var(--radius-pill);}
 .years-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin-right:6px;flex-shrink:0;}
 .year-chip{
   display:inline-flex;align-items:center;gap:5px;
@@ -206,7 +207,7 @@ body{
 }
 .year-count{
   font-size:11px;color:var(--text-faint);font-weight:600;
-  background:var(--surface-2);padding:2px 8px;border-radius:2px;
+  background:var(--surface-2);padding:2px 8px;border-radius:var(--radius-sm);
 }
 .year-body{overflow:hidden;}
 .year-body.collapsed{display:none;}
@@ -248,7 +249,7 @@ body{
   cursor:pointer;
   background:var(--surface-1);
   border:1px solid var(--border-soft);
-  border-radius:8px;
+  border-radius:var(--radius-lg);
   overflow:hidden;
   transition:transform .15s,border-color .15s,box-shadow .15s;
   position:relative;
@@ -271,13 +272,13 @@ body{
   font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;
   padding:2px 6px;line-height:1.4;
   background:rgba(10,10,12,.82);backdrop-filter:blur(4px);
-  border-radius:2px;
+  border-radius:var(--radius-sm);
 }
 .card-plat{
   position:absolute;top:6px;right:6px;
   width:18px;height:18px;display:flex;align-items:center;justify-content:center;
   background:rgba(10,10,12,.82);backdrop-filter:blur(4px);
-  border-radius:2px;padding:3px;
+  border-radius:var(--radius-sm);padding:3px;
 }
 .card-dlc-badge{
   position:absolute;bottom:0;left:0;right:0;
@@ -351,7 +352,7 @@ body.compact-view .card-name{
 .info-label{color:var(--text-faint);min-width:78px;font-size:10px;letter-spacing:.06em;padding-top:3px;text-transform:uppercase;font-weight:600;flex-shrink:0;}
 .info-val{color:var(--text);flex:1;word-break:break-word;font-size:13px;}
 
-.status-badge{font-size:10.5px;padding:4px 10px;border-radius:2px;white-space:nowrap;display:inline-block;font-weight:700;letter-spacing:.02em;}
+.status-badge{font-size:10.5px;padding:4px 10px;border-radius:var(--radius-pill);white-space:nowrap;display:inline-block;font-weight:700;letter-spacing:.02em;}
 .badge-afaire{color:#e8b84b;background:rgba(232,184,75,.10);}
 .badge-encours{color:var(--blue);background:rgba(102,153,232,.12);}
 .badge-fini{color:var(--green);background:rgba(95,191,134,.12);}
@@ -369,7 +370,7 @@ body.compact-view .card-name{
 .note-perso-box{
   background:var(--surface-2);border-left:2px solid var(--gold-dim);
   padding:10px 13px;font-size:12.5px;color:var(--text-dim);
-  font-style:italic;white-space:pre-wrap;border-radius:0 6px 6px 0;
+  font-style:italic;white-space:pre-wrap;border-radius:var(--radius);
 }
 
 .info-actions{display:flex;gap:8px;margin-top:20px;}
@@ -397,7 +398,7 @@ body.compact-view .card-name{
   font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;color:var(--text);
   margin-bottom:22px;display:flex;align-items:center;gap:8px;
 }
-.form-modal h2::before{content:'';width:4px;height:14px;background:var(--gold);border-radius:2px;}
+.form-modal h2::before{content:'';width:4px;height:14px;background:var(--gold);border-radius:var(--radius-sm);}
 .form-modal label{display:block;font-size:10.5px;color:var(--text-faint);font-weight:700;letter-spacing:.05em;margin-bottom:7px;text-transform:uppercase;}
 .form-modal input,.form-modal select,.form-modal textarea{
   width:100%;background:var(--surface-2);border:1px solid var(--border);
@@ -413,15 +414,15 @@ body.compact-view .card-name{
 .url-hint{font-size:11px;color:var(--text-faint);margin-top:-9px;margin-bottom:14px;}
 .url-detect{font-size:11px;color:var(--gold);margin-top:-9px;margin-bottom:14px;display:none;font-weight:600;}
 .img-preview-wrap{margin-bottom:16px;display:none;}
-.img-preview-wrap img{width:130px;height:60px;object-fit:cover;border:1px solid var(--border);display:block;border-radius:2px;}
+.img-preview-wrap img{width:130px;height:60px;object-fit:cover;border:1px solid var(--border);display:block;border-radius:var(--radius);}
 
 .slider-wrap{display:flex;align-items:center;gap:14px;margin-bottom:12px;}
 .slider{
   -webkit-appearance:none;appearance:none;flex:1;height:6px;outline:none;cursor:pointer;
-  background:var(--surface-3);border-radius:3px;
+  background:var(--surface-3);border-radius:var(--radius-pill);
 }
-.slider::-webkit-slider-thumb{-webkit-appearance:none;width:6px;height:6px;border-radius:0;background:transparent;cursor:pointer;}
-.slider::-moz-range-thumb{width:6px;height:6px;border-radius:0;background:transparent;cursor:pointer;border:none;}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;width:6px;height:6px;border-radius:50%;background:transparent;cursor:pointer;}
+.slider::-moz-range-thumb{width:6px;height:6px;border-radius:50%;background:transparent;cursor:pointer;border:none;}
 .slider-val{font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;min-width:42px;text-align:right;line-height:1;}
 
 .form-actions{display:flex;gap:10px;margin-top:6px;}
@@ -484,9 +485,9 @@ body.compact-view .card-name{
 }
 @media(max-width:480px){
   .overlay{align-items:flex-end;padding:0;}
-  .form-modal,.confirm-box{width:100%;max-width:100%;border-radius:2px 6px 0 0;}
+  .form-modal,.confirm-box{width:100%;max-width:100%;border-radius:var(--radius-lg);}
   .form-row{flex-direction:column;gap:0;}
-  .info-modal{width:100%;max-width:100%;border-radius:2px 6px 0 0;}
+  .info-modal{width:100%;max-width:100%;border-radius:var(--radius-lg);}
   .search-wrap,.search-input{width:100%;}
   .icon-group{flex-wrap:wrap;justify-content:center;}
   .btn-primary{width:100%;justify-content:center;}
@@ -986,7 +987,7 @@ function openInfo(id){
   const platHtml=g.platform==='Pirate'
     ?`<span style="display:inline-flex;align-items:center;gap:6px;color:#c9c5b8"><span style="display:inline-flex;width:15px;height:15px">${PIRATE_SVG}</span> Pirate</span>`
     :`<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:15px;height:15px;color:#c9c5b8">${STEAM_SVG}</span> Steam</span>`;
-  const supportHtml=g.support?`<span style="background:rgba(185,103,255,.2);color:var(--gold);font-size:10px;font-weight:700;padding:2px 8px;border-radius:2px;letter-spacing:.05em">${g.support}</span>`:'—';
+  const supportHtml=g.support?`<span style="background:rgba(185,103,255,.2);color:var(--gold);font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.05em">${g.support}</span>`:'—';
   document.getElementById('infoBody').innerHTML=`
     <div class="info-row"><span class="info-label">Statut</span><span class="info-val"><span class="status-badge ${bc}">${lbl}</span></span></div>
     <div class="info-row"><span class="info-label">Note</span><span class="info-val">${renderStarsHtml(g.note)}</span></div>
