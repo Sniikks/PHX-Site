@@ -43,10 +43,12 @@ body::after {
 .brand,
 .brand-text,
 .code,
-.header h1 {
+.header h1,
+.page-title h1,
+.logo {
   text-shadow:
-    0 0 10px color-mix(in srgb, currentColor 55%, transparent),
-    0 0 30px color-mix(in srgb, currentColor 22%, transparent);
+    0 0 10px rgba(255, 255, 255, .55),
+    0 0 30px rgba(255, 255, 255, .22);
 }
 
 /* ---------- Boutons principaux : lueur au survol ---------- */
@@ -56,7 +58,6 @@ body::after {
 .btn-save:hover,
 .btn-add-main:hover,
 .add-btn-main:hover,
-.menu-btn:hover,
 a.home:hover {
   box-shadow:
     0 0 14px color-mix(in srgb, var(--gold, #00f0ff) 45%, transparent),
@@ -110,6 +111,14 @@ a.home:hover {
   font-size: 12.5px !important;
   font-family: 'Exo 2', sans-serif !important;
   border-radius: var(--radius, 10px) !important;
+  box-shadow:
+    0 0 12px rgba(255, 255, 255, .22),
+    0 0 26px rgba(255, 255, 255, .10);
+}
+.menu-btn:hover {
+  box-shadow:
+    0 0 16px rgba(255, 255, 255, .38),
+    0 0 34px rgba(255, 255, 255, .16);
 }
 @media (min-width: 769px) {
   .menu-btn {
