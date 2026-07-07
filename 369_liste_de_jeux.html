@@ -157,7 +157,7 @@ body{
   cursor:pointer;border-radius:var(--radius);white-space:nowrap;
   transition:all .15s;display:flex;align-items:center;gap:6px;
 }
-.btn-primary:hover{background:#f0c563;transform:translateY(-1px);}
+.btn-primary:hover{background:#c98aff;transform:translateY(-1px);}
 .btn-primary:active{transform:translateY(0);}
 
 .years-row{
@@ -248,7 +248,7 @@ body{
   cursor:pointer;
   background:var(--surface-1);
   border:1px solid var(--border-soft);
-  border-radius:var(--radius);
+  border-radius:8px;
   overflow:hidden;
   transition:transform .15s,border-color .15s,box-shadow .15s;
   position:relative;
@@ -383,7 +383,7 @@ body.compact-view .card-name{
 }
 .btn:hover{color:var(--text);border-color:var(--text-faint);background:var(--surface-2);}
 .btn-gold{background:var(--gold);border-color:var(--gold);color:#0d0e14;}
-.btn-gold:hover{background:#f0c563;border-color:#f0c563;color:#0d0e14;}
+.btn-gold:hover{background:#c98aff;border-color:#c98aff;color:#0d0e14;}
 .btn-danger-ghost{border-color:rgba(226,104,95,.3);color:rgba(226,104,95,.85);}
 .btn-danger-ghost:hover{color:var(--red);border-color:var(--red);background:rgba(226,104,95,.08);}
 
@@ -472,6 +472,7 @@ body.compact-view .card-name{
 .toast.show{opacity:1;transform:translateY(0);}
 
 /* ══════════════ RESPONSIVE ══════════════ */
+@media (min-width:769px) and (max-width:1560px){ .brand-row{padding-left:96px;} }
 @media(max-width:760px){
   .topbar-inner{padding:0 18px;}
   .main{padding:20px 18px 70px;}

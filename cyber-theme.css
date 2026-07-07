@@ -104,6 +104,29 @@ a.home:hover {
   background: color-mix(in srgb, var(--gold, #00f0ff) 55%, #1f2230);
 }
 
+/* ---------- Bouton Menu unifié : format identique, ancré tout à gauche ---------- */
+.menu-btn {
+  padding: 9px 16px !important;
+  font-size: 12.5px !important;
+  font-family: 'Exo 2', sans-serif !important;
+  border-radius: 3px !important;
+}
+@media (min-width: 769px) {
+  .menu-btn {
+    position: fixed !important;
+    top: 12px !important;
+    left: max(14px, env(safe-area-inset-left)) !important;
+    right: auto !important;
+    transform: none !important;
+    margin: 0 !important;
+    z-index: 60;
+    background: rgba(13, 14, 20, .85) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .menu-btn:hover { background: rgba(31, 34, 48, .95) !important; }
+}
+
 /* ---------- Accessibilité clavier ---------- */
 :focus-visible {
   outline: 2px solid var(--gold, #00f0ff);

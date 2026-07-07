@@ -23,7 +23,9 @@
   --champ:#a78bfa; --champ-glow:rgba(167,139,250,.15); --champ-dim:#3a2f5a;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08), transparent 60%), var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-size:13px;overflow:hidden;}
+html,body{height:100%;color:var(--text);font-family:'Exo 2',sans-serif;font-size:13px;overflow:hidden;}
+html{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08), transparent 60%), var(--bg);}
+body{background:transparent;}
 
 /* HEADER */
 .header{display:flex;align-items:center;gap:.6rem;padding:.4rem .8rem;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;min-height:42px;}
@@ -31,6 +33,7 @@ html,body{height:100%;background:radial-gradient(1200px 600px at 50% -200px, rgb
 .menu-btn:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.24);color:#fff;}
 .header h1{font-family:'Rajdhani',sans-serif;font-size:clamp(.8rem,2vw,1.05rem);font-weight:800;color:var(--gold);letter-spacing:.18em;white-space:nowrap;}
 .sep{flex:1;}
+.pill:empty{display:none;}
 .pill{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-size:10px;padding:.18rem .5rem;letter-spacing:.06em;white-space:nowrap;border-radius:2px;}
 .btn{background:transparent;border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:11px;padding:.3rem .7rem;cursor:pointer;transition:all .15s;letter-spacing:.05em;white-space:nowrap;border-radius:3px;}
 .btn:hover{border-color:var(--gold-dim);color:var(--gold);}
@@ -416,6 +419,7 @@ html,body{height:100%;background:radial-gradient(1200px 600px at 50% -200px, rgb
 /* ══════════════════════════════════════════
    RESPONSIVE / TABLET
    ══════════════════════════════════════════ */
+@media (min-width:769px){ .header{padding-left:118px;} }
 @media (min-width: 769px) and (max-width: 1180px){
   .arena{gap:1.4rem;padding:1rem 1.4rem;}
   .contestant{max-width:min(46vw,480px);}
@@ -519,7 +523,7 @@ html,body{height:100%;background:radial-gradient(1200px 600px at 50% -200px, rgb
   <a href="index.html" class="menu-btn">☰ Menu</a>
   <h1>🏆 Bracket</h1>
   <div class="sep"></div>
-  <span class="pill" id="statusPill">—</span>
+  <span class="pill" id="statusPill"></span>
   <button class="btn" id="exportBtn" onclick="exportResults()" style="display:none">💾 Export</button>
   <button class="btn danger" id="resetBtn" onclick="resetBracket()" style="display:none">↺ Quitter</button>
 </div>
@@ -2011,7 +2015,7 @@ function resetBracket(){
   document.getElementById('roundBadge').classList.remove('draft-badge','champion-badge');
   document.getElementById('exportBtn').style.display='none';
   document.getElementById('resetBtn').style.display='none';
-  document.getElementById('statusPill').textContent='—';
+  document.getElementById('statusPill').textContent='';
   document.getElementById('historyStrip').innerHTML='';
   showScreen('screenImport');
 }

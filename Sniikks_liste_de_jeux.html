@@ -50,7 +50,7 @@
   .text-action-btn { background:transparent; border:1px solid var(--border); color:var(--text-dim); font-family:inherit; font-size:12px; cursor:pointer; transition:all .15s; padding:7px 13px; border-radius:var(--radius); }
   .text-action-btn:hover { color:var(--text); background:var(--bg3); border-color:var(--gold-dim); }
   .brand { display:flex; align-items:center; gap:10px; }
-  .brand-icon { width:28px; height:28px; border-radius:3px; background:linear-gradient(155deg,var(--gold) 0%, #d97b00 100%); display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; box-shadow:0 0 0 3px var(--violet-soft); }
+  .brand-icon { width:28px; height:28px; border-radius:3px; background:linear-gradient(155deg,#ff9500 0%, #ffd54b 100%); display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; box-shadow:0 0 0 3px var(--violet-soft); }
   h1 { font-family:'Rajdhani',sans-serif; font-size:15px; color:var(--text); letter-spacing:.01em; font-weight:600; }
 
   .sticky-header { border-bottom:1px solid var(--border-soft); }
@@ -83,7 +83,7 @@
   .view-toggle button:hover, .view-btn:hover { color:var(--gold); background:var(--bg3); }
   .view-toggle button.active { color:var(--gold); background:var(--bg3); }
   .add-btn-main { background:var(--gold); border:none; color:#0d0e14; padding:8px 16px; font-family:'Exo 2',sans-serif; font-size:12.5px; font-weight:700; cursor:pointer; border-radius:var(--radius); white-space:nowrap; transition:all .15s; }
-  .add-btn-main:hover { background:#f0c563; transform:translateY(-1px); }
+  .add-btn-main:hover { background:#ffab33; transform:translateY(-1px); }
 
   .stats-years { display:flex; align-items:center; justify-content:center; gap:18px; flex-wrap:wrap; min-width:0; }
   .year-filters {
@@ -142,7 +142,7 @@
 
   /* ══════════════ GAME CARD ══════════════ */
   .game-card {
-    width:100%; cursor:pointer; background:var(--bg2); border:1px solid var(--border-soft); border-radius:var(--radius);
+    width:100%; cursor:pointer; background:var(--bg2); border:1px solid var(--border-soft); border-radius:8px;
     overflow:hidden; transition:transform .15s,border-color .15s,box-shadow .15s; position:relative;
     animation:cardIn .35s ease backwards;
   }
@@ -222,7 +222,7 @@
   .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
 
   .btn-primary { background:var(--gold); border:1px solid var(--gold); color:#0d0e14; font-family:inherit; font-size:12.5px; font-weight:700; padding:10px 18px; cursor:pointer; letter-spacing:.02em; transition:all .15s; border-radius:var(--radius); }
-  .btn-primary:hover { background:#f0c563; border-color:#f0c563; transform:translateY(-1px); }
+  .btn-primary:hover { background:#ffab33; border-color:#ffab33; transform:translateY(-1px); }
   .btn-cancel { background:transparent; border:1px solid var(--border); color:var(--text-dim); font-family:inherit; font-size:12.5px; padding:10px 18px; cursor:pointer; transition:all .15s; border-radius:var(--radius); }
   .btn-cancel:hover { border-color:var(--text-faint); color:var(--text); background:var(--bg3); }
   .btn-danger { background:transparent; border:1px solid rgba(226,104,95,.3); color:rgba(226,104,95,.85); font-family:inherit; font-size:12.5px; padding:10px 18px; cursor:pointer; transition:all .15s; border-radius:var(--radius); }
