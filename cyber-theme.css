@@ -120,6 +120,35 @@ a.home:hover {
     0 0 16px rgba(255, 255, 255, .38),
     0 0 34px rgba(255, 255, 255, .16);
 }
+
+/* ---------- Boutons & menus : coins uniformes (8px) sur toutes les pages ---------- */
+.menu-btn,
+.btn,
+.btn-io,
+.btn-primary,
+.btn-cancel,
+.btn-cancel-modal,
+.btn-cancel-del,
+.btn-confirm-del,
+.btn-save,
+.btn-danger,
+.btn-danger-ghost,
+.btn-gold,
+.btn-add-main,
+.add-btn-main,
+.btn-select-mode,
+.pick-btn,
+.filter-btn,
+.tab-btn,
+.text-action-btn,
+.icon-btn,
+.pill,
+.status-pill,
+.year-pill,
+.view-btn,
+.view-toggle button {
+  border-radius: 8px !important;
+}
 @media (min-width: 769px) {
   .menu-btn {
     position: fixed !important;
