@@ -4,32 +4,40 @@
 //
 // 1) Autocomplétion : /api/search-games?q=the
 //    Renvoie { suggestions: [{name, year}, ...] } triés par date de sortie
-//    croissante (Steam + RAWG), DLC exclus.
+//    croissante (IGDB + Steam), DLC exclus.
 //
 // 2) Résolution d'indice année : /api/search-games?resolve=1&name=Fallout
 //    Renvoyé { name, year } pour la meilleure correspondance trouvée —
 //    utilisé pour l'indice "avant/après" quand le joueur a tapé sa réponse
 //    à la main (sans passer par une suggestion, qui porte déjà son année).
 //
-// Interroge Steam (storesearch) + RAWG (si clé dispo) côté serveur, pour
-// éviter les soucis CORS d'un appel direct depuis le navigateur.
+// Interroge IGDB (source principale, gratuite via Twitch) + Steam
+// (storesearch, en complément) côté serveur, pour éviter les soucis CORS
+// d'un appel direct depuis le navigateur.
 // Debug : ajoute &debug=1 à n'importe quelle requête ci-dessus.
 //
+// RAWG a été retiré (remplacé par IGDB, qui a une couverture bien plus large
+// et renvoie déjà la date de sortie ET le type "jeu principal" en UNE seule
+// requête — avant, on devait rappeler Steam "appdetails" jeu par jeu pour
+// avoir une année fiable, ce qui ralentissait beaucoup l'autocomplétion).
+//
 // Optimisations vitesse :
-//  - Steam et RAWG interrogés EN PARALLÈLE (avant : l'un après l'autre).
-//  - Les années Steam sont d'abord héritées des résultats RAWG (même nom
-//    normalisé) : zéro appel réseau supplémentaire dans la majorité des cas.
-//  - Les rares appels "appdetails" restants sont plafonnés, parallèles,
-//    et coupés au bout de 1,2 s (un appel lent ne bloque plus la réponse).
-// Exclusion des DLC (3 filets complémentaires) :
-//  - RAWG : paramètre exclude_additions (exclut les fiches DLC à la source).
-//  - Steam : champ "type" de storesearch quand présent, et type "dlc"
-//    renvoyé par appdetails pour les jeux qu'on enrichit.
-//  - Motif de nom (dlc, season pass, expansion, soundtrack…) en dernier filet.
+//  - IGDB et Steam interrogés EN PARALLÈLE (le temps de réponse = le plus
+//    lent des deux, pas la somme).
+//  - Plus AUCUN appel "appdetails" par jeu : IGDB fournit déjà l'année et
+//    le filtre anti-DLC (category = 0) en un seul aller-retour. Les
+//    résultats Steam sans correspondance IGDB héritent de l'année IGDB
+//    par nom normalisé quand elle existe, sinon restent sans année (plutôt
+//    que de ralentir la recherche pour l'obtenir).
+// Exclusion des DLC (2 filets complémentaires) :
+//  - IGDB : filtre "category = 0" (jeu principal), qui exclut nativement
+//    DLC/extensions/éditions/remasters/remakes/ports…
+//  - Steam : champ "type" de storesearch quand présent, + motif de nom
+//    (dlc, season pass, expansion, soundtrack…) en dernier filet, pour les
+//    deux sources.
 // ==========================================================
 
-const RAWG_API_KEY = (process.env.RAWG_API_KEY || '').trim().replace(/^["']|["']$/g, '') || null;
-const RAWG_BASE = 'https://api.rawg.io/api';
+import { igdbQuery, isIgdbConfigured } from './_igdb.js';
 
 const BROWSER_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
@@ -53,7 +61,12 @@ function yearFromDateStr(str) {
     return m ? parseInt(m[0], 10) : null;
 }
 
-// Normalisation de nom pour apparier Steam <-> RAWG ("Half-Life 2™" == "half life 2")
+function yearFromUnixSeconds(ts) {
+    if (!ts) return null;
+    return new Date(ts * 1000).getUTCFullYear();
+}
+
+// Normalisation de nom pour apparier Steam <-> IGDB ("Half-Life 2™" == "half life 2")
 function normalizeName(str) {
     return String(str || '')
         .toLowerCase()
@@ -69,29 +82,6 @@ function normalizeName(str) {
 // échouer les autres) pour que la réponse globale reste rapide.
 function fetchWithTimeout(url, ms) {
     return fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(ms) });
-}
-
-// Cache mémoire (survit tant que l'instance serverless reste "chaude").
-// Stocke { year, type } par appid pour éviter de rappeler Steam à chaque frappe.
-const steamAppInfoCache = new Map();
-
-async function fetchSteamAppInfo(appid, timeoutMs = 1200) {
-    if (steamAppInfoCache.has(appid)) return steamAppInfoCache.get(appid);
-    try {
-        const res = await fetchWithTimeout(`https://store.steampowered.com/api/appdetails?appids=${appid}&l=english&filters=basic`, timeoutMs);
-        if (!res.ok) { steamAppInfoCache.set(appid, null); return null; }
-        const json = await res.json();
-        const entry = json[appid];
-        if (!entry || !entry.success || !entry.data) { steamAppInfoCache.set(appid, null); return null; }
-        const info = {
-            year: yearFromDateStr(entry.data.release_date && entry.data.release_date.date),
-            type: entry.data.type || null // "game" | "dlc" | "music" | ...
-        };
-        steamAppInfoCache.set(appid, info);
-        return info;
-    } catch (e) {
-        return null; // timeout ou échec réseau : pas de cache, on retentera au prochain appel
-    }
 }
 
 export default async function handler(req, res) {
@@ -111,18 +101,35 @@ async function handleAutocomplete(req, res, debug) {
 
     const debugInfo = {};
 
-    // Steam et RAWG en parallèle : le temps de réponse = le plus lent des deux,
-    // au lieu de la somme des deux.
+    // IGDB et Steam en parallèle : le temps de réponse = le plus lent des deux,
+    // au lieu de la somme des deux. Ni l'un ni l'autre ne fait plus d'appel
+    // "détails" supplémentaire par jeu (c'était ça, le principal facteur de lenteur).
+    const igdbPromise = (async () => {
+        if (!isIgdbConfigured()) { debugInfo.igdbSkipped = 'TWITCH_CLIENT_ID/SECRET absents'; return []; }
+        try {
+            const clean = q.replace(/["\\]/g, '');
+            const rows = await igdbQuery('games',
+                `search "${clean}"; fields name,first_release_date; where category = 0; limit 20;`,
+                2500
+            );
+            debugInfo.igdbCount = Array.isArray(rows) ? rows.length : 0;
+            return Array.isArray(rows) ? rows : [];
+        } catch (e) {
+            debugInfo.igdbError = e.message;
+            return [];
+        }
+    })();
+
     const steamPromise = (async () => {
         try {
             const url = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(q)}&l=english&cc=us`;
-            const r = await fetchWithTimeout(url, 3000);
+            const r = await fetchWithTimeout(url, 2500);
             debugInfo.steamStatus = r.status;
             if (!r.ok) { debugInfo.steamBody = (await r.text()).slice(0, 200); return []; }
             const data = await r.json();
             debugInfo.steamCount = (data.items || []).length;
             // "type" vaut "game" pour un vrai jeu ; on exclut explicitement les DLC.
-            // Les entrées sans "type" sont gardées ici, re-filtrées plus bas via appdetails.
+            // Les entrées sans "type" sont gardées, filtrées par le motif de nom plus bas.
             return (data.items || []).filter(i => i && i.name && i.type !== 'dlc');
         } catch (e) {
             debugInfo.steamError = e.message;
@@ -130,89 +137,30 @@ async function handleAutocomplete(req, res, debug) {
         }
     })();
 
-    const rawgPromise = (async () => {
-        if (!RAWG_API_KEY) { debugInfo.rawgSkipped = 'RAWG_API_KEY absente'; return []; }
-        try {
-            // exclude_additions=true : demande à RAWG d'exclure les fiches DLC.
-            // ⚠️ En pratique RAWG ignore ce paramètre quand "search" est utilisé
-            // (confirmé sur le terrain) : on le garde par principe, mais le vrai
-            // filtrage des fiches DLC RAWG se fait plus bas (croisement avec les
-            // types Steam + motif de nom).
-            const url = `${RAWG_BASE}/games?key=${RAWG_API_KEY}&search=${encodeURIComponent(q)}&search_precise=true&page_size=20&exclude_additions=true`;
-            const r = await fetchWithTimeout(url, 3000);
-            debugInfo.rawgStatus = r.status;
-            if (!r.ok) { debugInfo.rawgBody = (await r.text()).slice(0, 200); return []; }
-            const data = await r.json();
-            debugInfo.rawgCount = (data.results || []).length;
-            // RAWG fonctionne comme un wiki : n'importe qui peut soumettre une fiche.
-            // Le champ "added" (nb d'utilisateurs qui ont ajouté le jeu à une liste)
-            // sert de filet anti-troll léger.
-            const MIN_RAWG_ADDED = 10;
-            const filtered = (data.results || []).filter(g => g && g.name && (g.added || 0) >= MIN_RAWG_ADDED);
-            debugInfo.rawgFilteredOut = (data.results || []).length - filtered.length;
-            return filtered;
-        } catch (e) {
-            debugInfo.rawgError = e.message;
-            return [];
-        }
-    })();
+    const [igdbResults, steamItems] = await Promise.all([igdbPromise, steamPromise]);
 
-    const [steamItems, rawgResults] = await Promise.all([steamPromise, rawgPromise]);
-
-    // Vérification de type pour TOUS les résultats Steam affichables (pas
-    // seulement ceux sans année) : la recherche Steam ne marque presque jamais
-    // les DLC ("Dead by Daylight - Ghost Face" arrive en type "app"), seule la
-    // fiche appdetails est fiable. Les appels sont parallèles, mis en cache
-    // (mémoire chaude + les mêmes appids reviennent à chaque frappe) et coupés
-    // à 1,2 s — un timeout garde le jeu dans la liste (in dubio pro reo) mais
-    // sans année. Bonus : appdetails fournit aussi l'année, plus fiable que
-    // l'héritage RAWG. On garde l'héritage RAWG en secours après timeout.
-    const rawgYearByName = new Map();
-    rawgResults.forEach(g => {
-        const y = yearFromDateStr(g.released);
-        if (y) rawgYearByName.set(normalizeName(g.name), y);
+    // Année IGDB par nom normalisé, pour que les résultats Steam sans
+    // correspondance IGDB directe (rare) héritent quand même d'une année
+    // sans appel réseau supplémentaire.
+    const igdbYearByName = new Map();
+    igdbResults.forEach(g => {
+        const y = yearFromUnixSeconds(g.first_release_date);
+        if (y) igdbYearByName.set(normalizeName(g.name), y);
     });
 
-    const MAX_STEAM_LOOKUPS = 12;
-    const steamEnriched = steamItems.slice(0, MAX_STEAM_LOOKUPS).map(i => ({
-        name: i.name,
-        id: i.id,
-        year: null,
-        dlc: false
-    }));
-    debugInfo.steamAppdetailsCalls = steamEnriched.length;
-    await Promise.all(steamEnriched.map(async i => {
-        const info = await fetchSteamAppInfo(i.id);
-        if (!info) { // timeout/échec : on garde le jeu, année RAWG en secours
-            i.year = rawgYearByName.get(normalizeName(i.name)) || null;
-            return;
-        }
-        i.year = info.year || rawgYearByName.get(normalizeName(i.name)) || null;
-        if (info.type && info.type !== 'game') i.dlc = true; // dlc, music, demo…
-    }));
-
-    // Les DLC confirmés côté Steam servent aussi à écarter leurs fiches jumelles
-    // côté RAWG (mêmes noms) : RAWG ignore exclude_additions quand "search" est
-    // utilisé, ses fiches DLC reviennent donc dans les résultats de recherche.
-    const steamDlcNames = new Set(
-        steamEnriched.filter(i => i.dlc).map(i => normalizeName(i.name))
-    );
-
-    // Fusion + déduplication + filets anti-DLC (nom + croisement Steam).
+    // Fusion + déduplication + filets anti-DLC (nom).
     const seen = new Set();
     const results = [];
     const push = (name, year) => {
         if (isDlcName(name)) return;
         const key = normalizeName(name);
         if (!key || seen.has(key)) return;
-        if (steamDlcNames.has(key)) return; // fiche RAWG jumelle d'un DLC Steam confirmé
         seen.add(key);
         results.push({ name, year: year || null });
     };
 
-    steamEnriched.forEach(i => { if (!i.dlc) push(i.name, i.year); });
-    steamItems.slice(MAX_STEAM_LOOKUPS).forEach(i => push(i.name, rawgYearByName.get(normalizeName(i.name)) || null));
-    rawgResults.forEach(g => push(g.name, yearFromDateStr(g.released)));
+    igdbResults.forEach(g => push(g.name, yearFromUnixSeconds(g.first_release_date)));
+    steamItems.forEach(i => push(i.name, igdbYearByName.get(normalizeName(i.name)) || null));
 
     // Tri par date de sortie croissante ; les jeux sans date connue passent après,
     // triés alphabétiquement entre eux pour rester stables/prévisibles.
@@ -223,11 +171,11 @@ async function handleAutocomplete(req, res, debug) {
         return a.name.localeCompare(b.name);
     });
 
-    const merged = results.slice(0, 15);
+    const merged = results.slice(0, 20);
 
     // Cache CDN Vercel : la même saisie ("borderlands") faite par n'importe qui
     // dans les 5 minutes est servie instantanément depuis le cache, sans toucher
-    // Steam/RAWG. Gros gain ressenti sur les préfixes courants.
+    // IGDB/Steam. Gros gain ressenti sur les préfixes courants.
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=3600');
     return res.status(200).json(debug ? { suggestions: merged, debug: debugInfo } : { suggestions: merged });
 }
@@ -244,41 +192,50 @@ async function handleResolve(req, res, debug) {
     // Même réponse pour le même nom pendant 24h : les dates de sortie ne bougent pas.
     res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate');
 
-    // 1) RAWG d'abord (exclude_additions pour ne pas résoudre sur une fiche DLC).
+    // 1) IGDB d'abord (category = 0 pour ne pas résoudre sur une fiche DLC/édition).
     // On récupère plusieurs résultats et on garde le premier qui a réellement une année.
-    if (RAWG_API_KEY) {
+    if (isIgdbConfigured()) {
         try {
-            const r = await fetchWithTimeout(`${RAWG_BASE}/games?key=${RAWG_API_KEY}&search=${encodeURIComponent(name)}&search_precise=true&page_size=5&exclude_additions=true`, 3000);
-            debugInfo.rawgStatus = r.status;
-            if (r.ok) {
-                const d = await r.json();
-                debugInfo.rawgCount = (d.results || []).length;
-                const withYear = (d.results || []).find(g => g && yearFromDateStr(g.released));
-                if (withYear) {
-                    const year = yearFromDateStr(withYear.released);
-                    return res.status(200).json(debug ? { name: withYear.name, year, debug: debugInfo } : { name: withYear.name, year });
-                }
+            const clean = name.replace(/["\\]/g, '');
+            const rows = await igdbQuery('games',
+                `search "${clean}"; fields name,first_release_date; where category = 0; limit 5;`,
+                2500
+            );
+            debugInfo.igdbCount = Array.isArray(rows) ? rows.length : 0;
+            const withYear = (rows || []).find(g => g && yearFromUnixSeconds(g.first_release_date));
+            if (withYear) {
+                const year = yearFromUnixSeconds(withYear.first_release_date);
+                return res.status(200).json(debug ? { name: withYear.name, year, debug: debugInfo } : { name: withYear.name, year });
             }
         } catch (e) {
-            debugInfo.rawgError = e.message;
+            debugInfo.igdbError = e.message;
         }
     }
 
     // 2) Repli Steam : on teste les 3 premiers résultats EN PARALLÈLE et on garde
-    // le premier (dans l'ordre de pertinence) qui a une date — avant, les appels
-    // appdetails étaient séquentiels, jusqu'à 3 allers-retours d'affilée.
+    // le premier (dans l'ordre de pertinence) qui a une date.
     try {
-        const sr = await fetchWithTimeout(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(name)}&l=english&cc=us`, 3000);
+        const sr = await fetchWithTimeout(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(name)}&l=english&cc=us`, 2500);
         debugInfo.steamSearchStatus = sr.status;
         if (sr.ok) {
             const sd = await sr.json();
             const topCandidates = (sd.items || []).filter(i => i && i.id).slice(0, 3);
             debugInfo.steamCandidateCount = topCandidates.length;
-            const infos = await Promise.all(topCandidates.map(i => fetchSteamAppInfo(i.id)));
+            const infos = await Promise.all(topCandidates.map(async i => {
+                try {
+                    const dr = await fetchWithTimeout(`https://store.steampowered.com/api/appdetails?appids=${i.id}&l=english&filters=basic`, 1200);
+                    if (!dr.ok) return null;
+                    const dj = await dr.json();
+                    const entry = dj[i.id];
+                    if (!entry || !entry.success || !entry.data) return null;
+                    return yearFromDateStr(entry.data.release_date && entry.data.release_date.date);
+                } catch (e) {
+                    return null;
+                }
+            }));
             for (let k = 0; k < topCandidates.length; k++) {
-                const info = infos[k];
-                if (info && info.year) {
-                    return res.status(200).json(debug ? { name: topCandidates[k].name, year: info.year, debug: debugInfo } : { name: topCandidates[k].name, year: info.year });
+                if (infos[k]) {
+                    return res.status(200).json(debug ? { name: topCandidates[k].name, year: infos[k], debug: debugInfo } : { name: topCandidates[k].name, year: infos[k] });
                 }
             }
         }

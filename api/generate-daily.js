@@ -29,13 +29,12 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { normalize, levenshtein, extractYear } from './_gamematch.js';
+import { igdbQuery, TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET } from './_igdb.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 // service_role de préférence : nécessaire pour écrire les lignes secrètes
 // une fois la migration RLS appliquée. Repli sur la clé anon sinon.
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-const TWITCH_CLIENT_ID = (process.env.TWITCH_CLIENT_ID || '').trim() || null;
-const TWITCH_CLIENT_SECRET = (process.env.TWITCH_CLIENT_SECRET || '').trim() || null;
 const CRON_SECRET = process.env.CRON_SECRET || null;
 const ADMIN_KEY = process.env.ADMIN_KEY || null;
 
@@ -385,35 +384,7 @@ async function pickDailyGame(usedIds, usedNames) {
 // Auth "client credentials" : le token (valable ~2 mois) est mis en cache
 // mémoire — les containers serverless chauds le réutilisent entre deux appels.
 
-const IGDB_BASE = 'https://api.igdb.com/v4';
-let igdbTokenCache = { token: null, expiresAt: 0 };
-
-async function getIgdbToken() {
-    if (igdbTokenCache.token && Date.now() < igdbTokenCache.expiresAt - 60000) {
-        return igdbTokenCache.token;
-    }
-    const url = `https://id.twitch.tv/oauth2/token?client_id=${encodeURIComponent(TWITCH_CLIENT_ID)}&client_secret=${encodeURIComponent(TWITCH_CLIENT_SECRET)}&grant_type=client_credentials`;
-    const res = await fetch(url, { method: 'POST' });
-    if (!res.ok) throw new Error(`Twitch OAuth a répondu ${res.status}`);
-    const data = await res.json();
-    igdbTokenCache = { token: data.access_token, expiresAt: Date.now() + (data.expires_in || 3600) * 1000 };
-    return igdbTokenCache.token;
-}
-
-async function igdbQuery(endpoint, body) {
-    const token = await getIgdbToken();
-    const res = await fetch(`${IGDB_BASE}/${endpoint}`, {
-        method: 'POST',
-        headers: {
-            'Client-ID': TWITCH_CLIENT_ID,
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
-        },
-        body
-    });
-    if (!res.ok) throw new Error(`IGDB a répondu ${res.status}`);
-    return res.json();
-}
+// getIgdbToken() et igdbQuery() viennent désormais de ./_igdb.js (partagé avec /api/search-games.js)
 
 // Traduction FR des genres IGDB (les noms inconnus restent en anglais).
 const IGDB_GENRE_FR = {
