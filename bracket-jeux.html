@@ -83,6 +83,13 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
 .saved-add{flex-shrink:0;background:none;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:2px 5px;line-height:1;}
 .saved-add:hover{color:var(--gold);}
 .saved-item.select-mode .saved-add{display:none;}
+.steam-add-row{display:flex;gap:.4rem;margin-bottom:.6rem;}
+.steam-add-row input{flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:11px;padding:.4rem .5rem;box-sizing:border-box;}
+.steam-staged-list{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.6rem;}
+.steam-chip{display:flex;align-items:center;gap:.35rem;background:var(--bg3);border:1px solid var(--border2);padding:.2rem .4rem;font-size:10px;color:var(--text);}
+.steam-chip img{width:28px;height:13px;object-fit:cover;}
+.steam-chip button{background:none;border:none;color:var(--text2);cursor:pointer;font-size:11px;padding:0 2px;line-height:1;}
+.steam-chip button:hover{color:#ff8080;}
 .saved-empty{font-size:10px;color:var(--text2);text-align:center;padding:.7rem 0;}
 .saved-selectbar{display:flex;align-items:center;justify-content:space-between;margin-top:.5rem;padding:.4rem .6rem;background:#1a1212;border:1px solid #4a1a1a;font-size:10px;color:#e06060;}
 .saved-selectbar .ssb-actions{display:flex;gap:.4rem;}
@@ -710,6 +717,11 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
       <button class="modal-close" onclick="closeAddGamesModal()">✕</button>
     </div>
     <div class="modal-body">
+      <div class="steam-add-row">
+        <input type="text" id="steamLinkInput" placeholder="Lien Steam (ex: https://store.steampowered.com/app/1888930/...)" autocomplete="off">
+        <button class="btn" onclick="fetchSteamGame()">🔗 Récupérer</button>
+      </div>
+      <div class="steam-staged-list" id="steamStagedList"></div>
       <div class="drop-zone" id="addGamesDropZone"
         ondragover="addGamesDzOver(event)" ondragleave="addGamesDzLeave()" ondrop="addGamesDzDrop(event)"
         onclick="document.getElementById('addGamesFile').click()">
@@ -958,6 +970,41 @@ function deleteSingleSave(id){
 //  AJOUTER DES JEUX À UNE SAUVEGARDE EXISTANTE
 // ══════════════════════════════════════════
 let addGamesTargetId = null;
+let steamStaged = [];
+
+async function fetchSteamGame(){
+  const input = document.getElementById('steamLinkInput');
+  const err = document.getElementById('addGamesErr');
+  const url = input.value.trim();
+  if(!url){ err.textContent='⚠ Colle un lien Steam.'; return; }
+
+  const m = url.match(/\/app\/(\d+)/);
+  if(!m){ err.textContent='⚠ Lien Steam invalide (attendu : store.steampowered.com/app/ID/...).'; return; }
+  const appid = m[1];
+
+  err.textContent = 'Récupération en cours…';
+  try{
+    const r = await fetch('/api/steam?appid='+appid);
+    const j = await r.json();
+    if(!r.ok || j.error){ err.textContent = '⚠ '+(j.error||'Jeu introuvable.'); return; }
+    steamStaged.push({name:j.name, src:j.src});
+    renderSteamStaged();
+    input.value = '';
+    err.textContent = '';
+  }catch(e){
+    err.textContent = '⚠ Erreur réseau lors de la récupération.';
+  }
+}
+
+function renderSteamStaged(){
+  const wrap = document.getElementById('steamStagedList');
+  wrap.innerHTML = steamStaged.map((g,i)=>`
+    <div class="steam-chip">
+      <img src="${esc(g.src)}" alt="">
+      <span>${esc(g.name)}</span>
+      <button onclick="steamStaged.splice(${i},1);renderSteamStaged()" title="Retirer">✕</button>
+    </div>`).join('');
+}
 
 function openAddGamesModal(saveId){
   const s = getSavedList().find(x=>x.id===saveId);
@@ -966,6 +1013,9 @@ function openAddGamesModal(saveId){
   document.getElementById('addModalTitle').textContent = '➕ AJOUTER À « '+s.name.toUpperCase()+' »';
   document.getElementById('addGamesText').value = '';
   document.getElementById('addGamesErr').textContent = '';
+  document.getElementById('steamLinkInput').value = '';
+  steamStaged = [];
+  renderSteamStaged();
   document.getElementById('addModalOverlay').classList.add('visible');
 }
 function closeAddGamesModal(){
@@ -986,23 +1036,26 @@ function readAddGamesFile(f){
 function submitAddGames(){
   const err = document.getElementById('addGamesErr');
   const raw = document.getElementById('addGamesText').value.trim();
-  if(!raw){ err.textContent='⚠ Colle du JSON ou dépose un fichier.'; return; }
 
-  let parsed;
-  try{ parsed = JSON.parse(raw); }
-  catch(e){ err.textContent='⚠ JSON invalide : '+e.message; return; }
+  let newGames = steamStaged.slice();
 
-  let list=[];
-  if(Array.isArray(parsed)) list=parsed;
-  else if(parsed.games && Array.isArray(parsed.games)) list=parsed.games;
-  else if(typeof parsed==='object') list=Object.values(parsed);
+  if(raw){
+    let parsed;
+    try{ parsed = JSON.parse(raw); }
+    catch(e){ err.textContent='⚠ JSON invalide : '+e.message; return; }
 
-  const newGames = list.map(g=>{
-    if(typeof g==='string') return {name:g.trim(),src:''};
-    return {name:(g.name||g.title||'').trim(), src:g.src||g.image||g.img||g.cover||''};
-  }).filter(g=>g.name);
+    let list=[];
+    if(Array.isArray(parsed)) list=parsed;
+    else if(parsed.games && Array.isArray(parsed.games)) list=parsed.games;
+    else if(typeof parsed==='object') list=Object.values(parsed);
 
-  if(!newGames.length){ err.textContent='⚠ Aucun jeu valide trouvé dans ce JSON.'; return; }
+    newGames = newGames.concat(list.map(g=>{
+      if(typeof g==='string') return {name:g.trim(),src:''};
+      return {name:(g.name||g.title||'').trim(), src:g.src||g.image||g.img||g.cover||''};
+    }).filter(g=>g.name));
+  }
+
+  if(!newGames.length){ err.textContent='⚠ Ajoute un lien Steam, colle du JSON, ou dépose un fichier.'; return; }
 
   const saves = getSavedList();
   const s = saves.find(x=>x.id===addGamesTargetId);
