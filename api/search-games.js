@@ -21,7 +21,7 @@
 // requête — avant, on devait rappeler Steam "appdetails" jeu par jeu pour
 // avoir une année fiable, ce qui ralentissait beaucoup l'autocomplétion).
 //
-// Recherche IGDB : filtre "commence par" (where name ~ "texte"* & version_parent
+// Recherche IGDB : filtre "contient" (where name ~ *"texte"* & version_parent
 // = null), testé et confirmé en conditions réelles — PAS le mode "search" flou
 // d'IGDB. Trois pièges rencontrés et évités, tous testés via une route de debug
 // temporaire (/api/igdb-test.js) plutôt qu'à l'aveugle :
@@ -33,6 +33,9 @@
 //     tout le reste (confirmé par un test isolé) — on utilise donc uniquement
 //     "version_parent = null" pour écarter les éditions (GOTY, Special Edition…),
 //     complété par le filtre anti-DLC par motif de nom pour le reste.
+// Le "contient" (et non un simple "commence par") est important : il trouve
+// aussi les jeux où le mot cherché n'est pas en tout début de titre (ex. "Star
+// Wolves", "MechWarrior 5: Clans - Wolves of Tukayyid" pour la recherche "wolves").
 //
 // Optimisations vitesse :
 //  - IGDB et Steam interrogés EN PARALLÈLE (le temps de réponse = le plus
@@ -121,15 +124,14 @@ async function handleAutocomplete(req, res, debug) {
         if (!isIgdbConfigured()) { debugInfo.igdbSkipped = 'TWITCH_CLIENT_ID/SECRET absents'; return []; }
         try {
             const clean = q.replace(/["\\*]/g, '');
-            // Filtre "commence par" (name ~ "texte"*, insensible à la casse), testé et
-            // confirmé fonctionnel — contrairement à "search" (classement par pertinence
-            // imprévisible, reléguait des titres connus comme "Uncharted 4" derrière des
-            // titres obscurs) et contrairement à "category = 0" (cassé, renvoie 0 résultat
-            // quel que soit le contexte — testé isolément). "version_parent = null" exclut
-            // la plupart des éditions (GOTY, Special Edition...) sans ce problème.
+            // Filtre "contient" (name ~ *"texte"*, insensible à la casse), testé et
+            // confirmé fonctionnel EN L'ISOLANT de "category = 0" (qui, lui, est cassé
+            // à lui seul — voir plus haut). Bien plus large qu'un simple "commence par" :
+            // trouve "Star Wolves", "MechWarrior 5: Clans - Wolves of Tukayyid"... même
+            // quand le mot cherché n'est pas en tout début de titre.
             const rows = await igdbQuery('games',
                 `fields name,first_release_date; ` +
-                `where name ~ "${clean}"* & version_parent = null; ` +
+                `where name ~ *"${clean}"* & version_parent = null; ` +
                 `sort total_rating_count desc; limit 50;`,
                 2500
             );
@@ -192,7 +194,7 @@ async function handleAutocomplete(req, res, debug) {
         return a.name.localeCompare(b.name);
     });
 
-    const merged = results.slice(0, 20);
+    const merged = results.slice(0, 40);
 
     // Cache CDN Vercel : la même saisie ("borderlands") faite par n'importe qui
     // dans les 5 minutes est servie instantanément depuis le cache, sans toucher
@@ -224,7 +226,7 @@ async function handleResolve(req, res, debug) {
             const clean = name.replace(/["\\*]/g, '');
             const rows = await igdbQuery('games',
                 `fields name,first_release_date; ` +
-                `where name ~ "${clean}"* & version_parent = null; ` +
+                `where name ~ *"${clean}"* & version_parent = null; ` +
                 `sort total_rating_count desc; limit 5;`,
                 2000
             );
