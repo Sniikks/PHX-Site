@@ -824,18 +824,15 @@ function parseGames(text, sourceName, fromSave){
 // ══════════════════════════════════════════
 const SAVED_KEY = 'bracketJeux_savedImports';
 const DEFAULT_SEED_KEY = 'bracketJeux_defaultSeeded';
+const DEFAULT_GAMES_KEY = 'bracketJeux_defaultGames';
 let selectModeOn = false;
 let selectedSaveIds = new Set();
 
-// Liste de jeux incluse directement dans le fichier HTML : elle est injectée une seule fois
+// Liste de jeux par défaut : stockée dans Supabase (clé DEFAULT_GAMES_KEY, table app_data)
+// au lieu d'être embarquée dans le HTML. Elle est injectée une seule fois
 // (pour tout le monde, via Supabase) comme sauvegarde normale, modifiable/supprimable ensuite.
 function getDefaultGamesData(){
-  try{
-    return JSON.parse(document.getElementById('defaultGamesData').textContent);
-  }catch(e){
-    console.error('Erreur lecture defaultGamesData:', e);
-    return [];
-  }
+  return RemoteStore.get(DEFAULT_GAMES_KEY, []);
 }
 
 function ensureDefaultSeed(){
@@ -2057,7 +2054,7 @@ function toast(msg){
 //  INITIALISATION SUPABASE
 // ══════════════════════════════════════════
 RemoteStore.setStatusElement(document.getElementById('dbStatus'));
-RemoteStore.init([SAVED_KEY, BLACKLIST_KEY, DEFAULT_SEED_KEY]).then(()=>{
+RemoteStore.init([SAVED_KEY, BLACKLIST_KEY, DEFAULT_SEED_KEY, DEFAULT_GAMES_KEY]).then(()=>{
   ensureDefaultSeed();
   renderSavedList();
 
