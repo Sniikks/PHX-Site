@@ -65,6 +65,82 @@ function normalizeName(str) {
         .trim();
 }
 
+// ───────────────────────── IGDB (repli quand Steam + RAWG n'ont rien) ─────────────────────────
+// Utilisé en dernier recours pour l'année, uniquement quand Steam et RAWG n'ont
+// rien donné. Cas typique : titres indés confidentiels — moins de 10 ajouts
+// RAWG (filtre anti-troll) et/ou appdetails Steam trop lent (timeout 1,2 s).
+// Correspondance PRUDENTE (même logique que generate-daily.js) : mieux vaut
+// aucune année qu'une année associée au mauvais jeu.
+const TWITCH_CLIENT_ID = (process.env.TWITCH_CLIENT_ID || '').trim() || null;
+const TWITCH_CLIENT_SECRET = (process.env.TWITCH_CLIENT_SECRET || '').trim() || null;
+const IGDB_BASE = 'https://api.igdb.com/v4';
+let igdbTokenCache = { token: null, expiresAt: 0 };
+
+async function getIgdbToken() {
+    if (igdbTokenCache.token && Date.now() < igdbTokenCache.expiresAt - 60000) return igdbTokenCache.token;
+    const url = `https://id.twitch.tv/oauth2/token?client_id=${encodeURIComponent(TWITCH_CLIENT_ID)}&client_secret=${encodeURIComponent(TWITCH_CLIENT_SECRET)}&grant_type=client_credentials`;
+    const res = await fetch(url, { method: 'POST' });
+    if (!res.ok) throw new Error(`Twitch token: ${res.status}`);
+    const data = await res.json();
+    igdbTokenCache = { token: data.access_token, expiresAt: Date.now() + (data.expires_in || 3600) * 1000 };
+    return igdbTokenCache.token;
+}
+
+async function igdbQuery(endpoint, body, timeoutMs) {
+    const token = await getIgdbToken();
+    const res = await fetch(`${IGDB_BASE}/${endpoint}`, {
+        method: 'POST',
+        headers: {
+            'Client-ID': TWITCH_CLIENT_ID,
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'text/plain'
+        },
+        body,
+        signal: AbortSignal.timeout(timeoutMs)
+    });
+    if (!res.ok) throw new Error(`IGDB a répondu ${res.status}`);
+    return res.json();
+}
+
+// Levenshtein minimal (copie locale volontaire : ce fichier ne dépend d'aucun
+// autre module pour rester autonome).
+function levenshtein(a, b) {
+    const m = a.length, n = b.length;
+    if (m === 0) return n;
+    if (n === 0) return m;
+    const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+            dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+        }
+    }
+    return dp[m][n];
+}
+
+// Renvoie une année (nombre) ou null. `timeoutMs` volontairement court côté
+// autocomplétion (ne doit pas ralentir la frappe) et plus large côté résolution
+// manuelle (un seul appel, pas à chaque lettre tapée).
+async function igdbYearForName(name, timeoutMs) {
+    if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET) return null;
+    const clean = String(name || '').replace(/[™®©"]/g, '').replace(/\s+/g, ' ').trim();
+    if (!clean) return null;
+    try {
+        const rows = await igdbQuery('games', `search "${clean}"; fields name,first_release_date; limit 8;`, timeoutMs);
+        if (!Array.isArray(rows) || rows.length === 0) return null;
+        const target = normalizeName(clean);
+        let best = rows.find(r => normalizeName(r.name || '') === target);
+        if (!best) best = rows.find(r => {
+            const n = normalizeName(r.name || '');
+            return n && Math.abs(n.length - target.length) <= 3 && levenshtein(n, target) <= 2;
+        });
+        if (!best || !best.first_release_date) return null;
+        return new Date(best.first_release_date * 1000).getUTCFullYear();
+    } catch (e) {
+        return null; // best-effort : timeout/erreur -> simplement pas d'année, comme Steam/RAWG
+    }
+}
+
 // fetch avec délai maximum : au-delà, on abandonne cet appel (sans faire
 // échouer les autres) pour que la réponse globale reste rapide.
 function fetchWithTimeout(url, ms) {
@@ -214,6 +290,20 @@ async function handleAutocomplete(req, res, debug) {
     steamItems.slice(MAX_STEAM_LOOKUPS).forEach(i => push(i.name, rawgYearByName.get(normalizeName(i.name)) || null));
     rawgResults.forEach(g => push(g.name, yearFromDateStr(g.released)));
 
+    // Repli IGDB : pour les quelques suggestions encore sans année après Steam/RAWG
+    // (typiquement des titres confidentiels, peu ajoutés sur RAWG). Plafonné en
+    // nombre et lancé en parallèle avec un timeout court : ne doit jamais faire
+    // traîner la frappe. Un échec/timeout laisse simplement l'entrée sans année.
+    const MAX_IGDB_LOOKUPS = 4;
+    const stillYearless = results.filter(r => !r.year).slice(0, MAX_IGDB_LOOKUPS);
+    debugInfo.igdbLookups = stillYearless.length;
+    if (stillYearless.length > 0) {
+        await Promise.all(stillYearless.map(async r => {
+            const y = await igdbYearForName(r.name, 900);
+            if (y) r.year = y;
+        }));
+    }
+
     // Tri par date de sortie croissante ; les jeux sans date connue passent après,
     // triés alphabétiquement entre eux pour rester stables/prévisibles.
     results.sort((a, b) => {
@@ -284,6 +374,16 @@ async function handleResolve(req, res, debug) {
         }
     } catch (e) {
         debugInfo.steamError = e.message;
+    }
+
+    // 3) Dernier repli : IGDB. Un seul appel ici (pas à chaque frappe comme dans
+    // l'autocomplétion), donc un timeout plus large est acceptable. C'est souvent
+    // la seule source qui connaît vraiment les titres confidentiels que Steam/RAWG
+    // traitent mal (peu d'ajouts RAWG, appdetails Steam capricieux).
+    const igdbYear = await igdbYearForName(name, 2500);
+    if (igdbYear) {
+        debugInfo.igdbUsed = true;
+        return res.status(200).json(debug ? { name, year: igdbYear, debug: debugInfo } : { name, year: igdbYear });
     }
 
     return res.status(200).json(debug ? { year: null, debug: debugInfo } : { year: null });
