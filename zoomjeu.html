@@ -1239,7 +1239,6 @@
         </div>
         <div class="dist-title">Répartition des victoires par essai</div>
         ${distHtml}
-        <div class="stats-note">Les parties sont partagées entre tous les joueurs : ces stats sont celles de l'équipe 🙂</div>
       `;
     } catch (e) {
       body.innerHTML = `<div class="state-msg">Erreur de chargement des stats : ${escapeHtml(e.message || String(e))}</div>`;
