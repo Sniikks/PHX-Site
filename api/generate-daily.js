@@ -11,12 +11,12 @@
 //    la migration RLS appliquée (voir supabase-migration-zoomjeu.sql).
 //    C'est /api/guess.js qui compare les essais côté serveur.
 //
-// Enrichissement IGDB (nouveau) : après le choix du jeu (SteamSpy/
-// RAWG comme avant), on interroge IGDB (API Twitch, gratuite) pour
-// obtenir une date de sortie fiable (first_release_date) et les
-// indices progressifs (genres, plateformes, développeur). IGDB ne
-// sert JAMAIS de jaquette/artwork comme image de puzzle : uniquement
-// des screenshots in-game, comme Steam/RAWG.
+// Sources des jeux : SteamSpy/Steam pour les gros titres actuels, IGDB
+// (API Twitch, gratuite) pour les jeux consoles / rétro ET pour l'enrichissement
+// de TOUS les jeux (date de sortie fiable via first_release_date, indices
+// progressifs : genres, plateformes, développeur). IGDB est prioritaire pour
+// les dates et les images. IGDB ne sert JAMAIS de jaquette/artwork comme image
+// de puzzle : uniquement des screenshots in-game.
 //
 // Cadrage intelligent (nouveau) : le point de zoom n'est plus tiré
 // totalement au hasard — l'image est analysée avec "sharp" pour
@@ -34,7 +34,6 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 // service_role de préférence : nécessaire pour écrire les lignes secrètes
 // une fois la migration RLS appliquée. Repli sur la clé anon sinon.
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-const RAWG_API_KEY = (process.env.RAWG_API_KEY || '').trim().replace(/^["']|["']$/g, '') || null;
 const TWITCH_CLIENT_ID = (process.env.TWITCH_CLIENT_ID || '').trim() || null;
 const TWITCH_CLIENT_SECRET = (process.env.TWITCH_CLIENT_SECRET || '').trim() || null;
 const CRON_SECRET = process.env.CRON_SECRET || null;
@@ -44,27 +43,30 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const STEAMSPY_BASE = 'https://steamspy.com/api.php';
 const STEAM_STORE_BASE = 'https://store.steampowered.com/api/appdetails';
-const RAWG_BASE = 'https://api.rawg.io/api';
 
 const LAUNCH_DATE = '2026-01-01';
 
-const RAWG_PLATFORM_GROUPS = {
+// IGDB (Twitch) est désormais LA source pour les jeux consoles / rétro.
+// RAWG a été retiré : IGDB couvre toutes ces plateformes — PS1/PS2/PS3,
+// PSP, Wii/Wii U, GameCube, N64, DS/3DS, Game Boy/Advance, Xbox/360 —
+// avec dates de sortie fiables et des screenshots in-game.
+const IGDB_PLATFORM_GROUPS = {
     retro: [
-        'playstation', 'playstation 2', 'playstation 3', 'psp',
-        'wii', 'wii u', 'gamecube', 'nintendo 64',
-        'nintendo ds', 'nintendo 3ds',
-        'game boy', 'game boy advance', 'xbox', 'xbox 360'
+        'PlayStation', 'PlayStation 2', 'PlayStation 3', 'PlayStation Portable',
+        'Wii', 'Wii U', 'GameCube', 'Nintendo 64',
+        'Nintendo DS', 'Nintendo 3DS',
+        'Game Boy', 'Game Boy Advance', 'Xbox', 'Xbox 360'
     ],
     current: [
-        'pc', 'playstation 4', 'playstation 5',
-        'xbox one', 'xbox series s/x',
-        'nintendo switch', 'nintendo switch 2'
+        'PC (Microsoft Windows)', 'PlayStation 4', 'PlayStation 5',
+        'Xbox One', 'Xbox Series X|S', 'Nintendo Switch'
     ]
 };
 
-const RAWG_GENRE_SLUGS = [
-    'action', 'adventure', 'role-playing-games-rpg', 'shooter',
-    'strategy', 'simulation', 'indie', 'racing', 'sports', 'massively-multiplayer'
+// Genres IGDB (noms exacts de l'API, différents des slugs RAWG utilisés avant).
+const IGDB_GENRE_NAMES = [
+    'Shooter', 'Adventure', 'Role-playing (RPG)', 'Strategy',
+    'Simulator', 'Indie', 'Racing', 'Sport', 'Platform', 'Fighting'
 ];
 
 const STEAMSPY_GENRES = [
@@ -83,9 +85,9 @@ const NON_LATIN_SCRIPT_REGEX = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\
 // joueurs ont en tête — ça rend les indices de date (avant/après) trompeurs ou incohérents.
 const RE_RELEASE_PATTERN = /\b(remaster(?:ed)?|definitive edition|game of the year edition|goty edition|goty|anniversary edition|enhanced edition|complete edition|deluxe edition|ultimate edition|hd edition|hd remaster)\b/i;
 
-// Exclut les DLC/extensions. Steam est déjà filtré via son champ "type" (voir fetchAppDetails),
-// mais RAWG n'expose pas cette info dans la recherche de jeux : ce filtre par nom est le seul
-// rempart pour les candidats venant de RAWG (et une sécurité supplémentaire pour Steam).
+// Exclut les DLC/extensions. Steam est déjà filtré via son champ "type" (voir fetchAppDetails)
+// et IGDB via son filtre "category = 0" (voir fetchIgdbGamePool) : ce filtre par nom reste
+// une sécurité supplémentaire dans les deux cas.
 const DLC_NAME_PATTERN = /\b(dlc|season pass|expansion pass|expansion|add-?on|content pack|bonus content|artbook|art book|soundtrack|skin pack|costume pack|weapon pack|outfit pack)\b/i;
 
 function hasNonLatinScript(name) {
@@ -182,84 +184,116 @@ async function fetchAppDetails(appid) {
     };
 }
 
-// ───────────────────────── RAWG (jeux consoles / rétro) ─────────────────────────
+// ───────────────────────── IGDB (jeux consoles / rétro) ─────────────────────────
+// Remplace RAWG : IGDB (API Twitch, gratuite) sert désormais à la fois de
+// source de pool pour les jeux rétro/consoles ET de source de détails
+// (dates, screenshots, genres, plateformes, développeur) — le tout en une
+// seule requête par jeu, alors que RAWG nécessitait deux appels.
 
-let rawgPlatformCache = null;
+let igdbPlatformCache = null;
 
-async function getRawgPlatformIds() {
-    if (rawgPlatformCache) return rawgPlatformCache;
+async function getIgdbPlatformIds() {
+    if (igdbPlatformCache) return igdbPlatformCache;
     const map = new Map();
-    let url = `${RAWG_BASE}/platforms?key=${RAWG_API_KEY}&page_size=50`;
-    while (url) {
-        const res = await fetch(url);
-        if (!res.ok) break;
-        const data = await res.json();
-        for (const p of data.results || []) {
-            if (p && p.name) map.set(p.name.toLowerCase(), p.id);
-        }
-        url = data.next || null;
+    const rows = await igdbQuery('platforms', 'fields name; limit 500;');
+    for (const p of rows || []) {
+        if (p && p.name) map.set(p.name, p.id);
     }
-    rawgPlatformCache = map;
+    igdbPlatformCache = map;
     return map;
 }
 
-async function fetchRawgGamePool(retroWeight = 0.7) {
-    if (!RAWG_API_KEY) return [];
-    const platformMap = await getRawgPlatformIds();
+// Champs communs renvoyés pour un jeu IGDB (pool ET détails) : tout ce dont
+// on a besoin (nom, date, cover, screenshots, genres, plateformes, dev) en
+// une seule requête.
+const IGDB_GAME_FIELDS = 'name,first_release_date,cover.image_id,screenshots.image_id,' +
+    'genres.name,platforms.name,platforms.abbreviation,' +
+    'involved_companies.company.name,involved_companies.developer';
+
+function mapIgdbRowToDetails(row) {
+    if (!row) return null;
+    const screenshots = (row.screenshots || [])
+        .map(s => s.image_id ? `https://images.igdb.com/igdb/image/upload/t_1080p/${s.image_id}.jpg` : null)
+        .filter(Boolean);
+    if (screenshots.length === 0) return null;
+
+    const released = row.first_release_date
+        ? new Date(row.first_release_date * 1000).toISOString().slice(0, 10)
+        : null;
+
+    const genres = (row.genres || [])
+        .map(g => IGDB_GENRE_FR[g.name] || g.name)
+        .filter(Boolean)
+        .slice(0, 3);
+
+    const platforms = [...new Set((row.platforms || [])
+        .map(p => p.abbreviation || p.name)
+        .filter(Boolean))]
+        .slice(0, 6);
+
+    const developer = (row.involved_companies || [])
+        .find(c => c.developer && c.company && c.company.name)?.company?.name || null;
+
+    return {
+        name: row.name || null,
+        screenshots,
+        cover: row.cover?.image_id ? `https://images.igdb.com/igdb/image/upload/t_1080p/${row.cover.image_id}.jpg` : null,
+        released,
+        genres,
+        platforms,
+        developer
+    };
+}
+
+async function fetchIgdbGamePool(retroWeight = 0.7) {
+    if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET) return [];
+    const platformMap = await getIgdbPlatformIds();
 
     const group = Math.random() < retroWeight ? 'retro' : 'current';
     const platformNames = group === 'retro'
-        ? [RAWG_PLATFORM_GROUPS.retro[Math.floor(Math.random() * RAWG_PLATFORM_GROUPS.retro.length)]]
-        : RAWG_PLATFORM_GROUPS.current;
+        ? [IGDB_PLATFORM_GROUPS.retro[Math.floor(Math.random() * IGDB_PLATFORM_GROUPS.retro.length)]]
+        : IGDB_PLATFORM_GROUPS.current;
 
     const platformIds = platformNames.map(name => platformMap.get(name)).filter(Boolean);
     if (platformIds.length === 0) return [];
 
-    const maxPage = group === 'retro' ? 8 : 20;
-    const page = 1 + Math.floor(Math.random() * maxPage);
-    const baseUrl = `${RAWG_BASE}/games?key=${RAWG_API_KEY}&platforms=${platformIds.join(',')}&ordering=-added&page_size=40`;
-
-    let themeParam = '';
+    let genreClause = '';
     if (Math.random() < 0.3) {
-        const genre = RAWG_GENRE_SLUGS[Math.floor(Math.random() * RAWG_GENRE_SLUGS.length)];
-        themeParam = `&genres=${encodeURIComponent(genre)}`;
+        const genre = IGDB_GENRE_NAMES[Math.floor(Math.random() * IGDB_GENRE_NAMES.length)];
+        genreClause = ` & genres.name = "${genre}"`;
     }
 
-    const attemptsUrls = [
-        `${baseUrl}${themeParam}&page=${page}`,
-        `${baseUrl}${themeParam}&page=1`,
-        `${baseUrl}&page=1`
-    ];
+    // category = 0 : jeu principal (exclut DLC/expansions/remasters/remakes/ports…
+    // qui ont leurs propres codes de catégorie dans l'API IGDB).
+    // version_parent = null : exclut les "éditions" (GOTY, deluxe...) rattachées à un jeu de base.
+    const offset = Math.floor(Math.random() * 200);
+    const query =
+        `fields ${IGDB_GAME_FIELDS}; ` +
+        `where platforms = (${platformIds.join(',')}) & category = 0 & version_parent = null ` +
+        `& screenshots != null & first_release_date != null${genreClause}; ` +
+        `sort total_rating_count desc; ` +
+        `limit 40; offset ${offset};`;
 
-    let data = null;
-    for (const attemptUrl of attemptsUrls) {
-        const res = await fetch(attemptUrl);
-        if (res.ok) { data = await res.json(); break; }
-        if (res.status !== 404) break;
+    let rows;
+    try {
+        rows = await igdbQuery('games', query);
+    } catch (e) {
+        console.error('IGDB pool indisponible :', e.message);
+        return [];
     }
-    if (!data) return [];
+    if (!Array.isArray(rows) || rows.length === 0) return [];
 
-    return (data.results || [])
+    return rows
         .filter(g => g && g.id && g.name && !hasNonLatinScript(g.name))
-        .map(g => ({ source: 'rawg', id: g.id, name: g.name }));
+        .map(g => ({ source: 'igdb', id: g.id, name: g.name, details: mapIgdbRowToDetails(g) }));
 }
 
-async function fetchRawgDetails(rawgId) {
-    const screenshotsRes = await fetch(`${RAWG_BASE}/games/${rawgId}/screenshots?key=${RAWG_API_KEY}`);
-    if (!screenshotsRes.ok) return null;
-    const screenshotsData = await screenshotsRes.json();
-    const screenshots = (screenshotsData.results || []).map(s => s.image).filter(Boolean);
-    if (screenshots.length === 0) return null;
-
-    const detailsRes = await fetch(`${RAWG_BASE}/games/${rawgId}?key=${RAWG_API_KEY}`);
-    const details = detailsRes.ok ? await detailsRes.json() : null;
-
-    return {
-        name: details?.name || null,
-        screenshots,
-        cover: details?.background_image || null,
-        released: details?.released || null
-    };
+async function fetchIgdbGameDetails(igdbId) {
+    const rows = await igdbQuery('games',
+        `fields ${IGDB_GAME_FIELDS}; where id = ${igdbId}; limit 1;`
+    );
+    if (!Array.isArray(rows) || rows.length === 0) return null;
+    return mapIgdbRowToDetails(rows[0]);
 }
 
 // ───────────────────────── Sélection du jeu du jour ─────────────────────────
@@ -268,13 +302,14 @@ async function pickDailyGame(usedIds, usedNames) {
     const primaryMode = Math.random() < 0.65 ? 'big' : 'retro';
 
     // Plusieurs sources de pool, dans l'ordre de préférence. Si la première ne donne
-    // rien d'exploitable (SteamSpy/RAWG en panne ou rate-limité, pool épuisé par les
+    // rien d'exploitable (SteamSpy/IGDB en panne ou rate-limité, pool épuisé par les
     // jeux déjà utilisés...), on tente les suivantes avant d'abandonner. Avant, une
     // seule panne transitoire d'une API externe faisait échouer tout le puzzle du jour.
+    const igdbAvailable = !!(TWITCH_CLIENT_ID && TWITCH_CLIENT_SECRET);
     const poolFetchers = primaryMode === 'big'
-        ? [fetchSteamBigPool, fetchSteamRandomPool, () => fetchRawgGamePool(0.85)]
+        ? [fetchSteamBigPool, fetchSteamRandomPool, () => fetchIgdbGamePool(0.85)]
         : [
-            () => (RAWG_API_KEY && Math.random() < 0.7 ? fetchRawgGamePool(0.85) : fetchSteamRandomPool()),
+            () => (igdbAvailable && Math.random() < 0.7 ? fetchIgdbGamePool(0.85) : fetchSteamRandomPool()),
             fetchSteamBigPool,
             fetchSteamRandomPool
           ];
@@ -310,9 +345,13 @@ async function pickDailyGame(usedIds, usedNames) {
             totalAttempts++;
             let details;
             try {
-                details = candidate.source === 'rawg'
-                    ? await fetchRawgDetails(candidate.id)
-                    : await fetchAppDetails(candidate.id);
+                if (candidate.source === 'igdb') {
+                    // Déjà récupérés en une requête lors du pool fetch — on ne
+                    // refait un appel IGDB que si, exceptionnellement, absents.
+                    details = candidate.details || await fetchIgdbGameDetails(candidate.id);
+                } else {
+                    details = await fetchAppDetails(candidate.id);
+                }
             } catch (e) {
                 continue;
             }
@@ -329,7 +368,12 @@ async function pickDailyGame(usedIds, usedNames) {
                 name: finalName,
                 screenshots: details.screenshots, // le choix final de l'image se fait dans le handler
                 cover: details.cover,
-                released: details.released
+                released: details.released,
+                // Pour les jeux venus d'IGDB, on a déjà tout (genres, plateformes,
+                // développeur) : pas besoin d'un second aller-retour d'enrichissement.
+                igdbHints: candidate.source === 'igdb'
+                    ? { released: details.released, year: extractYear(details.released), genres: details.genres, platforms: details.platforms, developer: details.developer, screenshots: details.screenshots }
+                    : null
             };
         }
     }
@@ -563,22 +607,26 @@ export default async function handler(req, res) {
         }
 
         // ── Enrichissement IGDB : date fiable + indices (best-effort) ──
-        const igdb = await fetchIgdbEnrichment(game.name);
+        // IGDB est désormais LA source prioritaire pour dates/images/indices,
+        // quelle que soit l'origine du jeu (IGDB, Steam...). Pour un jeu déjà
+        // venu d'IGDB, on réutilise les données obtenues au moment du choix du
+        // jeu (igdbHints) — pas besoin d'une seconde requête de recherche.
+        const igdb = game.igdbHints || await fetchIgdbEnrichment(game.name);
 
         // ── Choix du screenshot (toujours de l'in-game, jamais de jaquette) ──
-        // Steam : on garde ses screenshots (haute qualité). RAWG : on préfère
-        // ceux d'IGDB en 1080p quand il y a du choix, sinon ceux de RAWG.
-        let screenshotPool = Array.isArray(game.screenshots) && game.screenshots.length ? game.screenshots : [];
-        if (game.source === 'rawg' && igdb && igdb.screenshots.length >= 3) {
-            screenshotPool = igdb.screenshots;
-        }
+        // IGDB en priorité (images 1080p, cohérentes avec la date/les indices).
+        // Repli sur les screenshots de la source d'origine (Steam...) si IGDB
+        // n'a pas assez de visuels pour ce jeu.
+        let screenshotPool = igdb && Array.isArray(igdb.screenshots) && igdb.screenshots.length >= 3
+            ? igdb.screenshots
+            : (Array.isArray(game.screenshots) && game.screenshots.length ? game.screenshots : []);
         if (screenshotPool.length === 0) {
             return res.status(500).json({ error: 'Jeu choisi sans screenshot exploitable.' });
         }
         const chosenImage = screenshotPool[Math.floor(Math.random() * screenshotPool.length)];
 
         // Date de sortie : IGDB (first_release_date, la 1re sortie du jeu) en
-        // priorité, sinon celle de Steam/RAWG comme avant.
+        // priorité, sinon celle de la source d'origine (Steam...) comme repli.
         const released = igdb?.released || game.released || null;
 
         // ── Cadrage intelligent (repli aléatoire intégré) ──
