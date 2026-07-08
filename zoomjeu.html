@@ -865,7 +865,6 @@
           <div class="answer">${escapeHtml(answerLabel)}</div>
           <div class="verdict">${success ? `Trouvé en ${state.guesses.length} essai${state.guesses.length > 1 ? 's' : ''} 🎉` : (state.gaveUp ? 'Abandonné' : 'Perdu — bien joué quand même')}</div>
         </div>
-        <button type="button" class="wide" id="shareBtn">📋 Partager le résultat</button>
       `;
     } else {
       sidebarHtml = `
@@ -1107,64 +1106,29 @@
   // Un indice se débloque à chaque essai utilisé (raté ou passé) :
   // 1er essai -> genre, 2e -> plateformes, 3e -> développeur, 4e -> année.
   // Les anciens puzzles (sans puzzle.hints) n'affichent simplement rien.
-  function buildHintsHtml() {
+ function buildHintsHtml() {
     const h = puzzle && puzzle.hints;
     if (!h) return '';
     const defs = [
-      { label: 'Genre', value: h.genres && h.genres.length ? h.genres.join(', ') : null },
-      { label: 'Plateformes', value: h.platforms && h.platforms.length ? h.platforms.join(', ') : null },
-      { label: 'Développeur', value: h.developer || null },
-      { label: 'Année de sortie', value: h.year ? String(h.year) : null }
+      { label: 'Genre', value: h.genres && h.genres.length ? h.genres.join(', ') : null, unlockAt: 2 },
+      { label: 'Plateformes', value: h.platforms && h.platforms.length ? h.platforms.join(', ') : null, unlockAt: 4 }
     ].filter(d => d.value);
     if (defs.length === 0) return '';
 
     const finished = state.solved || state.gaveUp || state.guesses.length >= MAX_ATTEMPTS;
-    const unlocked = finished ? defs.length : Math.min(state.guesses.length, defs.length);
 
     let rows = '';
-    defs.forEach((d, i) => {
-      if (i < unlocked) {
+    defs.forEach(d => {
+      const isUnlocked = finished || state.guesses.length >= d.unlockAt;
+      if (isUnlocked) {
         rows += `<div class="hint-row"><span class="hint-label">${d.label} :</span><span>${escapeHtml(d.value)}</span></div>`;
       } else {
-        rows += `<div class="hint-row locked">🔒 ${d.label} — après l'essai ${i + 1}</div>`;
+        rows += `<div class="hint-row locked">🔒 ${d.label} — après l'essai ${d.unlockAt}</div>`;
       }
     });
     return `<div class="hints-panel"><div class="hints-title">Indices</div>${rows}</div>`;
   }
 
-  // ── Partage du résultat (grille d'emojis façon Wordle) ──
-  // 🟩 trouvé · 🟧 proche · 🟥 raté · ⬛ passé · 🏳️ abandon
-  function buildShareText() {
-    const n = puzzleNumber(viewingDate);
-    const score = state.solved ? `${state.guesses.length}/${MAX_ATTEMPTS}` : `X/${MAX_ATTEMPTS}`;
-    const grid = state.guesses.map(g => g.correct ? '🟩' : (g.skipped ? '⬛' : (g.close ? '🟧' : '🟥'))).join('');
-    const flag = state.gaveUp ? ' 🏳️' : '';
-    const url = location.origin + location.pathname + '?date=' + viewingDate;
-    return `PHX ZoomJeu #${n} — ${score}${flag}\n${grid}\n${url}`;
-  }
-
-  async function onShare() {
-    const text = buildShareText();
-    const btn = document.getElementById('shareBtn');
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        ta.remove();
-      }
-      if (btn) {
-        btn.textContent = '✅ Copié !';
-        setTimeout(() => { if (btn.isConnected) btn.textContent = '📋 Partager le résultat'; }, 2000);
-      }
-    } catch (e) {
-      showToast('⚠️ Impossible de copier automatiquement.');
-    }
-  }
 
   // ── Statistiques (sessions partagées -> stats de l'équipe) ──
   document.getElementById('statsToggle').addEventListener('click', openStats);
