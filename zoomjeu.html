@@ -1239,6 +1239,7 @@
         </div>
         <div class="dist-title">Répartition des victoires par essai</div>
         ${distHtml}
+        <div class="stats-note"></div>
       `;
     } catch (e) {
       body.innerHTML = `<div class="state-msg">Erreur de chargement des stats : ${escapeHtml(e.message || String(e))}</div>`;
