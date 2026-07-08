@@ -44,7 +44,7 @@ async function resolveYear(req, name) {
         const clean = String(name || '').replace(/[®™©]/g, '').replace(/\s+/g, ' ').trim();
         if (!host || !clean) return null;
         const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 3500);
+        const timer = setTimeout(() => ctrl.abort(), 2500);
         const r = await fetch(`${proto}://${host}/api/search-games?resolve=1&name=${encodeURIComponent(clean)}`, { signal: ctrl.signal });
         clearTimeout(timer);
         if (!r.ok) return null;

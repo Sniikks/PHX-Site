@@ -21,6 +21,12 @@
 // requête — avant, on devait rappeler Steam "appdetails" jeu par jeu pour
 // avoir une année fiable, ce qui ralentissait beaucoup l'autocomplétion).
 //
+// ⚠️ IMPORTANT (bug constaté) : combiner "search" avec un filtre "where"
+// (ex. "where category = 0") dans la même requête IGDB renvoie 0 résultat,
+// silencieusement. Les requêtes IGDB ici utilisent donc "search" + "fields"
+// SEULS (comme la requête d'enrichissement de generate-daily.js, qui elle
+// fonctionne) ; le filtrage anti-DLC se fait uniquement par motif de nom.
+//
 // Optimisations vitesse :
 //  - IGDB et Steam interrogés EN PARALLÈLE (le temps de réponse = le plus
 //    lent des deux, pas la somme).
@@ -108,8 +114,13 @@ async function handleAutocomplete(req, res, debug) {
         if (!isIgdbConfigured()) { debugInfo.igdbSkipped = 'TWITCH_CLIENT_ID/SECRET absents'; return []; }
         try {
             const clean = q.replace(/["\\]/g, '');
+            // IMPORTANT : "search" combiné à un "where" (ex. category = 0) semble
+            // renvoyer silencieusement 0 résultat côté IGDB (déjà constaté).
+            // On garde donc "search" + "fields" SEULS, comme le fait la requête
+            // d'enrichissement du puzzle du jour (qui, elle, fonctionne depuis le
+            // début) — le filtre anti-DLC se fait ensuite par motif de nom.
             const rows = await igdbQuery('games',
-                `search "${clean}"; fields name,first_release_date; where category = 0; limit 20;`,
+                `search "${clean}"; fields name,first_release_date; limit 20;`,
                 2500
             );
             debugInfo.igdbCount = Array.isArray(rows) ? rows.length : 0;
@@ -192,38 +203,41 @@ async function handleResolve(req, res, debug) {
     // Même réponse pour le même nom pendant 24h : les dates de sortie ne bougent pas.
     res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate');
 
-    // 1) IGDB d'abord (category = 0 pour ne pas résoudre sur une fiche DLC/édition).
-    // On récupère plusieurs résultats et on garde le premier qui a réellement une année.
-    if (isIgdbConfigured()) {
+    // IGDB et Steam en parallèle (avant : IGDB d'abord, PUIS Steam en repli —
+    // donc jusqu'à deux allers-retours l'un après l'autre à chaque essai sans
+    // année. C'était une des causes du "toujours aussi long" après validation
+    // d'un essai, /api/guess.js appelant cette route en interne).
+
+    const igdbPromise = (async () => {
+        if (!isIgdbConfigured()) return null;
         try {
             const clean = name.replace(/["\\]/g, '');
+            // "search" + "fields" seuls (voir note dans handleAutocomplete : combiner
+            // "search" avec un "where" renvoie silencieusement 0 résultat côté IGDB).
             const rows = await igdbQuery('games',
-                `search "${clean}"; fields name,first_release_date; where category = 0; limit 5;`,
-                2500
+                `search "${clean}"; fields name,first_release_date; limit 5;`,
+                2000
             );
             debugInfo.igdbCount = Array.isArray(rows) ? rows.length : 0;
-            const withYear = (rows || []).find(g => g && yearFromUnixSeconds(g.first_release_date));
-            if (withYear) {
-                const year = yearFromUnixSeconds(withYear.first_release_date);
-                return res.status(200).json(debug ? { name: withYear.name, year, debug: debugInfo } : { name: withYear.name, year });
-            }
+            const withYear = (rows || []).find(g => g && !isDlcName(g.name || '') && yearFromUnixSeconds(g.first_release_date));
+            return withYear ? { name: withYear.name, year: yearFromUnixSeconds(withYear.first_release_date) } : null;
         } catch (e) {
             debugInfo.igdbError = e.message;
+            return null;
         }
-    }
+    })();
 
-    // 2) Repli Steam : on teste les 3 premiers résultats EN PARALLÈLE et on garde
-    // le premier (dans l'ordre de pertinence) qui a une date.
-    try {
-        const sr = await fetchWithTimeout(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(name)}&l=english&cc=us`, 2500);
-        debugInfo.steamSearchStatus = sr.status;
-        if (sr.ok) {
+    const steamPromise = (async () => {
+        try {
+            const sr = await fetchWithTimeout(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(name)}&l=english&cc=us`, 2000);
+            debugInfo.steamSearchStatus = sr.status;
+            if (!sr.ok) return null;
             const sd = await sr.json();
-            const topCandidates = (sd.items || []).filter(i => i && i.id).slice(0, 3);
+            const topCandidates = (sd.items || []).filter(i => i && i.id && !isDlcName(i.name || '')).slice(0, 3);
             debugInfo.steamCandidateCount = topCandidates.length;
             const infos = await Promise.all(topCandidates.map(async i => {
                 try {
-                    const dr = await fetchWithTimeout(`https://store.steampowered.com/api/appdetails?appids=${i.id}&l=english&filters=basic`, 1200);
+                    const dr = await fetchWithTimeout(`https://store.steampowered.com/api/appdetails?appids=${i.id}&l=english&filters=basic`, 1000);
                     if (!dr.ok) return null;
                     const dj = await dr.json();
                     const entry = dj[i.id];
@@ -234,13 +248,20 @@ async function handleResolve(req, res, debug) {
                 }
             }));
             for (let k = 0; k < topCandidates.length; k++) {
-                if (infos[k]) {
-                    return res.status(200).json(debug ? { name: topCandidates[k].name, year: infos[k], debug: debugInfo } : { name: topCandidates[k].name, year: infos[k] });
-                }
+                if (infos[k]) return { name: topCandidates[k].name, year: infos[k] };
             }
+            return null;
+        } catch (e) {
+            debugInfo.steamError = e.message;
+            return null;
         }
-    } catch (e) {
-        debugInfo.steamError = e.message;
+    })();
+
+    const [igdbResult, steamResult] = await Promise.all([igdbPromise, steamPromise]);
+    // IGDB prioritaire (dates plus fiables), Steam en repli.
+    const best = igdbResult || steamResult;
+    if (best) {
+        return res.status(200).json(debug ? { ...best, debug: debugInfo } : best);
     }
 
     return res.status(200).json(debug ? { year: null, debug: debugInfo } : { year: null });
