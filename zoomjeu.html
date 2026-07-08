@@ -657,12 +657,23 @@
 
   async function getAdminKey() {
     const saved = sessionStorage.getItem(ADMIN_KEY_STORAGE);
-    if (saved) return saved;
+    if (saved) {
+      // Clé déjà en mémoire pour cette session : on ne redemande qu'une confirmation.
+      const ok = await showConfirmModal({
+        title: 'Générer le puzzle du jour',
+        message: 'Forcer la génération du puzzle du jour ?',
+        sub: 'Cela peut remplacer le puzzle actuel et réinitialiser les parties en cours.',
+        confirmLabel: 'Générer',
+        cancelLabel: 'Annuler'
+      });
+      return ok ? saved : null;
+    }
+    // Pas de clé en mémoire : un seul popup avec le message + le champ de saisie.
     const key = await showConfirmModal({
-      title: 'Clé admin requise',
-      message: 'Entre la clé admin pour générer le puzzle.',
-      sub: 'Elle sera mémorisée pour cette session uniquement.',
-      confirmLabel: 'Valider',
+      title: 'Générer le puzzle du jour',
+      message: 'Forcer la génération du puzzle du jour ? Entre la clé admin pour confirmer.',
+      sub: 'Cela peut remplacer le puzzle actuel et réinitialiser les parties en cours. La clé sera mémorisée pour cette session uniquement.',
+      confirmLabel: 'Générer',
       cancelLabel: 'Annuler',
       input: true,
       inputPlaceholder: 'ADMIN_KEY'
@@ -673,15 +684,6 @@
   }
 
   document.getElementById('forceGenBtn').addEventListener('click', async () => {
-    const ok = await showConfirmModal({
-      title: 'Générer le puzzle du jour',
-      message: 'Forcer la génération du puzzle du jour ?',
-      sub: 'Cela peut remplacer le puzzle actuel et réinitialiser les parties en cours.',
-      confirmLabel: 'Générer',
-      cancelLabel: 'Annuler'
-    });
-    if (!ok) return;
-
     const adminKey = await getAdminKey();
     if (!adminKey) return;
 
