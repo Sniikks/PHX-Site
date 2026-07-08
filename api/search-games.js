@@ -40,17 +40,15 @@
 // Optimisations vitesse :
 //  - IGDB et Steam interrogés EN PARALLÈLE (le temps de réponse = le plus
 //    lent des deux, pas la somme).
-//  - Plus AUCUN appel "appdetails" par jeu : IGDB fournit déjà l'année et
-//    le filtre anti-DLC (category = 0) en un seul aller-retour. Les
-//    résultats Steam sans correspondance IGDB héritent de l'année IGDB
-//    par nom normalisé quand elle existe, sinon restent sans année (plutôt
-//    que de ralentir la recherche pour l'obtenir).
+//  - Plus de boucle "appdetails" systématique par jeu (c'était le principal
+//    facteur de lenteur). IGDB fournit déjà l'année pour la grande majorité
+//    des jeux en un seul aller-retour. Pour les rares jeux qu'IGDB n'a pas
+//    datés, un filet de secours BORNÉ (8 appels Steam max, en parallèle,
+//    délai court) comble le trou — impact quasi nul le reste du temps.
 // Exclusion des DLC (2 filets complémentaires) :
-//  - IGDB : filtre "category = 0" (jeu principal), qui exclut nativement
-//    DLC/extensions/éditions/remasters/remakes/ports…
-//  - Steam : champ "type" de storesearch quand présent, + motif de nom
-//    (dlc, season pass, expansion, soundtrack…) en dernier filet, pour les
-//    deux sources.
+//  - IGDB : "version_parent = null" exclut la plupart des éditions.
+//  - Steam + IGDB : motif de nom (dlc, season pass, expansion, extra area,
+//    soundtrack…) en dernier filet, pour les deux sources.
 // ==========================================================
 
 import { igdbQuery, isIgdbConfigured } from './_igdb.js';
@@ -60,7 +58,7 @@ const BROWSER_HEADERS = {
     'Accept': 'application/json, text/plain, */*'
 };
 
-const DLC_NAME_PATTERN = /\b(dlc|season pass|expansion pass|expansion|add-?on|content pack|bonus content|artbook|art book|soundtrack|ost|skin pack|costume pack|weapon pack|outfit pack|upgrade pack|map pack|character pack|booster pack|challenge pack|premiere club|wallpaper|bundle|chapter)\b/i;
+const DLC_NAME_PATTERN = /\b(dlc|season pass|expansion pass|expansion|add-?on|content pack|bonus content|artbook|art book|soundtrack|ost|skin pack|costume pack|weapon pack|outfit pack|upgrade pack|map pack|character pack|booster pack|challenge pack|premiere club|wallpaper|bundle|chapter|extra area)\b/i;
 
 // Filet de nom anti-DLC. Le mot "pack" seul est très évocateur de DLC
 // ("Mechromancer Pack", "Ultimate Vault Hunter Upgrade Pack"...), avec une
@@ -98,6 +96,33 @@ function normalizeName(str) {
 // échouer les autres) pour que la réponse globale reste rapide.
 function fetchWithTimeout(url, ms) {
     return fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(ms) });
+}
+
+// Cache mémoire (survit tant que l'instance serverless reste "chaude") pour le
+// filet de secours ci-dessous : évite de rappeler Steam pour le même jeu à
+// chaque frappe suivante.
+const steamYearCache = new Map();
+
+// Filet de secours BORNÉ : IGDB n'a pas de date pour tous les jeux (base pas
+// complète à 100 %). Pour les rares cas où un résultat n'a toujours aucune
+// année après IGDB, on tente un dernier appel Steam "appdetails" — mais
+// seulement pour un petit nombre de jeux à la fois et avec un délai court,
+// pour ne pas retomber dans la lenteur de l'ancienne boucle (jusqu'à 12
+// appels par frappe, supprimée précédemment).
+async function fetchSteamYear(appid, timeoutMs = 900) {
+    if (steamYearCache.has(appid)) return steamYearCache.get(appid);
+    try {
+        const res = await fetchWithTimeout(`https://store.steampowered.com/api/appdetails?appids=${appid}&l=english&filters=basic`, timeoutMs);
+        if (!res.ok) { steamYearCache.set(appid, null); return null; }
+        const json = await res.json();
+        const entry = json[appid];
+        if (!entry || !entry.success || !entry.data) { steamYearCache.set(appid, null); return null; }
+        const year = yearFromDateStr(entry.data.release_date && entry.data.release_date.date);
+        steamYearCache.set(appid, year);
+        return year;
+    } catch (e) {
+        return null;
+    }
 }
 
 export default async function handler(req, res) {
@@ -184,6 +209,29 @@ async function handleAutocomplete(req, res, debug) {
 
     igdbResults.forEach(g => push(g.name, yearFromUnixSeconds(g.first_release_date)));
     steamItems.forEach(i => push(i.name, igdbYearByName.get(normalizeName(i.name)) || null));
+
+    // Filet de secours borné : pour les résultats encore sans année après IGDB
+    // (base pas complète à 100 %), on tente Steam en dernier recours — mais
+    // seulement pour un petit nombre d'entre eux (celles présentes sur Steam),
+    // en parallèle, avec un délai court. Impact quasi nul quand IGDB a déjà
+    // tout donné (le cas courant), léger sinon.
+    const steamIdByName = new Map();
+    steamItems.forEach(i => {
+        const key = normalizeName(i.name);
+        if (!steamIdByName.has(key)) steamIdByName.set(key, i.id);
+    });
+    const MAX_FALLBACK_LOOKUPS = 8;
+    const needsYear = results
+        .filter(r => !r.year && steamIdByName.has(normalizeName(r.name)))
+        .slice(0, MAX_FALLBACK_LOOKUPS);
+    if (needsYear.length) {
+        debugInfo.steamYearFallbackCalls = needsYear.length;
+        await Promise.all(needsYear.map(async r => {
+            const appid = steamIdByName.get(normalizeName(r.name));
+            const y = await fetchSteamYear(appid);
+            if (y) r.year = y;
+        }));
+    }
 
     // Tri par date de sortie croissante ; les jeux sans date connue passent après,
     // triés alphabétiquement entre eux pour rester stables/prévisibles.
