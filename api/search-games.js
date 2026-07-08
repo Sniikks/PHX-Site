@@ -21,16 +21,18 @@
 // requête — avant, on devait rappeler Steam "appdetails" jeu par jeu pour
 // avoir une année fiable, ce qui ralentissait beaucoup l'autocomplétion).
 //
-// Recherche IGDB : "search" + "fields" SEULS (confirmé fonctionnel en usage réel).
-// Deux pièges rencontrés et évités :
-//  1) "search" combiné à un "where" (ex. category = 0) renvoie 0 résultat,
-//     silencieusement (bug constaté sur le terrain).
-//  2) "search" classe par pertinence interne à IGDB, ce qui peut reléguer un
-//     titre très connu (ex. "Uncharted 4") derrière des titres obscurs sur une
-//     saisie partielle ("Unchar") — limitation constatée et non résolue pour
-//     l'instant (une tentative de filtre "contient" a cassé la recherche et a
-//     été retirée, faute de pouvoir tester la syntaxe IGDB en conditions réelles
-//     depuis cet environnement).
+// Recherche IGDB : filtre "commence par" (where name ~ "texte"* & version_parent
+// = null), testé et confirmé en conditions réelles — PAS le mode "search" flou
+// d'IGDB. Trois pièges rencontrés et évités, tous testés via une route de debug
+// temporaire (/api/igdb-test.js) plutôt qu'à l'aveugle :
+//  1) "search" combiné à un "where" (ex. category = 0) renvoie 0 résultat.
+//  2) "search" seul classe par pertinence interne à IGDB, ce qui reléguait des
+//     titres très connus (ex. "Uncharted 4") derrière des titres obscurs sur une
+//     saisie partielle ("Unchar").
+//  3) le filtre "category = 0" renvoie 0 résultat À LUI SEUL, indépendamment de
+//     tout le reste (confirmé par un test isolé) — on utilise donc uniquement
+//     "version_parent = null" pour écarter les éditions (GOTY, Special Edition…),
+//     complété par le filtre anti-DLC par motif de nom pour le reste.
 //
 // Optimisations vitesse :
 //  - IGDB et Steam interrogés EN PARALLÈLE (le temps de réponse = le plus
@@ -118,13 +120,17 @@ async function handleAutocomplete(req, res, debug) {
     const igdbPromise = (async () => {
         if (!isIgdbConfigured()) { debugInfo.igdbSkipped = 'TWITCH_CLIENT_ID/SECRET absents'; return []; }
         try {
-            const clean = q.replace(/["\\]/g, '');
-            // "search" + "fields" SEULS (confirmé fonctionnel). Un filtre "where" combiné
-            // à "search" renvoie 0 résultat silencieusement (déjà constaté) ; une tentative
-            // de filtre "contient" (~ *"texte"*) a aussi cassé la recherche — probablement
-            // une syntaxe incorrecte de ma part, retirée faute de pouvoir la tester en direct.
+            const clean = q.replace(/["\\*]/g, '');
+            // Filtre "commence par" (name ~ "texte"*, insensible à la casse), testé et
+            // confirmé fonctionnel — contrairement à "search" (classement par pertinence
+            // imprévisible, reléguait des titres connus comme "Uncharted 4" derrière des
+            // titres obscurs) et contrairement à "category = 0" (cassé, renvoie 0 résultat
+            // quel que soit le contexte — testé isolément). "version_parent = null" exclut
+            // la plupart des éditions (GOTY, Special Edition...) sans ce problème.
             const rows = await igdbQuery('games',
-                `search "${clean}"; fields name,first_release_date; limit 50;`,
+                `fields name,first_release_date; ` +
+                `where name ~ "${clean}"* & version_parent = null; ` +
+                `sort total_rating_count desc; limit 50;`,
                 2500
             );
             debugInfo.igdbCount = Array.isArray(rows) ? rows.length : 0;
@@ -215,9 +221,11 @@ async function handleResolve(req, res, debug) {
     const igdbPromise = (async () => {
         if (!isIgdbConfigured()) return null;
         try {
-            const clean = name.replace(/["\\]/g, '');
+            const clean = name.replace(/["\\*]/g, '');
             const rows = await igdbQuery('games',
-                `search "${clean}"; fields name,first_release_date; limit 5;`,
+                `fields name,first_release_date; ` +
+                `where name ~ "${clean}"* & version_parent = null; ` +
+                `sort total_rating_count desc; limit 5;`,
                 2000
             );
             debugInfo.igdbCount = Array.isArray(rows) ? rows.length : 0;

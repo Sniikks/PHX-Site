@@ -84,9 +84,9 @@ const NON_LATIN_SCRIPT_REGEX = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\
 // joueurs ont en tête — ça rend les indices de date (avant/après) trompeurs ou incohérents.
 const RE_RELEASE_PATTERN = /\b(remaster(?:ed)?|definitive edition|game of the year edition|goty edition|goty|anniversary edition|enhanced edition|complete edition|deluxe edition|ultimate edition|hd edition|hd remaster)\b/i;
 
-// Exclut les DLC/extensions. Steam est déjà filtré via son champ "type" (voir fetchAppDetails)
-// et IGDB via son filtre "category = 0" (voir fetchIgdbGamePool) : ce filtre par nom reste
-// une sécurité supplémentaire dans les deux cas.
+// Exclut les DLC/extensions. Steam est déjà filtré via son champ "type" (voir fetchAppDetails).
+// Pour IGDB, le filtre "category = 0" s'est révélé cassé côté IGDB (voir fetchIgdbGamePool) ;
+// ce filtre par nom est donc le rempart principal pour les deux sources.
 const DLC_NAME_PATTERN = /\b(dlc|season pass|expansion pass|expansion|add-?on|content pack|bonus content|artbook|art book|soundtrack|skin pack|costume pack|weapon pack|outfit pack)\b/i;
 
 function hasNonLatinScript(name) {
@@ -262,13 +262,15 @@ async function fetchIgdbGamePool(retroWeight = 0.7) {
         genreClause = ` & genres.name = "${genre}"`;
     }
 
-    // category = 0 : jeu principal (exclut DLC/expansions/remasters/remakes/ports…
-    // qui ont leurs propres codes de catégorie dans l'API IGDB).
-    // version_parent = null : exclut les "éditions" (GOTY, deluxe...) rattachées à un jeu de base.
+    // category = 0 (jeu principal) semblait une bonne idée pour exclure DLC/remasters/
+    // ports… mais s'est révélé CASSÉ à l'usage : ce filtre renvoie 0 résultat à lui seul,
+    // quel que soit le contexte (confirmé par un test isolé via une route de debug). On
+    // s'appuie donc uniquement sur version_parent = null (exclut la plupart des éditions)
+    // + les filtres par motif de nom déjà appliqués plus bas (isReRelease, isDlc).
     const offset = Math.floor(Math.random() * 200);
     const query =
         `fields ${IGDB_GAME_FIELDS}; ` +
-        `where platforms = (${platformIds.join(',')}) & category = 0 & version_parent = null ` +
+        `where platforms = (${platformIds.join(',')}) & version_parent = null ` +
         `& screenshots != null & first_release_date != null${genreClause}; ` +
         `sort total_rating_count desc; ` +
         `limit 40; offset ${offset};`;
