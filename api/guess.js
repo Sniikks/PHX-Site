@@ -44,7 +44,7 @@ async function resolveYear(req, name) {
         const clean = String(name || '').replace(/[®™©]/g, '').replace(/\s+/g, ' ').trim();
         if (!host || !clean) return null;
         const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 2000);
+        const timer = setTimeout(() => ctrl.abort(), 3500);
         const r = await fetch(`${proto}://${host}/api/search-games?resolve=1&name=${encodeURIComponent(clean)}`, { signal: ctrl.signal });
         clearTimeout(timer);
         if (!r.ok) return null;
@@ -116,26 +116,12 @@ export default async function handler(req, res) {
                 // Année de la réponse : d'abord la date enregistrée à la génération
                 // (fiable depuis IGDB), sinon résolution best-effort via search-games.
                 let answerYear = extractYear(released);
+                if (!answerYear && !correct) answerYear = await resolveYear(req, answer);
 
                 // Année de l'essai : fournie par la suggestion cliquée côté client,
                 // sinon résolue ici (l'ancien comportement client, déplacé serveur).
                 let guessYear = Number.isFinite(Number(body.year)) && Number(body.year) > 1900 ? Number(body.year) : null;
-
-                // Les deux résolutions (si nécessaires) partent EN PARALLÈLE plutôt
-                // qu'en séquence : avant, un essai sans année connue pouvait attendre
-                // deux allers-retours l'un après l'autre (jusqu'à ~7 s cumulées).
-                if (!correct) {
-                    const needAnswerYear = !answerYear;
-                    const needGuessYear = !guessYear;
-                    if (needAnswerYear || needGuessYear) {
-                        const [resolvedAnswerYear, resolvedGuessYear] = await Promise.all([
-                            needAnswerYear ? resolveYear(req, answer) : Promise.resolve(answerYear),
-                            needGuessYear ? resolveYear(req, text) : Promise.resolve(guessYear)
-                        ]);
-                        answerYear = resolvedAnswerYear;
-                        guessYear = resolvedGuessYear;
-                    }
-                }
+                if (!correct && !guessYear) guessYear = await resolveYear(req, text);
                 if (guessYear) lastGuess.year = guessYear;
 
                 const hintFor = y => y < answerYear ? 'after' : (y > answerYear ? 'before' : 'same');

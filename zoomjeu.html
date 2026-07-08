@@ -1033,12 +1033,8 @@
     const input = document.getElementById('guessInput');
     const text = input.value.trim();
     if (!text) return;
-    // Si le texte tapé correspond à une suggestion déjà chargée (clic non utilisé,
-    // validation au bouton…), on récupère son année ici : le serveur n'a alors
-    // plus besoin de la résoudre lui-même, ce qui évite l'aller-retour lent.
-    const match = currentSuggestions.find(s => s.name.toLowerCase() === text.toLowerCase());
     hideSuggestions();
-    submitGuess(text, match ? (match.year || null) : null);
+    submitGuess(text);
   }
   // ── Actions de jeu : tout passe par /api/guess (vérification serveur) ──
   function setFormBusy(busy) {
@@ -1108,28 +1104,29 @@
   }
 
   // ── Indices progressifs (données IGDB stockées dans le puzzle) ──
-  // Chaque indice a son propre seuil de déblocage (indépendant des autres) :
-  // Genre -> après l'essai 2, Plateformes -> après l'essai 4.
-  // (Développeur et Année de sortie ne sont plus affichés comme indices.)
+  // Un indice se débloque à chaque essai utilisé (raté ou passé) :
+  // 1er essai -> genre, 2e -> plateformes, 3e -> développeur, 4e -> année.
   // Les anciens puzzles (sans puzzle.hints) n'affichent simplement rien.
   function buildHintsHtml() {
     const h = puzzle && puzzle.hints;
     if (!h) return '';
     const defs = [
-      { label: 'Genre', value: h.genres && h.genres.length ? h.genres.join(', ') : null, unlockAt: 2 },
-      { label: 'Plateformes', value: h.platforms && h.platforms.length ? h.platforms.join(', ') : null, unlockAt: 4 }
+      { label: 'Genre', value: h.genres && h.genres.length ? h.genres.join(', ') : null },
+      { label: 'Plateformes', value: h.platforms && h.platforms.length ? h.platforms.join(', ') : null },
+      { label: 'Développeur', value: h.developer || null },
+      { label: 'Année de sortie', value: h.year ? String(h.year) : null }
     ].filter(d => d.value);
     if (defs.length === 0) return '';
 
     const finished = state.solved || state.gaveUp || state.guesses.length >= MAX_ATTEMPTS;
+    const unlocked = finished ? defs.length : Math.min(state.guesses.length, defs.length);
 
     let rows = '';
-    defs.forEach(d => {
-      const isUnlocked = finished || state.guesses.length >= d.unlockAt;
-      if (isUnlocked) {
+    defs.forEach((d, i) => {
+      if (i < unlocked) {
         rows += `<div class="hint-row"><span class="hint-label">${d.label} :</span><span>${escapeHtml(d.value)}</span></div>`;
       } else {
-        rows += `<div class="hint-row locked">🔒 ${d.label} — après l'essai ${d.unlockAt}</div>`;
+        rows += `<div class="hint-row locked">🔒 ${d.label} — après l'essai ${i + 1}</div>`;
       }
     });
     return `<div class="hints-panel"><div class="hints-title">Indices</div>${rows}</div>`;
@@ -1239,7 +1236,7 @@
         </div>
         <div class="dist-title">Répartition des victoires par essai</div>
         ${distHtml}
-        <div class="stats-note"></div>
+        <div class="stats-note">Les parties sont partagées entre tous les joueurs : ces stats sont celles de l'équipe 🙂</div>
       `;
     } catch (e) {
       body.innerHTML = `<div class="state-msg">Erreur de chargement des stats : ${escapeHtml(e.message || String(e))}</div>`;
