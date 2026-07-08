@@ -120,7 +120,7 @@ async function handleAutocomplete(req, res, debug) {
             // d'enrichissement du puzzle du jour (qui, elle, fonctionne depuis le
             // début) — le filtre anti-DLC se fait ensuite par motif de nom.
             const rows = await igdbQuery('games',
-                `search "${clean}"; fields name,first_release_date; limit 20;`,
+                `search "${clean}"; fields name,first_release_date; limit 50;`,
                 2500
             );
             debugInfo.igdbCount = Array.isArray(rows) ? rows.length : 0;
