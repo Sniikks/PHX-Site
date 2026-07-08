@@ -21,16 +21,16 @@
 // requête — avant, on devait rappeler Steam "appdetails" jeu par jeu pour
 // avoir une année fiable, ce qui ralentissait beaucoup l'autocomplétion).
 //
-// Recherche IGDB : filtre "contient" (where name ~ *"texte"*), PAS le mode
-// "search" flou d'IGDB. Deux raisons :
+// Recherche IGDB : "search" + "fields" SEULS (confirmé fonctionnel en usage réel).
+// Deux pièges rencontrés et évités :
 //  1) "search" combiné à un "where" (ex. category = 0) renvoie 0 résultat,
 //     silencieusement (bug constaté sur le terrain).
-//  2) même sans "where", "search" classe par pertinence interne à IGDB, ce
-//     qui peut reléguer un titre très connu (ex. "Uncharted 4") derrière des
-//     titres obscurs sur une saisie partielle ("Unchar") — également constaté.
-// Le filtre "~" est une correspondance de sous-chaîne garantie (comme un
-// "contient" SQL), et comme ce n'est pas "search", on peut le combiner sans
-// souci avec un tri par popularité et les filtres category/version_parent.
+//  2) "search" classe par pertinence interne à IGDB, ce qui peut reléguer un
+//     titre très connu (ex. "Uncharted 4") derrière des titres obscurs sur une
+//     saisie partielle ("Unchar") — limitation constatée et non résolue pour
+//     l'instant (une tentative de filtre "contient" a cassé la recherche et a
+//     été retirée, faute de pouvoir tester la syntaxe IGDB en conditions réelles
+//     depuis cet environnement).
 //
 // Optimisations vitesse :
 //  - IGDB et Steam interrogés EN PARALLÈLE (le temps de réponse = le plus
@@ -118,19 +118,13 @@ async function handleAutocomplete(req, res, debug) {
     const igdbPromise = (async () => {
         if (!isIgdbConfigured()) { debugInfo.igdbSkipped = 'TWITCH_CLIENT_ID/SECRET absents'; return []; }
         try {
-            const clean = q.replace(/["\\*]/g, '');
-            // On utilise un filtre "contient" (~ *"texte"*, insensible à la casse) plutôt
-            // que le mode "search" flou d'IGDB. "search" classe par pertinence interne et
-            // peut reléguer un titre très connu (ex. "Uncharted 4") derrière des titres
-            // obscurs sur une saisie partielle ("Unchar") — un vrai problème constaté.
-            // Le filtre "~" fait une correspondance de sous-chaîne garantie, et comme ce
-            // n'est PAS le mode "search", on peut le combiner sans risque avec un tri par
-            // popularité et les filtres category/version_parent (contrairement à "search",
-            // qui casse silencieusement dès qu'on lui ajoute un "where" — voir plus haut).
+            const clean = q.replace(/["\\]/g, '');
+            // "search" + "fields" SEULS (confirmé fonctionnel). Un filtre "where" combiné
+            // à "search" renvoie 0 résultat silencieusement (déjà constaté) ; une tentative
+            // de filtre "contient" (~ *"texte"*) a aussi cassé la recherche — probablement
+            // une syntaxe incorrecte de ma part, retirée faute de pouvoir la tester en direct.
             const rows = await igdbQuery('games',
-                `fields name,first_release_date; ` +
-                `where name ~ *"${clean}"* & category = 0 & version_parent = null; ` +
-                `sort total_rating_count desc; limit 50;`,
+                `search "${clean}"; fields name,first_release_date; limit 50;`,
                 2500
             );
             debugInfo.igdbCount = Array.isArray(rows) ? rows.length : 0;
@@ -221,11 +215,9 @@ async function handleResolve(req, res, debug) {
     const igdbPromise = (async () => {
         if (!isIgdbConfigured()) return null;
         try {
-            const clean = name.replace(/["\\*]/g, '');
+            const clean = name.replace(/["\\]/g, '');
             const rows = await igdbQuery('games',
-                `fields name,first_release_date; ` +
-                `where name ~ *"${clean}"* & category = 0 & version_parent = null; ` +
-                `sort total_rating_count desc; limit 5;`,
+                `search "${clean}"; fields name,first_release_date; limit 5;`,
                 2000
             );
             debugInfo.igdbCount = Array.isArray(rows) ? rows.length : 0;
