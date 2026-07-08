@@ -117,9 +117,11 @@ async function fetchSteamYear(appid, timeoutMs = 900) {
         const json = await res.json();
         const entry = json[appid];
         if (!entry || !entry.success || !entry.data) { steamYearCache.set(appid, null); return null; }
-        const year = yearFromDateStr(entry.data.release_date && entry.data.release_date.date);
-        steamYearCache.set(appid, year);
-        return year;
+        const comingSoon = !!(entry.data.release_date && entry.data.release_date.coming_soon);
+        const year = comingSoon ? null : yearFromDateStr(entry.data.release_date && entry.data.release_date.date);
+        const result = { year, comingSoon };
+        steamYearCache.set(appid, result);
+        return result;
     } catch (e) {
         return null;
     }
@@ -149,14 +151,22 @@ async function handleAutocomplete(req, res, debug) {
         if (!isIgdbConfigured()) { debugInfo.igdbSkipped = 'TWITCH_CLIENT_ID/SECRET absents'; return []; }
         try {
             const clean = q.replace(/["\\*]/g, '');
+            const nowUnix = Math.floor(Date.now() / 1000);
             // Filtre "contient" (name ~ *"texte"*, insensible à la casse), testé et
             // confirmé fonctionnel EN L'ISOLANT de "category = 0" (qui, lui, est cassé
             // à lui seul — voir plus haut). Bien plus large qu'un simple "commence par" :
             // trouve "Star Wolves", "MechWarrior 5: Clans - Wolves of Tukayyid"... même
             // quand le mot cherché n'est pas en tout début de titre.
+            // "first_release_date < maintenant" écarte les jeux pas encore sortis (et,
+            // en prime, ceux sans date du tout côté IGDB — auquel cas ils peuvent
+            // toujours remonter via Steam + le filet de secours plus bas).
+            // NOTE : un filtre anti-"obscur" par popularité (total_rating_count/follows/
+            // hypes) a été testé et écarté : il excluait à tort des jeux récents mais
+            // légitimes (pas encore notés sur IGDB, ex. "Mechwarrior 5: Clans - Wolves
+            // of Tukayyid") — plus de faux positifs que de vrai nettoyage.
             const rows = await igdbQuery('games',
                 `fields name,first_release_date; ` +
-                `where name ~ *"${clean}"* & version_parent = null; ` +
+                `where name ~ *"${clean}"* & version_parent = null & first_release_date < ${nowUnix}; ` +
                 `sort total_rating_count desc; limit 50;`,
                 2500
             );
@@ -224,25 +234,33 @@ async function handleAutocomplete(req, res, debug) {
     const needsYear = results
         .filter(r => !r.year && steamIdByName.has(normalizeName(r.name)))
         .slice(0, MAX_FALLBACK_LOOKUPS);
+    const comingSoonNames = new Set();
     if (needsYear.length) {
         debugInfo.steamYearFallbackCalls = needsYear.length;
         await Promise.all(needsYear.map(async r => {
             const appid = steamIdByName.get(normalizeName(r.name));
-            const y = await fetchSteamYear(appid);
-            if (y) r.year = y;
+            const info = await fetchSteamYear(appid);
+            if (!info) return;
+            if (info.comingSoon) { comingSoonNames.add(normalizeName(r.name)); return; }
+            if (info.year) r.year = info.year;
         }));
     }
+    // On écarte ici les jeux détectés "pas encore sortis" au passage (IGDB les a
+    // déjà filtrés à la source ; ceux-ci ne viennent que du filet de secours Steam).
+    const filteredResults = comingSoonNames.size
+        ? results.filter(r => !comingSoonNames.has(normalizeName(r.name)))
+        : results;
 
     // Tri par date de sortie croissante ; les jeux sans date connue passent après,
     // triés alphabétiquement entre eux pour rester stables/prévisibles.
-    results.sort((a, b) => {
+    filteredResults.sort((a, b) => {
         if (a.year && b.year) return a.year - b.year;
         if (a.year && !b.year) return -1;
         if (!a.year && b.year) return 1;
         return a.name.localeCompare(b.name);
     });
 
-    const merged = results.slice(0, 40);
+    const merged = filteredResults.slice(0, 40);
 
     // Cache CDN Vercel : la même saisie ("borderlands") faite par n'importe qui
     // dans les 5 minutes est servie instantanément depuis le cache, sans toucher
@@ -272,9 +290,10 @@ async function handleResolve(req, res, debug) {
         if (!isIgdbConfigured()) return null;
         try {
             const clean = name.replace(/["\\*]/g, '');
+            const nowUnix = Math.floor(Date.now() / 1000);
             const rows = await igdbQuery('games',
                 `fields name,first_release_date; ` +
-                `where name ~ *"${clean}"* & version_parent = null; ` +
+                `where name ~ *"${clean}"* & version_parent = null & first_release_date < ${nowUnix}; ` +
                 `sort total_rating_count desc; limit 5;`,
                 2000
             );
