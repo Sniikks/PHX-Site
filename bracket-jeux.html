@@ -80,6 +80,9 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
 .saved-del{flex-shrink:0;background:none;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:2px 5px;line-height:1;}
 .saved-del:hover{color:#ff8080;}
 .saved-item.select-mode .saved-del{display:none;}
+.saved-add{flex-shrink:0;background:none;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:2px 5px;line-height:1;}
+.saved-add:hover{color:var(--gold);}
+.saved-item.select-mode .saved-add{display:none;}
 .saved-empty{font-size:10px;color:var(--text2);text-align:center;padding:.7rem 0;}
 .saved-selectbar{display:flex;align-items:center;justify-content:space-between;margin-top:.5rem;padding:.4rem .6rem;background:#1a1212;border:1px solid #4a1a1a;font-size:10px;color:#e06060;}
 .saved-selectbar .ssb-actions{display:flex;gap:.4rem;}
@@ -700,6 +703,32 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
   <div class="modal-box" id="blModalBox"></div>
 </div>
 
+<div class="modal-overlay" id="addModalOverlay" onclick="if(event.target===this) closeAddGamesModal()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="addModalTitle">➕ AJOUTER DES JEUX</h3>
+      <button class="modal-close" onclick="closeAddGamesModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="drop-zone" id="addGamesDropZone"
+        ondragover="addGamesDzOver(event)" ondragleave="addGamesDzLeave()" ondrop="addGamesDzDrop(event)"
+        onclick="document.getElementById('addGamesFile').click()">
+        <span class="icon">📁</span>
+        <p>Glisse ton JSON ici · ou clique pour parcourir</p>
+      </div>
+      <input type="file" id="addGamesFile" accept=".json" style="display:none" onchange="addGamesLoadFile(this)">
+      <p style="margin:.6rem 0 .3rem;font-size:10px;color:var(--text2);">…ou colle du JSON directement :</p>
+      <textarea id="addGamesText" rows="6" placeholder='[{ &quot;name&quot;: &quot;Nom du jeu&quot;, &quot;src&quot;: &quot;https://...&quot; }, ...]' style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:11px;padding:.5rem;resize:vertical;box-sizing:border-box;"></textarea>
+      <div class="err" id="addGamesErr"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeAddGamesModal()">Annuler</button>
+      <div style="flex:1"></div>
+      <button class="btn primary" onclick="submitAddGames()">➕ Ajouter</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script>
@@ -891,6 +920,7 @@ function renderSavedList(){
           <div class="saved-name">${esc(s.name)}</div>
           <div class="saved-meta">${s.count} jeux · ${dateStr}</div>
         </div>
+        <button class="saved-add" onclick="event.stopPropagation();openAddGamesModal('${s.id}')" title="Ajouter des jeux">➕</button>
         <button class="saved-del" onclick="event.stopPropagation();deleteSingleSave('${s.id}')" title="Supprimer">✕</button>
       </div>`;
     }).join('');
@@ -922,6 +952,80 @@ function deleteSingleSave(id){
   setSavedList(saves);
   selectedSaveIds.delete(id);
   renderSavedList();
+}
+
+// ══════════════════════════════════════════
+//  AJOUTER DES JEUX À UNE SAUVEGARDE EXISTANTE
+// ══════════════════════════════════════════
+let addGamesTargetId = null;
+
+function openAddGamesModal(saveId){
+  const s = getSavedList().find(x=>x.id===saveId);
+  if(!s) return;
+  addGamesTargetId = saveId;
+  document.getElementById('addModalTitle').textContent = '➕ AJOUTER À « '+s.name.toUpperCase()+' »';
+  document.getElementById('addGamesText').value = '';
+  document.getElementById('addGamesErr').textContent = '';
+  document.getElementById('addModalOverlay').classList.add('visible');
+}
+function closeAddGamesModal(){
+  document.getElementById('addModalOverlay').classList.remove('visible');
+  addGamesTargetId = null;
+}
+
+function addGamesDzOver(e){ e.preventDefault(); document.getElementById('addGamesDropZone').classList.add('over'); }
+function addGamesDzLeave(){ document.getElementById('addGamesDropZone').classList.remove('over'); }
+function addGamesDzDrop(e){ e.preventDefault(); addGamesDzLeave(); const f=e.dataTransfer.files[0]; if(f) readAddGamesFile(f); }
+function addGamesLoadFile(inp){ const f=inp.files[0]; if(f) readAddGamesFile(f); inp.value=''; }
+function readAddGamesFile(f){
+  const r=new FileReader();
+  r.onload=e=>{ document.getElementById('addGamesText').value = e.target.result; };
+  r.readAsText(f);
+}
+
+function submitAddGames(){
+  const err = document.getElementById('addGamesErr');
+  const raw = document.getElementById('addGamesText').value.trim();
+  if(!raw){ err.textContent='⚠ Colle du JSON ou dépose un fichier.'; return; }
+
+  let parsed;
+  try{ parsed = JSON.parse(raw); }
+  catch(e){ err.textContent='⚠ JSON invalide : '+e.message; return; }
+
+  let list=[];
+  if(Array.isArray(parsed)) list=parsed;
+  else if(parsed.games && Array.isArray(parsed.games)) list=parsed.games;
+  else if(typeof parsed==='object') list=Object.values(parsed);
+
+  const newGames = list.map(g=>{
+    if(typeof g==='string') return {name:g.trim(),src:''};
+    return {name:(g.name||g.title||'').trim(), src:g.src||g.image||g.img||g.cover||''};
+  }).filter(g=>g.name);
+
+  if(!newGames.length){ err.textContent='⚠ Aucun jeu valide trouvé dans ce JSON.'; return; }
+
+  const saves = getSavedList();
+  const s = saves.find(x=>x.id===addGamesTargetId);
+  if(!s){ closeAddGamesModal(); return; }
+
+  const existingNames = new Set(s.data.map(g=>g.name.trim().toLowerCase()));
+  let added = 0;
+  newGames.forEach(g=>{
+    const key = g.name.toLowerCase();
+    if(!existingNames.has(key)){
+      s.data.push(g);
+      existingNames.add(key);
+      added++;
+    }
+  });
+  s.count = s.data.length;
+
+  setSavedList(saves);
+  renderSavedList();
+  closeAddGamesModal();
+  toast(added
+    ? added+' jeu'+(added>1?'x':'')+' ajouté'+(added>1?'s':'')+' à « '+s.name+' » ✓'
+    : 'Aucun nouveau jeu (déjà tous présents dans cette sauvegarde).');
 }
 
 function toggleSelectMode(){
