@@ -1,22 +1,42 @@
 // ==========================================================
 // /api/generate-daily.js — Vercel Serverless Function
 // Génère automatiquement le puzzle "ZoomJeu" du jour et le stocke
-// dans Supabase (table app_data, clé "zoomjeu_YYYY-MM-DD").
+// dans Supabase (table app_data).
 //
-// Une seule ligne par jour : les infos du puzzle (jeu, image, zoom)
-// ET la session de jeu partagée (essais) sont fusionnées dans le
-// même objet JSON, sous "session".
+// DEUX lignes par jour depuis la v2 :
+//  - "zoomjeu_YYYY-MM-DD"        : ligne PUBLIQUE lue par le navigateur
+//    (image proxifiée, indices, session partagée) — SANS la réponse.
+//  - "zoomjeu_secret_YYYY-MM-DD" : ligne SECRÈTE (réponse, vraie URL
+//    d'image, date de sortie) — illisible avec la clé anon une fois
+//    la migration RLS appliquée (voir supabase-migration-zoomjeu.sql).
+//    C'est /api/guess.js qui compare les essais côté serveur.
 //
-// Déclenché chaque jour par Vercel Cron (voir vercel.json).
+// Enrichissement IGDB (nouveau) : après le choix du jeu (SteamSpy/
+// RAWG comme avant), on interroge IGDB (API Twitch, gratuite) pour
+// obtenir une date de sortie fiable (first_release_date) et les
+// indices progressifs (genres, plateformes, développeur). IGDB ne
+// sert JAMAIS de jaquette/artwork comme image de puzzle : uniquement
+// des screenshots in-game, comme Steam/RAWG.
+//
+// Cadrage intelligent (nouveau) : le point de zoom n'est plus tiré
+// totalement au hasard — l'image est analysée avec "sharp" pour
+// viser une zone riche en détails (et éviter ciel/zones noires).
+//
+// Déclenché chaque jour par le cron externe (cron-job.org).
 // Peut aussi être déclenché manuellement : /api/generate-daily?key=TON_ADMIN_KEY
 // Ajoute &force=true pour régénérer même si un puzzle existe déjà pour le jour.
 // ==========================================================
 
 import { createClient } from '@supabase/supabase-js';
+import { normalize, levenshtein, extractYear } from './_gamematch.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
+// service_role de préférence : nécessaire pour écrire les lignes secrètes
+// une fois la migration RLS appliquée. Repli sur la clé anon sinon.
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 const RAWG_API_KEY = (process.env.RAWG_API_KEY || '').trim().replace(/^["']|["']$/g, '') || null;
+const TWITCH_CLIENT_ID = (process.env.TWITCH_CLIENT_ID || '').trim() || null;
+const TWITCH_CLIENT_SECRET = (process.env.TWITCH_CLIENT_SECRET || '').trim() || null;
 const CRON_SECRET = process.env.CRON_SECRET || null;
 const ADMIN_KEY = process.env.ADMIN_KEY || null;
 
@@ -80,16 +100,7 @@ function isDlc(name) {
     return typeof name === 'string' && DLC_NAME_PATTERN.test(name);
 }
 
-function normalize(str) {
-    return str
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[™®©]/g, '')
-        .replace(/[^a-z0-9\s]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-}
+// normalize() vient désormais de ./_gamematch.js (partagé avec /api/guess.js)
 
 function parseOwnersLowerBound(ownersStr) {
     if (!ownersStr) return null;
@@ -316,13 +327,182 @@ async function pickDailyGame(usedIds, usedNames) {
                 source: candidate.source,
                 id: candidate.id,
                 name: finalName,
-                screenshot: details.screenshots[Math.floor(Math.random() * details.screenshots.length)],
+                screenshots: details.screenshots, // le choix final de l'image se fait dans le handler
                 cover: details.cover,
                 released: details.released
             };
         }
     }
     return null;
+}
+
+// ───────────────────────── IGDB (dates fiables + indices) ─────────────────────────
+// API gratuite de Twitch : https://api-docs.igdb.com
+// Auth "client credentials" : le token (valable ~2 mois) est mis en cache
+// mémoire — les containers serverless chauds le réutilisent entre deux appels.
+
+const IGDB_BASE = 'https://api.igdb.com/v4';
+let igdbTokenCache = { token: null, expiresAt: 0 };
+
+async function getIgdbToken() {
+    if (igdbTokenCache.token && Date.now() < igdbTokenCache.expiresAt - 60000) {
+        return igdbTokenCache.token;
+    }
+    const url = `https://id.twitch.tv/oauth2/token?client_id=${encodeURIComponent(TWITCH_CLIENT_ID)}&client_secret=${encodeURIComponent(TWITCH_CLIENT_SECRET)}&grant_type=client_credentials`;
+    const res = await fetch(url, { method: 'POST' });
+    if (!res.ok) throw new Error(`Twitch OAuth a répondu ${res.status}`);
+    const data = await res.json();
+    igdbTokenCache = { token: data.access_token, expiresAt: Date.now() + (data.expires_in || 3600) * 1000 };
+    return igdbTokenCache.token;
+}
+
+async function igdbQuery(endpoint, body) {
+    const token = await getIgdbToken();
+    const res = await fetch(`${IGDB_BASE}/${endpoint}`, {
+        method: 'POST',
+        headers: {
+            'Client-ID': TWITCH_CLIENT_ID,
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+        },
+        body
+    });
+    if (!res.ok) throw new Error(`IGDB a répondu ${res.status}`);
+    return res.json();
+}
+
+// Traduction FR des genres IGDB (les noms inconnus restent en anglais).
+const IGDB_GENRE_FR = {
+    'Adventure': 'Aventure', 'Arcade': 'Arcade', 'Card & Board Game': 'Cartes / plateau',
+    'Fighting': 'Combat', "Hack and slash/Beat 'em up": "Hack'n'slash", 'Indie': 'Indé',
+    'MOBA': 'MOBA', 'Music': 'Musique / rythme', 'Pinball': 'Flipper',
+    'Platform': 'Plateforme', 'Point-and-click': 'Point & click', 'Puzzle': 'Réflexion',
+    'Quiz/Trivia': 'Quiz', 'Racing': 'Course', 'Real Time Strategy (RTS)': 'Stratégie temps réel',
+    'Role-playing (RPG)': 'RPG', 'Shooter': 'Tir', 'Simulator': 'Simulation',
+    'Sport': 'Sport', 'Strategy': 'Stratégie', 'Tactical': 'Tactique',
+    'Turn-based strategy (TBS)': 'Stratégie tour par tour', 'Visual Novel': 'Visual novel'
+};
+
+// Cherche le jeu sur IGDB et renvoie { released, year, genres, platforms,
+// developer, screenshots } ou null. Correspondance PRUDENTE par nom normalisé
+// (égalité, sinon Levenshtein <= 2) : mieux vaut aucun indice qu'un indice
+// portant sur le mauvais jeu.
+// ⚠️ "screenshots" = captures IN-GAME uniquement (endpoint screenshots d'IGDB).
+// On n'utilise jamais covers/artworks : trop reconnaissables pour le puzzle.
+async function fetchIgdbEnrichment(gameName) {
+    if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET) return null;
+    const clean = String(gameName || '').replace(/[™®©"]/g, '').replace(/\s+/g, ' ').trim();
+    if (!clean) return null;
+
+    try {
+        const rows = await igdbQuery('games',
+            `search "${clean}"; ` +
+            `fields name,first_release_date,genres.name,platforms.name,platforms.abbreviation,` +
+            `involved_companies.company.name,involved_companies.developer,screenshots.image_id; ` +
+            `limit 8;`
+        );
+        if (!Array.isArray(rows) || rows.length === 0) return null;
+
+        const target = normalize(clean);
+        let best = rows.find(r => normalize(r.name || '') === target);
+        if (!best) best = rows.find(r => {
+            const n = normalize(r.name || '');
+            return n && Math.abs(n.length - target.length) <= 3 && levenshtein(n, target) <= 2;
+        });
+        if (!best) return null;
+
+        const released = best.first_release_date
+            ? new Date(best.first_release_date * 1000).toISOString().slice(0, 10)
+            : null;
+
+        const genres = (best.genres || [])
+            .map(g => IGDB_GENRE_FR[g.name] || g.name)
+            .filter(Boolean)
+            .slice(0, 3);
+
+        const platforms = [...new Set((best.platforms || [])
+            .map(p => p.abbreviation || p.name)
+            .filter(Boolean))]
+            .slice(0, 6);
+
+        const developer = (best.involved_companies || [])
+            .find(c => c.developer && c.company && c.company.name)?.company?.name || null;
+
+        const screenshots = (best.screenshots || [])
+            .map(s => s.image_id ? `https://images.igdb.com/igdb/image/upload/t_1080p/${s.image_id}.jpg` : null)
+            .filter(Boolean);
+
+        return { released, year: extractYear(released), genres, platforms, developer, screenshots };
+    } catch (e) {
+        console.error('IGDB indisponible (le puzzle sera généré sans indices) :', e.message);
+        return null;
+    }
+}
+
+// ───────────────────────── Cadrage intelligent du zoom ─────────────────────────
+// Analyse le screenshot avec "sharp" pour choisir un point de zoom riche en
+// détails : on découpe l'image en fenêtres candidates (dans la zone 22-78 %),
+// on note chacune par son écart-type de luminosité (≈ quantité de détails),
+// on pénalise les zones quasi noires/blanches (letterbox, ciel, HUD), puis on
+// tire au hasard parmi les meilleures (pour garder de la variété jour à jour).
+// Repli : ancien tirage aléatoire si sharp/le téléchargement échoue.
+
+async function pickFocusPoint(imageUrl) {
+    const fallback = () => ({ x: Math.round(20 + Math.random() * 60), y: Math.round(20 + Math.random() * 60) });
+
+    let sharp;
+    try {
+        sharp = (await import('sharp')).default;
+    } catch (e) {
+        console.error('sharp indisponible, cadrage aléatoire :', e.message);
+        return fallback();
+    }
+
+    try {
+        const r = await fetch(imageUrl);
+        if (!r.ok) return fallback();
+        const buf = Buffer.from(await r.arrayBuffer());
+
+        const { data, info } = await sharp(buf)
+            .resize({ width: 128 })
+            .grayscale()
+            .raw()
+            .toBuffer({ resolveWithObject: true });
+
+        const W = info.width, H = info.height;
+        const px = (x, y) => data[y * W + x];
+
+        const candidates = [];
+        const radius = Math.round(W * 0.10); // fenêtre ≈ ±10 % de la largeur
+        for (let fx = 22; fx <= 78; fx += 8) {
+            for (let fy = 22; fy <= 78; fy += 8) {
+                const cx = Math.round(fx / 100 * W);
+                const cy = Math.round(fy / 100 * H);
+                let sum = 0, sum2 = 0, n = 0;
+                for (let y = Math.max(0, cy - radius); y < Math.min(H, cy + radius); y += 2) {
+                    for (let x = Math.max(0, cx - radius); x < Math.min(W, cx + radius); x += 2) {
+                        const v = px(x, y);
+                        sum += v; sum2 += v * v; n++;
+                    }
+                }
+                if (!n) continue;
+                const mean = sum / n;
+                const variance = Math.max(0, sum2 / n - mean * mean);
+                const brightnessPenalty = (mean < 18 || mean > 237) ? 0.25 : 1;
+                candidates.push({ x: fx, y: fy, score: Math.sqrt(variance) * brightnessPenalty });
+            }
+        }
+        if (candidates.length === 0) return fallback();
+
+        candidates.sort((a, b) => b.score - a.score);
+        const top = candidates.slice(0, 5);
+        const chosen = top[Math.floor(Math.random() * top.length)];
+        const jitter = v => Math.max(18, Math.min(82, v + Math.round(Math.random() * 6) - 3));
+        return { x: jitter(chosen.x), y: jitter(chosen.y) };
+    } catch (e) {
+        console.error('Analyse du cadrage échouée, cadrage aléatoire :', e.message);
+        return fallback();
+    }
 }
 
 // ───────────────────────── Dates / numéro de puzzle ─────────────────────────
@@ -365,8 +545,10 @@ export default async function handler(req, res) {
 
         const { data: existing } = await supabase.from('app_data').select('data').eq('id', puzzleId).maybeSingle();
         // On considère qu'un puzzle valide existe déjà seulement s'il a un jeu et une image.
+        // v1 : la réponse était dans la ligne publique (data.answer). v2 : elle est dans la
+        // ligne secrète, la ligne publique porte data.v = 2.
         // Une ligne vidée manuellement ({}) est donc traitée comme "à générer", sans besoin de &force=true.
-        const hasValidPuzzle = !!(existing?.data && existing.data.answer && existing.data.image);
+        const hasValidPuzzle = !!(existing?.data && (existing.data.answer || existing.data.v >= 2) && existing.data.image);
         if (hasValidPuzzle && !req.query.force) {
             return res.status(200).json({ ok: true, skipped: true, message: 'Puzzle déjà généré pour ' + dateStr });
         }
@@ -380,22 +562,60 @@ export default async function handler(req, res) {
             return res.status(500).json({ error: 'Aucun jeu trouvé après plusieurs tentatives.' });
         }
 
-        const focus = { x: Math.round(20 + Math.random() * 60), y: Math.round(20 + Math.random() * 60) };
+        // ── Enrichissement IGDB : date fiable + indices (best-effort) ──
+        const igdb = await fetchIgdbEnrichment(game.name);
 
-        // Une seule ligne par jour : infos du puzzle + session de jeu partagée fusionnées.
+        // ── Choix du screenshot (toujours de l'in-game, jamais de jaquette) ──
+        // Steam : on garde ses screenshots (haute qualité). RAWG : on préfère
+        // ceux d'IGDB en 1080p quand il y a du choix, sinon ceux de RAWG.
+        let screenshotPool = Array.isArray(game.screenshots) && game.screenshots.length ? game.screenshots : [];
+        if (game.source === 'rawg' && igdb && igdb.screenshots.length >= 3) {
+            screenshotPool = igdb.screenshots;
+        }
+        if (screenshotPool.length === 0) {
+            return res.status(500).json({ error: 'Jeu choisi sans screenshot exploitable.' });
+        }
+        const chosenImage = screenshotPool[Math.floor(Math.random() * screenshotPool.length)];
+
+        // Date de sortie : IGDB (first_release_date, la 1re sortie du jeu) en
+        // priorité, sinon celle de Steam/RAWG comme avant.
+        const released = igdb?.released || game.released || null;
+
+        // ── Cadrage intelligent (repli aléatoire intégré) ──
+        const focus = await pickFocusPoint(chosenImage);
+
+        // ── Indices progressifs (affichés au fil des essais côté client) ──
+        const hints = {};
+        const hintYear = extractYear(released);
+        if (hintYear) hints.year = hintYear;
+        if (igdb?.genres?.length) hints.genres = igdb.genres;
+        if (igdb?.platforms?.length) hints.platforms = igdb.platforms;
+        if (igdb?.developer) hints.developer = igdb.developer;
+
+        // ── Ligne SECRÈTE (réponse + vraie URL d'image) — écrite en premier
+        // pour que /api/image fonctionne dès que la ligne publique apparaît. ──
+        const secret = {
+            date: dateStr,
+            answer: game.name,
+            image: chosenImage,
+            cover: game.cover,
+            released,
+            source: game.source,
+            refId: game.id
+        };
+        await supabase.from('app_data').upsert({ id: 'zoomjeu_secret_' + dateStr, data: secret, updated_at: new Date().toISOString() });
+
+        // ── Ligne PUBLIQUE (lue par le navigateur) : PAS de réponse, image
+        // proxifiée (&v= change à chaque génération pour invalider le CDN). ──
         const puzzle = {
+            v: 2,
             date: dateStr,
             number: puzzleNumber(dateStr),
-            answer: game.name,
-            image: game.screenshot,
-            cover: game.cover,
-            released: game.released,
-            source: game.source,
-            refId: game.id,
+            image: `/api/image?d=${dateStr}&v=${Date.now().toString(36)}`,
             focus,
+            hints,
             session: { guesses: [], solved: false, gaveUp: false }
         };
-
         await supabase.from('app_data').upsert({ id: puzzleId, data: puzzle, updated_at: new Date().toISOString() });
 
         usedIds.add(`${game.source}:${game.id}`);

@@ -224,6 +224,46 @@
 
   .state-msg { color:var(--text2); font-size:.85rem; text-align:center; margin-top:2rem; }
 
+  /* ── Indices progressifs (IGDB) ── */
+  .hints-panel {
+    background:var(--bg3); border:1px solid var(--border); border-radius:2px;
+    padding:.7rem .8rem; display:flex; flex-direction:column; gap:.45rem;
+  }
+  .hints-panel .hints-title {
+    font-family:'Rajdhani',sans-serif; font-weight:700; font-size:.72rem;
+    letter-spacing:.08em; text-transform:uppercase; color:var(--text2);
+  }
+  .hint-row { font-size:.78rem; color:var(--text); display:flex; gap:.4rem; align-items:baseline; }
+  .hint-row .hint-label {
+    color:var(--gold); font-family:'Rajdhani',sans-serif; font-weight:600;
+    letter-spacing:.03em; flex-shrink:0;
+  }
+  .hint-row.locked { color:var(--text2); opacity:.6; font-size:.7rem; }
+
+  /* ── Statistiques ── */
+  .modal-box.stats-box { text-align:left; }
+  .stats-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:.6rem; margin:.8rem 0 1rem; }
+  .stat-box { background:var(--bg3); border:1px solid var(--border); border-radius:2px; padding:.6rem; text-align:center; }
+  .stat-box .stat-num { font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.35rem; color:var(--gold); }
+  .stat-box .stat-label { font-size:.62rem; color:var(--text2); letter-spacing:.05em; text-transform:uppercase; margin-top:.15rem; }
+  .dist-title {
+    font-size:.7rem; color:var(--text2); letter-spacing:.05em; text-transform:uppercase;
+    font-family:'Rajdhani',sans-serif; font-weight:600; margin-bottom:.2rem;
+  }
+  .dist-row { display:flex; align-items:center; gap:.5rem; margin-top:.3rem; font-size:.72rem; }
+  .dist-row .dist-n { width:14px; color:var(--text2); text-align:right; flex-shrink:0; font-family:'JetBrains Mono',monospace; }
+  .dist-row .dist-bar { height:14px; background:var(--gold-dim); border-radius:2px; min-width:2px; }
+  .dist-row .dist-count { color:var(--text2); flex-shrink:0; }
+  .stats-note { font-size:.68rem; color:var(--text2); margin-top:.9rem; }
+
+  /* ── Toast d'erreur non bloquant ── */
+  .toast {
+    position:fixed; bottom:1.2rem; left:50%; transform:translateX(-50%);
+    background:var(--bg3); border:1px solid var(--bad); color:var(--text);
+    padding:.6rem 1rem; border-radius:3px; font-size:.8rem; z-index:200;
+    box-shadow:0 10px 24px rgba(0,0,0,.5); max-width:90vw; text-align:center;
+  }
+
   .archive-header {
     display:flex; flex-direction:column; align-items:center; gap:.6rem; margin-bottom:1rem;
     width:100%;
@@ -398,6 +438,7 @@
     <button id="navNext" title="Jour suivant">▶</button>
     <button id="navLast" title="Aujourd'hui">⏭</button>
     <button id="archiveToggle" class="archive-toggle" title="Archives">🗓 <span class="archive-label">Archives</span></button>
+    <button id="statsToggle" class="archive-toggle" title="Statistiques">📊 <span class="archive-label">Stats</span></button>
     <button id="forceGenBtn" class="archive-toggle" title="Générer manuellement le puzzle du jour">⚡ <span class="archive-label">Générer</span></button>
   </div>
 
@@ -418,15 +459,29 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="statsOverlay">
+    <div class="modal-box stats-box">
+      <div class="modal-title">📊 Statistiques</div>
+      <div id="statsBody"></div>
+      <div class="modal-actions">
+        <button class="modal-cancel" id="statsCloseBtn">Fermer</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script src="db.js"></script>
   <script>
   // ==========================================================
-  // ZoomJeu — logique client
-  // Une seule ligne Supabase par jour (app_data.id = "zoomjeu_YYYY-MM-DD"),
-  // qui contient à la fois les infos du puzzle et la session partagée
-  // (data.session = { guesses, solved, gaveUp }).
+  // ZoomJeu — logique client (v2)
+  // Ligne publique Supabase par jour (app_data.id = "zoomjeu_YYYY-MM-DD") :
+  // infos du puzzle (image proxifiée, indices) + session partagée
+  // (data.session = { guesses, solved, gaveUp }) — SANS la réponse.
+  // La réponse vit dans "zoomjeu_secret_YYYY-MM-DD" (illisible avec la clé
+  // anon) : les essais sont vérifiés par /api/guess côté serveur, et la
+  // réponse n'apparaît dans la ligne publique (data.revealed) qu'une fois
+  // la partie terminée. Rétro-compatible avec les anciens puzzles (v1).
   // ==========================================================
 
   const MAX_ATTEMPTS = 5;
@@ -435,141 +490,12 @@
   const WEEKDAYS_FR = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
   const MONTHS_FR = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 
-  // ── Utils de comparaison texte (identiques au bot Discord "369") ──
-  function normalize(str) {
-    return str
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[™®©]/g, '')
-      .replace(/[^a-z0-9\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-  function levenshtein(a, b) {
-    const m = a.length, n = b.length;
-    if (m === 0) return n;
-    if (n === 0) return m;
-    const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
-    for (let j = 0; j <= n; j++) dp[0][j] = j;
-    for (let i = 1; i <= m; i++) {
-      for (let j = 1; j <= n; j++) {
-        dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
-      }
-    }
-    return dp[m][n];
-  }
-  function getVariants(name) {
-    const cleanName = name.replace(/\s*\(\d{4}\)\s*$/, '');
-    const base = normalize(cleanName);
-    const parts = cleanName.split(/[:\-]/).map(p => normalize(p)).filter(p => p.length >= 3);
-    return [...new Set([base, ...parts])];
-  }
-  function tokensMatch(a, b) {
-    if (a === b) return true;
-    if (/\d/.test(a) || /\d/.test(b)) return false;
-    if (a.length <= 3 || b.length <= 3) return false;
-    const maxLen = Math.max(a.length, b.length);
-    const threshold = maxLen <= 6 ? 1 : 2;
-    return levenshtein(a, b) <= threshold;
-  }
-  function tokenWindowMatch(guessTokens, targetTokens) {
-    const gLen = guessTokens.length;
-    if (gLen === 0 || gLen > targetTokens.length) return false;
-    for (let start = 0; start + gLen <= targetTokens.length; start++) {
-      let ok = true;
-      for (let k = 0; k < gLen; k++) {
-        if (!tokensMatch(guessTokens[k], targetTokens[start + k])) { ok = false; break; }
-      }
-      if (ok) return true;
-    }
-    return false;
-  }
-  function isCorrectGuess(guessRaw, gameName) {
-    const guess = normalize(guessRaw);
-    if (guess.length < 2) return false;
-    const guessTokens = guess.split(' ').filter(Boolean);
-    for (const variant of getVariants(gameName)) {
-      if (guess === variant) return true;
-      const variantTokens = variant.split(' ').filter(Boolean);
-      if (tokenWindowMatch(guessTokens, variantTokens)) return true;
-    }
-    return false;
-  }
+  // ── La comparaison des réponses (normalize, isCorrectGuess, isCloseGuess,
+  // nameHint, extractYear…) est désormais CÔTÉ SERVEUR : /api/guess.js +
+  // /api/_gamematch.js. La réponse du jour n'est plus jamais envoyée au
+  // navigateur (elle vit dans la ligne Supabase secrète du jour). ──
 
-  // Détecte une réponse "proche" : bonne licence/franchise, mais pas le bon épisode/édition
-  // (ex: répondre "Counter-Strike 2" pour "Counter-Strike: Source").
-  const STOP_WORDS = new Set(['the','of','a','an','and','edition','goty','remastered','definitive']);
-  function significantTokens(tokens) {
-    return tokens.filter(t => t.length >= 3 && !STOP_WORDS.has(t));
-  }
-  function isCloseGuess(guessRaw, gameName) {
-    const cleanName = gameName.replace(/\s*\(\d{4}\)\s*$/, '');
-    const guessTokens = significantTokens(normalize(guessRaw).split(' ').filter(Boolean));
-    const baseTokens = significantTokens(normalize(cleanName).split(' ').filter(Boolean));
-    if (guessTokens.length === 0 || baseTokens.length === 0) return false;
-
-    let matches = 0;
-    guessTokens.forEach(gt => { if (baseTokens.some(bt => tokensMatch(gt, bt))) matches++; });
-
-    // Une réponse est "proche" dès que suffisamment de mots significatifs
-    // correspondent. Pas besoin d'exclure les correspondances complètes :
-    // les vraies bonnes réponses sont déjà attrapées par isCorrectGuess en
-    // amont. (L'ancienne condition "matches < baseTokens.length" empêchait
-    // l'orange sur les licences à un seul mot significatif — "Borderlands 2"
-    // pour "Borderlands 3" n'était jamais proche, car le chiffre est ignoré.)
-    const threshold = Math.min(2, baseTokens.length);
-    return matches >= threshold;
-  }
-
-  // Repère si la réponse commence par le(s) même(s) mot(s) que le vrai jeu
-  // (ex: "Project: Doors" -> "Project" partagé avec "Project Zomboid").
-  // Renvoie { text, wordCount } ou null si aucun mot de tête ne correspond.
-  //
-  // Subtilité : la normalisation peut découper un mot affiché en plusieurs
-  // tokens ("Meier's" -> "meier" + "s"). On aligne donc chaque mot ORIGINAL
-  // sur ses sous-tokens normalisés, et un mot n'est révélé que si TOUS ses
-  // sous-tokens correspondent — sinon le comptage se décale et l'indice
-  // révèle un mot de trop (ex: "Sid Meier's Civilization® V" entièrement
-  // dévoilé pour la réponse "...Civilization® V" alors qu'on a tapé "...IV").
-  function nameHint(guessRaw, answer) {
-    const cleanAnswer = answer.replace(/\s*\(\d{4}\)\s*$/, '');
-    const gTokens = normalize(guessRaw).split(' ').filter(Boolean);
-
-    const origTokens = cleanAnswer.split(/[\s:\-]+/).filter(Boolean);
-    const subCounts = [];   // nb de sous-tokens normalisés par mot original
-    const aTokensNorm = []; // sous-tokens normalisés, à plat
-    origTokens.forEach(t => {
-      const subs = normalize(t).split(' ').filter(Boolean);
-      subCounts.push(subs.length);
-      aTokensNorm.push(...subs);
-    });
-
-    let matchLen = 0;
-    while (matchLen < gTokens.length && matchLen < aTokensNorm.length && tokensMatch(gTokens[matchLen], aTokensNorm[matchLen])) {
-      matchLen++;
-    }
-
-    // Conversion : combien de mots ORIGINAUX sont entièrement couverts ?
-    let covered = 0, acc = 0;
-    for (const c of subCounts) {
-      if (acc + c <= matchLen) { acc += c; covered++; } else break;
-    }
-    // Garde-fou : ne jamais révéler le nom complet via l'indice (si tous les
-    // mots correspondent mais que la réponse n'était pas "correcte" — mots en
-    // trop dans la saisie, etc. — on retient le dernier mot).
-    if (covered >= origTokens.length) covered = origTokens.length - 1;
-    if (covered <= 0) return null;
-    return { text: origTokens.slice(0, covered).join(' '), wordCount: covered };
-  }
-
-  function extractYear(releasedStr) {
-    if (!releasedStr) return null;
-    const m = String(releasedStr).match(/\d{4}/);
-    return m ? parseInt(m[0], 10) : null;
-  }
-
-  // Met en gras/doré les premiers `wordCount` mots du texte original (préserve la casse tapée par le joueur)
+  // Met en gras/doré les premiers  // Met en gras/doré les premiers `wordCount` mots du texte original (préserve la casse tapée par le joueur)
   function highlightPrefix(text, wordCount) {
     if (!wordCount) return escapeHtml(text);
     const parts = text.split(/(\s+)/);
@@ -627,10 +553,12 @@
   let pendingFlash = null; // 'good' | 'bad' | 'close' | 'skip' — déclenché uniquement par une action locale
   let lastZoomFactor = null; // dernier zoom affiché, pour animer un vrai dézoom entre deux essais
   let previewIndex = null; // index de la phase de zoom actuellement prévisualisée via les onglets (null = zoom réel)
-  let cachedAnswerYear; // undefined = pas encore résolu · null = résolu mais introuvable · sert de repli quand puzzle.released est vide
+  let actionBusy = false; // une action de jeu (essai/passer/abandon) est en cours côté serveur
 
   function isValidPuzzle(p) {
-    return !!(p && p.answer && p.image && p.focus && typeof p.focus.x === 'number');
+    // v1 : la réponse (answer) était dans la ligne publique. v2 : elle est côté
+    // serveur, la ligne publique porte p.v = 2 (+ p.revealed une fois terminé).
+    return !!(p && p.image && p.focus && typeof p.focus.x === 'number' && (p.answer || p.v >= 2));
   }
 
   // ── Modale de confirmation personnalisée (remplace confirm()) ──
@@ -792,7 +720,6 @@
     updateNavUI();
     lastZoomFactor = null;
     previewIndex = null;
-    cachedAnswerYear = undefined;
     document.getElementById('cardEl').innerHTML = '<div class="state-msg">Chargement du puzzle…</div>';
     if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
 
@@ -848,17 +775,11 @@
       .subscribe();
   }
 
-  async function saveSession() {
-    puzzle.session = state;
-    saveLocalCache(viewingDate, puzzle);
-    try {
-      await supabaseClient.from('app_data').upsert({ id: 'zoomjeu_' + viewingDate, data: puzzle, updated_at: new Date().toISOString() });
-    } catch (e) {
-      console.error('Erreur sauvegarde ZoomJeu:', e);
-    }
-  }
+  // saveSession() n'existe plus : le navigateur n'écrit plus jamais la ligne
+  // du puzzle. Toutes les mises à jour de session passent par /api/guess,
+  // et reviennent ici via la réponse HTTP + le temps réel Supabase.
 
-  // ── Rendu du jeu ──
+  // ── Rendu du jeu ──  // ── Rendu du jeu ──
   function currentZoomIndex() {
     return Math.min(state.guesses.length, MAX_ATTEMPTS - 1);
   }
@@ -938,11 +859,13 @@
     let sidebarHtml;
     if (finished) {
       const success = state.solved;
+      const answerLabel = (puzzle.revealed && puzzle.revealed.answer) || puzzle.answer || '— ? —';
       sidebarHtml = `
         <div class="result-box ${success ? 'win' : 'lose'}">
-          <div class="answer">${escapeHtml(puzzle.answer)}</div>
+          <div class="answer">${escapeHtml(answerLabel)}</div>
           <div class="verdict">${success ? `Trouvé en ${state.guesses.length} essai${state.guesses.length > 1 ? 's' : ''} 🎉` : (state.gaveUp ? 'Abandonné' : 'Perdu — bien joué quand même')}</div>
         </div>
+        <button type="button" class="wide" id="shareBtn">📋 Partager le résultat</button>
       `;
     } else {
       sidebarHtml = `
@@ -969,6 +892,7 @@
         </div>
         <div class="game-right">
           ${sidebarHtml}
+          ${buildHintsHtml()}
           ${guessListHtml}
         </div>
       </div>
@@ -990,6 +914,9 @@
     document.querySelectorAll('.attempt-tab.reviewable').forEach(el => {
       el.addEventListener('click', () => previewZoomTab(parseInt(el.dataset.zoomIdx, 10)));
     });
+
+    const shareBtn = document.getElementById('shareBtn');
+    if (shareBtn) shareBtn.addEventListener('click', onShare);
 
     if (!finished) {
       document.getElementById('guessForm').addEventListener('submit', onGuessSubmit);
@@ -1109,101 +1036,214 @@
     hideSuggestions();
     submitGuess(text);
   }
-  function submitGuess(text, knownYear = null) {
-    const correct = isCorrectGuess(text, puzzle.answer);
-    const close = !correct && isCloseGuess(text, puzzle.answer);
-    const hint = !correct ? nameHint(text, puzzle.answer) : null;
-    const guessObj = { text, correct, close, nameHint: hint, year: knownYear, yearHint: null };
-    state.guesses.push(guessObj);
-    if (correct) state.solved = true;
-    pendingFlash = correct ? 'good' : (close ? 'close' : 'bad');
-    saveSession();
-    renderGame();
-
-    if (!correct) resolveYearHint(guessObj);
+  // ── Actions de jeu : tout passe par /api/guess (vérification serveur) ──
+  function setFormBusy(busy) {
+    const input = document.getElementById('guessInput');
+    const skipBtn = document.getElementById('skipBtn');
+    const giveUpBtn = document.getElementById('giveUpBtn');
+    if (input) { input.disabled = busy; input.placeholder = busy ? 'Vérification…' : 'Quel est ce jeu ?'; }
+    if (skipBtn) skipBtn.disabled = busy;
+    if (giveUpBtn) giveUpBtn.disabled = busy;
   }
 
-  // Calcule l'indice "avant/après" par rapport à l'année du vrai jeu.
-  // Si l'essai vient d'une suggestion, son année est déjà connue (aucun appel
-  // réseau) ; sinon, on la demande à /api/search-games?resolve=1. Best-effort :
-  // si ça échoue ou ne trouve rien, on ne montre simplement pas cet indice.
-  // Les symboles ®™© dans les noms officiels ("Sid Meier's Civilization® V")
-  // font parfois échouer la recherche RAWG/Steam : on les retire avant résolution.
-  function cleanForResolve(name) {
-    return String(name || '').replace(/[®™©]/g, '').replace(/\s+/g, ' ').trim();
-  }
-
-  async function resolveYearHint(guessObj) {
+  async function sendAction(action, extra = {}) {
+    if (actionBusy || !puzzle) return;
+    actionBusy = true;
+    setFormBusy(true);
     try {
-      if (!guessObj.year) {
-        const res = await fetch('/api/search-games?resolve=1&name=' + encodeURIComponent(cleanForResolve(guessObj.text)));
-        const data = await res.json();
-        if (!data.year) return;
-        guessObj.year = data.year;
+      const res = await fetch('/api/guess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: viewingDate, action, ...extra })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || `Erreur serveur (${res.status})`);
+
+      state = data.session;
+      puzzle.session = state;
+      if (data.revealed) puzzle.revealed = data.revealed;
+      saveLocalCache(viewingDate, puzzle);
+
+      if (action === 'guess' && data.guess) {
+        pendingFlash = data.guess.correct ? 'good' : (data.guess.close ? 'close' : 'bad');
+      } else if (action === 'skip') {
+        pendingFlash = 'skip';
       }
+      actionBusy = false;
+      renderGame();
+    } catch (e) {
+      console.error('Erreur action ZoomJeu:', e);
+      actionBusy = false;
+      setFormBusy(false);
+      showToast('⚠️ ' + (e.message || 'Erreur réseau — réessaie.'));
+    }
+  }
 
-      // Repli : si le puzzle du jour n'a pas de date de sortie enregistrée (générée sans
-      // "released"), on va la chercher via cette même API, une seule fois par puzzle (mise en cache).
-      let answerYear = extractYear(puzzle.released);
-      if (!answerYear) answerYear = await getAnswerYearFallback();
-      if (!answerYear) return;
+  // L'année de la suggestion cliquée est transmise telle quelle : le serveur
+  // s'en sert pour l'indice avant/après (et la résout lui-même sinon).
+  function submitGuess(text, knownYear = null) {
+    sendAction('guess', { text, year: knownYear });
+  }
+  function onSkip() { sendAction('skip'); }
+  function onGiveUp() { sendAction('giveup'); }
 
-      // ⚠️ Bien comparer guessObj.year (toujours défini ici) et non "data.year" :
-      // quand l'année vient d'une suggestion cliquée, aucun appel réseau n'a eu
-      // lieu et "data" n'existe pas — c'était la cause des indices manquants.
-      const hintFor = y => y < answerYear ? 'after' : (y > answerYear ? 'before' : 'same');
-      guessObj.yearHint = hintFor(guessObj.year);
+  // ── Petit toast d'erreur non bloquant ──
+  let toastTimer = null;
+  function showToast(msg) {
+    let el = document.getElementById('toastEl');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'toastEl';
+      el.className = 'toast';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.style.display = 'block';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.style.display = 'none'; }, 4000);
+  }
 
-      // Rattrapage rétroactif : si des essais précédents avaient une année mais
-      // pas d'indice (année de la réponse indisponible à ce moment-là), on les
-      // complète maintenant que l'année de la réponse est connue.
-      state.guesses.forEach(g => {
-        if (!g.correct && !g.skipped && g.year && !g.yearHint) g.yearHint = hintFor(g.year);
+  // ── Indices progressifs (données IGDB stockées dans le puzzle) ──
+  // Un indice se débloque à chaque essai utilisé (raté ou passé) :
+  // 1er essai -> genre, 2e -> plateformes, 3e -> développeur, 4e -> année.
+  // Les anciens puzzles (sans puzzle.hints) n'affichent simplement rien.
+  function buildHintsHtml() {
+    const h = puzzle && puzzle.hints;
+    if (!h) return '';
+    const defs = [
+      { label: 'Genre', value: h.genres && h.genres.length ? h.genres.join(', ') : null },
+      { label: 'Plateformes', value: h.platforms && h.platforms.length ? h.platforms.join(', ') : null },
+      { label: 'Développeur', value: h.developer || null },
+      { label: 'Année de sortie', value: h.year ? String(h.year) : null }
+    ].filter(d => d.value);
+    if (defs.length === 0) return '';
+
+    const finished = state.solved || state.gaveUp || state.guesses.length >= MAX_ATTEMPTS;
+    const unlocked = finished ? defs.length : Math.min(state.guesses.length, defs.length);
+
+    let rows = '';
+    defs.forEach((d, i) => {
+      if (i < unlocked) {
+        rows += `<div class="hint-row"><span class="hint-label">${d.label} :</span><span>${escapeHtml(d.value)}</span></div>`;
+      } else {
+        rows += `<div class="hint-row locked">🔒 ${d.label} — après l'essai ${i + 1}</div>`;
+      }
+    });
+    return `<div class="hints-panel"><div class="hints-title">Indices</div>${rows}</div>`;
+  }
+
+  // ── Partage du résultat (grille d'emojis façon Wordle) ──
+  // 🟩 trouvé · 🟧 proche · 🟥 raté · ⬛ passé · 🏳️ abandon
+  function buildShareText() {
+    const n = puzzleNumber(viewingDate);
+    const score = state.solved ? `${state.guesses.length}/${MAX_ATTEMPTS}` : `X/${MAX_ATTEMPTS}`;
+    const grid = state.guesses.map(g => g.correct ? '🟩' : (g.skipped ? '⬛' : (g.close ? '🟧' : '🟥'))).join('');
+    const flag = state.gaveUp ? ' 🏳️' : '';
+    const url = location.origin + location.pathname + '?date=' + viewingDate;
+    return `PHX ZoomJeu #${n} — ${score}${flag}\n${grid}\n${url}`;
+  }
+
+  async function onShare() {
+    const text = buildShareText();
+    const btn = document.getElementById('shareBtn');
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+      }
+      if (btn) {
+        btn.textContent = '✅ Copié !';
+        setTimeout(() => { if (btn.isConnected) btn.textContent = '📋 Partager le résultat'; }, 2000);
+      }
+    } catch (e) {
+      showToast('⚠️ Impossible de copier automatiquement.');
+    }
+  }
+
+  // ── Statistiques (sessions partagées -> stats de l'équipe) ──
+  document.getElementById('statsToggle').addEventListener('click', openStats);
+  document.getElementById('statsCloseBtn').addEventListener('click', () => document.getElementById('statsOverlay').classList.remove('visible'));
+  document.getElementById('statsOverlay').addEventListener('click', e => { if (e.target.id === 'statsOverlay') e.target.classList.remove('visible'); });
+
+  async function openStats() {
+    const overlay = document.getElementById('statsOverlay');
+    const body = document.getElementById('statsBody');
+    overlay.classList.add('visible');
+    body.innerHTML = '<div class="state-msg" style="margin-top:.5rem;">Calcul des statistiques…</div>';
+    try {
+      // 'zoomjeu_2%' = uniquement les lignes datées (exclut zoomjeu_used ;
+      // les lignes secrètes sont de toute façon illisibles avec la clé anon).
+      const { data: rows, error } = await supabaseClient.from('app_data').select('id,data').ilike('id', 'zoomjeu_2%');
+      if (error) throw error;
+
+      const games = (rows || [])
+        .map(r => ({ date: r.id.replace('zoomjeu_', ''), p: r.data }))
+        .filter(g => /^\d{4}-\d{2}-\d{2}$/.test(g.date) && g.p && g.p.session)
+        .sort((a, b) => (a.date < b.date ? -1 : 1));
+
+      const solvedByDate = {}; // true = gagné, false = fini mais perdu, absent = pas fini
+      let played = 0, wins = 0;
+      const dist = [0, 0, 0, 0, 0];
+      games.forEach(g => {
+        const s = g.p.session;
+        const guesses = s.guesses || [];
+        const finished = s.solved || s.gaveUp || guesses.length >= MAX_ATTEMPTS;
+        if (!finished) return;
+        played++;
+        solvedByDate[g.date] = !!s.solved;
+        if (s.solved) { wins++; dist[Math.min(guesses.length, MAX_ATTEMPTS) - 1]++; }
       });
 
-      saveSession();
-      // Ne remplace que la liste des essais (pas tout le panneau), pour ne pas
-      // effacer une saisie en cours si le joueur a déjà commencé le prochain essai.
-      const listEl = document.getElementById('guessListEl');
-      if (listEl) {
-        listEl.outerHTML = buildGuessListHtml();
+      // Série en cours : on remonte depuis aujourd'hui (ou hier si la partie
+      // du jour n'est pas encore terminée — la série n'est pas cassée).
+      let current = 0;
+      let d = todayStr;
+      if (solvedByDate[d] === undefined) d = addDays(d, -1);
+      while (solvedByDate[d]) { current++; d = addDays(d, -1); }
+
+      // Meilleure série : plus longue suite de jours CONSÉCUTIFS gagnés.
+      let best = 0, run = 0, prev = null;
+      games.forEach(g => {
+        if (solvedByDate[g.date] === true) {
+          run = (prev !== null && g.date === addDays(prev, 1)) ? run + 1 : 1;
+          best = Math.max(best, run);
+          prev = g.date;
+        } else if (solvedByDate[g.date] === false) {
+          run = 0;
+          prev = null;
+        }
+      });
+
+      const rate = played ? Math.round((wins / played) * 100) : 0;
+      const maxDist = Math.max(1, ...dist);
+      let distHtml = '';
+      for (let i = 0; i < MAX_ATTEMPTS; i++) {
+        distHtml += `<div class="dist-row"><span class="dist-n">${i + 1}</span><div class="dist-bar" style="width:${Math.round((dist[i] / maxDist) * 100)}%"></div><span class="dist-count">${dist[i]}</span></div>`;
       }
+
+      body.innerHTML = `
+        <div class="stats-grid">
+          <div class="stat-box"><div class="stat-num">${played}</div><div class="stat-label">Parties finies</div></div>
+          <div class="stat-box"><div class="stat-num">${rate}%</div><div class="stat-label">Victoires</div></div>
+          <div class="stat-box"><div class="stat-num">${current}</div><div class="stat-label">Série en cours</div></div>
+          <div class="stat-box"><div class="stat-num">${best}</div><div class="stat-label">Meilleure série</div></div>
+        </div>
+        <div class="dist-title">Répartition des victoires par essai</div>
+        ${distHtml}
+        <div class="stats-note">Les parties sont partagées entre tous les joueurs : ces stats sont celles de l'équipe 🙂</div>
+      `;
     } catch (e) {
-      // silencieux : le jeu marche très bien sans cet indice
+      body.innerHTML = `<div class="state-msg">Erreur de chargement des stats : ${escapeHtml(e.message || String(e))}</div>`;
     }
   }
 
-  // Repli quand puzzle.released est vide : résout l'année de la réponse du jour via la même
-  // API que pour les indices, une seule fois par puzzle (cache mémoire + localStorage, pour
-  // survivre aux rechargements de page et aux échecs transitoires).
-  async function getAnswerYearFallback() {
-    if (cachedAnswerYear !== undefined) return cachedAnswerYear;
-    const lsKey = 'zoomjeu_answer_year_' + viewingDate;
-    const stored = localStorage.getItem(lsKey);
-    if (stored) { cachedAnswerYear = parseInt(stored, 10) || null; return cachedAnswerYear; }
-    try {
-      const res = await fetch('/api/search-games?resolve=1&name=' + encodeURIComponent(cleanForResolve(puzzle.answer)));
-      const data = await res.json();
-      cachedAnswerYear = data.year || null;
-      if (cachedAnswerYear) localStorage.setItem(lsKey, String(cachedAnswerYear));
-    } catch (e) {
-      cachedAnswerYear = null;
-    }
-    return cachedAnswerYear;
-  }
-  function onSkip() {
-    state.guesses.push({ text: '', correct: false, skipped: true });
-    pendingFlash = 'skip';
-    saveSession();
-    renderGame();
-  }
-  function onGiveUp() {
-    state.gaveUp = true;
-    saveSession();
-    renderGame();
-  }
-
-  // ── Archives (vue calendrier) ──
+  // ── Archives (vue calendrier) ──  // ── Archives (vue calendrier) ──
   function monthPrefix(y, m) { return `zoomjeu_${y}-${String(m).padStart(2, '0')}-`; }
   let showNames = true;
 
@@ -1274,7 +1314,7 @@
             <img class="cell-img" src="${p.image}" draggable="false" oncontextmenu="return false;" style="transform-origin:${p.focus.x}% ${p.focus.y}%; transform:scale(${scale});">
             <div class="cell-day">${day}</div>
             ${miniHtml}
-            ${finished ? `<div class="cell-name">${escapeHtml(p.answer)}</div>` : ''}
+            ${finished ? `<div class="cell-name">${escapeHtml((p.revealed && p.revealed.answer) || p.answer || '')}</div>` : ''}
           </div>
         `;
       }
