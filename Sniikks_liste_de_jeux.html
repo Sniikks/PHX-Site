@@ -650,17 +650,28 @@ function onImgInput() {
         prev.onload = () => { hint.style.display='none'; detect.textContent='✅ Image Steam (fallback)'; detect.style.display='block'; };
         prev.onerror = () => { detect.textContent='⚠ Image non chargée — colle une URL directe (.jpg/.png)'; detect.style.display='block'; hint.style.display='none'; };
       };
-      // Auto-remplir le nom si vide
+      // Auto-remplir le nom si vide : titre officiel exact via l'API Steam (/api/steam)
       const nameField = document.getElementById('f-name');
       if (!nameField.value.trim()) {
-        const parts = url.split('/').filter(Boolean);
-        const slug  = parts[parts.length-1];
-        if (slug && isNaN(slug)) {
-          let name = slug;
-          try { name = decodeURIComponent(slug); } catch(e) {}
-          name = name.replace(/_/g,' ').replace(/(?:^|\s)\S/g, c=>c.toUpperCase());
-          nameField.value = name;
-        }
+        fetch(`/api/steam?appid=${appId}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data && data.name && !nameField.value.trim()) {
+              nameField.value = data.name;
+            }
+          })
+          .catch(() => {
+            // Repli si l'API est indisponible : on déduit un titre approximatif depuis l'URL
+            // (ponctuation type . , ; : ! - ( ) = déjà absente du slug, donc titre imparfait)
+            const parts = url.split('/').filter(Boolean);
+            const slug  = parts[parts.length-1];
+            if (slug && isNaN(slug) && !nameField.value.trim()) {
+              let name = slug;
+              try { name = decodeURIComponent(slug); } catch(e) {}
+              name = name.replace(/_/g,' ').replace(/(?:^|\s)\S/g, c=>c.toUpperCase());
+              nameField.value = name;
+            }
+          });
       }
     } else {
       // URL directe d'image
