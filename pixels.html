@@ -48,40 +48,65 @@
   .title { font-family:'Rajdhani',sans-serif; font-size:clamp(1.3rem,4vw,1.9rem); font-weight:700; letter-spacing:.1em; color:var(--gold); text-transform:uppercase; }
   .subtitle { color:var(--text2); font-size:12.5px; margin-top:.35rem; margin-bottom:1.2rem; letter-spacing:.03em; text-align:center; }
 
-  .lives { display:flex; gap:6px; margin-bottom:1rem; font-size:1.3rem; }
-  .lives span.lost { opacity:.25; filter:grayscale(1); }
-
   #loading { color:var(--text2); font-size:13px; margin-top:2rem; text-align:center; max-width:320px; }
-  #game { display:none; flex-direction:column; align-items:center; width:100%; max-width:580px; }
+  #game { display:none; width:100%; max-width:740px; }
+
+  .game-layout { display:flex; gap:1.2rem; align-items:flex-start; width:100%; }
+  .game-left { flex:1 1 auto; min-width:0; }
+  .game-right { flex:0 0 250px; display:flex; flex-direction:column; gap:.6rem; }
+  @media (max-width:760px) {
+    .game-layout { flex-direction:column; }
+    .game-right { flex:1 1 auto; width:100%; }
+  }
+
+  .status-box {
+    display:none; background:var(--bg2); border:1px solid var(--border); border-radius:10px;
+    padding:.8rem .9rem; text-align:center;
+  }
+  .status-box .status-name { font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.05rem; color:var(--gold); margin-bottom:.25rem; }
+  .status-box .status-verdict { font-size:.82rem; color:var(--text2); }
+  .status-box.win .status-verdict { color:var(--good); }
+  .status-box.lose .status-verdict { color:var(--bad); }
+
+  .attempts-tabs { display:flex; gap:.35rem; margin-top:.7rem; }
+  .attempt-tab {
+    flex:1; padding:.5rem 0; text-align:center; border-radius:6px;
+    background:var(--bg3); border:1px solid var(--border); color:var(--text2);
+    font-family:'Rajdhani',sans-serif; font-weight:700; font-size:.78rem;
+  }
+  .attempt-tab.current { border-color:var(--gold-dim); color:var(--gold); box-shadow:inset 0 -2px 0 var(--gold); }
+  .attempt-tab.correct { background:rgba(95,191,134,.15); border-color:rgba(95,191,134,.4); color:var(--good); }
+  .attempt-tab.wrong { background:rgba(226,104,95,.15); border-color:rgba(226,104,95,.35); color:var(--bad); }
 
   .canvas-wrap {
     position:relative; width:100%;
     background:var(--bg2); border:1px solid var(--border); border-radius:12px;
-    overflow:hidden; margin-bottom:1rem;
+    overflow:hidden;
   }
   canvas { width:100%; height:100%; display:block; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
-  .attempt-dots { display:flex; gap:5px; justify-content:center; margin-bottom:.9rem; }
-  .attempt-dots span { width:9px; height:9px; border-radius:50%; background:var(--border); }
-  .attempt-dots span.used { background:var(--bad); }
-  .attempt-dots span.current { background:var(--gold); }
 
-  .guess-row { display:flex; gap:.5rem; width:100%; position:relative; margin-bottom:.6rem; }
+  .lives { display:flex; gap:6px; font-size:1.2rem; }
+  .lives span.lost { opacity:.25; filter:grayscale(1); }
+
+  .guess-row { display:flex; flex-direction:column; gap:.5rem; width:100%; }
+  .input-wrap { position:relative; }
   #guessInput {
-    flex:1; padding:.8rem .9rem; background:var(--bg2); border:1px solid var(--border); border-radius:8px;
+    width:100%; padding:.75rem .85rem; background:var(--bg2); border:1px solid var(--border); border-radius:8px;
     color:var(--text); font-family:'Exo 2',sans-serif; font-size:14px; outline:none;
   }
   #guessInput:focus { border-color:var(--gold-dim); }
+  .guess-buttons { display:flex; gap:.5rem; }
   #skipBtn, #submitBtn {
-    padding:.8rem 1rem; border-radius:8px; border:1px solid var(--border); background:var(--bg3);
+    flex:1; padding:.7rem 0; border-radius:8px; border:1px solid var(--border); background:var(--bg3);
     color:var(--text); font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;
   }
   #submitBtn { background:var(--gold-dim); color:#04262a; border-color:var(--gold-dim); }
   #skipBtn:hover, #submitBtn:hover { filter:brightness(1.1); }
 
   #continueBtn {
-    display:none; width:100%; padding:.85rem; margin-bottom:.6rem;
+    display:none; width:100%; padding:.8rem;
     border-radius:8px; border:1px solid var(--gold-dim); background:var(--gold-dim);
-    color:#04262a; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1rem; letter-spacing:.04em;
+    color:#04262a; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:.95rem; letter-spacing:.04em;
     cursor:pointer;
   }
   #continueBtn:hover { filter:brightness(1.1); }
@@ -96,9 +121,13 @@
   .suggestions div:last-child { border-bottom:none; }
   .suggestions div:hover, .suggestions div.active { background:var(--bg3); color:var(--gold); }
 
-  .history { display:flex; flex-direction:column; gap:5px; width:100%; margin-top:.4rem; }
-  .history .h-item { display:flex; align-items:center; gap:.5rem; padding:.45rem .7rem; background:var(--bg2); border:1px solid var(--border); border-radius:6px; font-size:12.5px; }
-  .h-item.wrong { border-color:color-mix(in srgb, var(--bad) 40%, var(--border)); }
+  .history { display:flex; flex-direction:column; gap:5px; width:100%; }
+  .history .h-item {
+    display:flex; align-items:center; gap:.4rem; padding:.5rem .7rem;
+    background:var(--bg3); border:1px solid var(--border); border-radius:6px; font-size:12.5px; color:var(--text2);
+  }
+  .history .h-item.wrong { color:var(--bad); border-color:rgba(226,104,95,.3); }
+  .history .h-item.placeholder { color:var(--text2); font-style:italic; opacity:.6; }
 
   .msg-banner {
     position:fixed; top:14px; left:50%; transform:translateX(-50%);
@@ -129,24 +158,40 @@
 <a class="menu-btn" href="index.html">☰ Menu</a>
 <div class="title">🧩 Pixels</div>
 <div class="subtitle">Devine le jeu avant qu'il soit trop tard — 5 essais par image, 3 vies</div>
-<div class="lives" id="lives"></div>
 
 <div id="loading">Recherche d'une image…</div>
 
 <div id="game">
-  <div class="canvas-wrap"><canvas id="canvas"></canvas></div>
-  <div class="attempt-dots" id="dots"></div>
+  <div class="game-layout">
+    <div class="game-left">
+      <div class="canvas-wrap"><canvas id="canvas"></canvas></div>
+      <div class="attempts-tabs" id="dots"></div>
+    </div>
 
-  <button id="continueBtn">Jeu suivant →</button>
+    <div class="game-right">
+      <div class="status-box" id="statusBox">
+        <div class="status-name" id="statusName"></div>
+        <div class="status-verdict" id="statusVerdict"></div>
+      </div>
 
-  <div class="guess-row">
-    <input id="guessInput" type="text" placeholder="Nom du jeu…" autocomplete="off">
-    <button id="submitBtn">Valider</button>
-    <button id="skipBtn">Passer</button>
-    <div class="suggestions" id="suggestions"></div>
+      <div class="lives" id="lives"></div>
+
+      <div class="guess-row">
+        <div class="input-wrap">
+          <input id="guessInput" type="text" placeholder="Nom du jeu…" autocomplete="off">
+          <div class="suggestions" id="suggestions"></div>
+        </div>
+        <div class="guess-buttons">
+          <button id="submitBtn">Valider</button>
+          <button id="skipBtn">Passer</button>
+        </div>
+      </div>
+
+      <button id="continueBtn">Jeu suivant →</button>
+
+      <div class="history" id="history"></div>
+    </div>
   </div>
-
-  <div class="history" id="history"></div>
 </div>
 
 <div class="msg-banner" id="banner"></div>
@@ -209,6 +254,7 @@
   let streak = 0;
   let finished = false;
   let roundOver = false; // true entre la révélation et le clic sur "Jeu suivant"
+  let attemptsLog = [];  // {text, wrong} par essai utilisé, complété par des "Passé"
 
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
@@ -232,14 +278,17 @@
       el.appendChild(span);
     }
   }
-  function renderDots() {
+  function renderDots(finalState) {
     const el = document.getElementById('dots');
     el.innerHTML = '';
     for (let i = 0; i < MAX_ATTEMPTS; i++) {
-      const span = document.createElement('span');
-      if (i < attempt) span.classList.add('used');
-      else if (i === attempt) span.classList.add('current');
-      el.appendChild(span);
+      const tab = document.createElement('div');
+      tab.className = 'attempt-tab';
+      tab.textContent = i + 1;
+      if (finalState === 'won' && i === attempt) tab.classList.add('correct');
+      else if (i < attempt) tab.classList.add('wrong');
+      else if (i === attempt) tab.classList.add('current');
+      el.appendChild(tab);
     }
   }
 
@@ -330,7 +379,8 @@
 
   async function nextImage() {
     attempt = 0;
-    document.getElementById('history').innerHTML = '';
+    resetHistory();
+    hideStatus();
     document.getElementById('guessInput').value = '';
     document.getElementById('loading').style.display = 'block';
     document.getElementById('loading').textContent = 'Recherche d\'une image…';
@@ -348,7 +398,7 @@
     }
 
     document.getElementById('loading').style.display = 'none';
-    document.getElementById('game').style.display = 'flex';
+    document.getElementById('game').style.display = 'block';
 
     rows = Math.max(5, Math.min(14, Math.round(GRID_COLS * img.height / img.width)));
     resizeCanvasToDisplay();
@@ -358,12 +408,38 @@
     renderDots();
   }
 
-  function addHistory(text, wrong) {
+  function resetHistory() { attemptsLog = []; renderHistoryList(); }
+
+  function pushHistory(text, wrong) {
+    attemptsLog.push({ text, wrong });
+    renderHistoryList();
+  }
+
+  function renderHistoryList() {
     const el = document.getElementById('history');
-    const div = document.createElement('div');
-    div.className = 'h-item' + (wrong ? ' wrong' : '');
-    div.textContent = text;
-    el.prepend(div);
+    el.innerHTML = '';
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      const entry = attemptsLog[i];
+      const div = document.createElement('div');
+      if (entry) {
+        div.className = 'h-item' + (entry.wrong ? ' wrong' : '');
+        div.textContent = entry.text;
+      } else {
+        div.className = 'h-item placeholder';
+        div.textContent = '» Passé';
+      }
+      el.appendChild(div);
+    }
+  }
+
+  function showStatus(name, verdictText, cls) {
+    document.getElementById('statusName').textContent = name;
+    document.getElementById('statusVerdict').textContent = verdictText;
+    document.getElementById('statusBox').className = 'status-box ' + cls;
+    document.getElementById('statusBox').style.display = 'block';
+  }
+  function hideStatus() {
+    document.getElementById('statusBox').style.display = 'none';
   }
 
   function setGuessControlsEnabled(enabled) {
@@ -392,7 +468,8 @@
     lives--;
     renderLives();
     revealToFraction(1);
-    addHistory(`❌ Réponse : ${current.name}`, true);
+    pushHistory(`✕ Réponse : ${current.name}`, true);
+    showStatus(current.name, lives <= 0 ? 'Perdu — bien joué quand même' : 'Perdu cette image', 'lose');
     if (lives <= 0) {
       showBanner('Partie terminée');
       pauseForContinue(gameOver);
@@ -405,7 +482,9 @@
   function winRound() {
     streak++;
     revealToFraction(1);
-    addHistory(`✅ ${current.name} — trouvé en ${attempt + 1}/${MAX_ATTEMPTS}`, false);
+    renderDots('won');
+    pushHistory(`✓ Trouvé en ${attempt + 1}/${MAX_ATTEMPTS}`, false);
+    showStatus(current.name, 'Trouvé ! 🎉', 'win');
     showBanner('Bien joué ! 🎉');
     pauseForContinue(() => { setGuessControlsEnabled(true); nextImage(); });
   }
@@ -421,7 +500,7 @@
         loseLife();
       } else {
         revealToFraction(REVEAL_SCHEDULE[attempt]);
-        addHistory(`✖ ${guessText}`, true);
+        pushHistory(`✕ ${guessText}`, true);
         showBanner('Pas ça…', 1000);
       }
     }
