@@ -174,7 +174,7 @@
   }
   function saveProgress() {
     localStorage.setItem(progressKey(), JSON.stringify({
-      date: puzzle.date, guessesHistory, finished, won
+      puzzleId: puzzle.puzzleId, date: puzzle.date, guessesHistory, finished, won
     }));
   }
 
@@ -350,7 +350,9 @@
 
   function restoreProgress() {
     const saved = loadProgress();
-    if (!saved || saved.date !== puzzle.date) return;
+    if (!saved) return;
+    const sameGeneration = saved.puzzleId ? (saved.puzzleId === puzzle.puzzleId) : (saved.date === puzzle.date);
+    if (!sameGeneration) return;
     guessesHistory = saved.guessesHistory || [];
     finished = !!saved.finished;
     won = !!saved.won;
@@ -366,7 +368,7 @@
   async function init() {
     RemoteStore.init([]);
     try {
-      const res = await fetch('/api/motcache-daily');
+      const res = await fetch('/api/motcache-daily', { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur serveur');
       puzzle = data;

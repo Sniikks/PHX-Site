@@ -4,9 +4,18 @@
 // sur une statistique (date de sortie, note IGDB, popularité).
 //
 // Tous les jeux et leurs stats viennent d'IGDB (pas de fichier JSON
-// local à embarquer dans la fonction — c'était la cause du bug
-// "A server error has occurred" : Vercel ne bundle pas automatiquement
-// un fs.readFileSync sur un fichier non importé statiquement).
+// local à embarquer — c'était la cause du 1er bug : Vercel ne bundle
+// pas automatiquement un fs.readFileSync sur un fichier non importé
+// statiquement, d'où le "A server error has occurred").
+//
+// Filtres appliqués à CHAQUE requête IGDB (pas seulement au champ de
+// la catégorie tirée) :
+//  - version_parent = null                 -> pas de rééditions/GOTY
+//  - first_release_date != null & < "maintenant" -> jeux déjà sortis
+//    uniquement (exclut les jeux annoncés pour 2027/2028 etc.)
+//  - filtre anti-DLC par nom en repli (le filtre IGDB "category = 0"
+//    seul est cassé côté API, comme déjà documenté dans
+//    generate-daily.js/search-games.js — donc filet de nom, testé).
 //
 // La valeur du "challenger" ne doit jamais être visible côté client
 // avant que le joueur ait répondu (sinon triche triviale en F12),
@@ -26,6 +35,23 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const COVER_URL = id => `https://images.igdb.com/igdb/image/upload/t_cover_big/${id}.jpg`;
 
+// Timeout généreux : sur un "cold start" Vercel, le tout premier appel doit
+// négocier le token Twitch OAuth ET interroger IGDB — 3s (valeur par défaut
+// de igdbQuery) peut ne pas suffire pour les deux bouts à bout. On monte à
+// 8s ici, et on retente une fois en cas d'échec/timeout.
+const IGDB_TIMEOUT_MS = 8000;
+
+const DLC_NAME_PATTERN = /\b(dlc|season pass|expansion pass|expansion|add-?on|content pack|bonus content|artbook|art book|soundtrack|ost|skin pack|costume pack|weapon pack|outfit pack|upgrade pack|map pack|character pack|booster pack|challenge pack|premiere club|wallpaper|bundle|chapter|remaster(?:ed)?|definitive edition|goty|anniversary edition|enhanced edition|complete edition|deluxe edition|ultimate edition|hd edition)\b/i;
+// Catégories IGDB à exclure : 1=dlc_addon, 3=bundle, 5=mod, 6=episode, 7=season, 9=remaster, 13=pack, 14=update
+const EXCLUDED_CATEGORIES = new Set([1, 3, 5, 6, 7, 9, 13, 14]);
+
+function isUnwanted(game) {
+  if (EXCLUDED_CATEGORIES.has(game.category)) return true;
+  if (DLC_NAME_PATTERN.test(game.name || '')) return true;
+  if (/\bpack\b/i.test(game.name || '') && !/party pack/i.test(game.name || '')) return true;
+  return false;
+}
+
 const CATEGORIES = {
   release: { label: 'Date de sortie', field: 'first_release_date' },
   rating: { label: 'Note IGDB', field: 'total_rating' },
@@ -43,17 +69,29 @@ function displayValue(category, value) {
   return String(value);
 }
 
-// Récupère un lot de jeux avec jaquette + la stat demandée renseignée,
-// en un seul appel IGDB (évite les allers-retours multiples par jeu).
+// Petite couche de retry autour d'igdbQuery : sur un cold start, un premier
+// timeout/erreur réseau ne doit pas faire échouer tout le round direct.
+async function igdbQueryWithRetry(endpoint, body, attempts = 2) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try { return await igdbQuery(endpoint, body, IGDB_TIMEOUT_MS); }
+    catch (e) { lastErr = e; if (i < attempts - 1) await new Promise(r => setTimeout(r, 400)); }
+  }
+  throw lastErr;
+}
+
+// Récupère un lot de jeux (déjà sortis, sans DLC/rééditions) avec jaquette +
+// la stat demandée renseignée, en un seul appel IGDB.
 async function fetchCandidatePool(category, excludeNames = new Set()) {
   const field = CATEGORIES[category].field;
+  const nowUnix = Math.floor(Date.now() / 1000);
   const offset = Math.floor(Math.random() * 500);
-  const body = `fields name, cover.image_id, ${field}; where version_parent = null & cover != null & ${field} != null; sort follows desc; limit 80; offset ${offset};`;
+  const body = `fields name, category, cover.image_id, ${field}; where version_parent = null & cover != null & ${field} != null & first_release_date != null & first_release_date < ${nowUnix}; sort follows desc; limit 100; offset ${offset};`;
   let results;
-  try { results = await igdbQuery('games', body); } catch (e) { return []; }
+  try { results = await igdbQueryWithRetry('games', body); } catch (e) { return []; }
   if (!Array.isArray(results)) return [];
   return results
-    .filter(g => g.name && g.cover?.image_id && g[field] !== undefined && g[field] !== null && !excludeNames.has(g.name))
+    .filter(g => g.name && g.cover?.image_id && g[field] !== undefined && g[field] !== null && !excludeNames.has(g.name) && !isUnwanted(g))
     .map(g => ({ name: g.name, src: COVER_URL(g.cover.image_id), value: g[field] }));
 }
 
@@ -62,9 +100,9 @@ async function fetchCandidatePool(category, excludeNames = new Set()) {
 async function fetchStatForGame(name, category) {
   const field = CATEGORIES[category].field;
   const cleanName = name.replace(/["\\]/g, '');
-  const body = `search "${cleanName}"; fields name, ${field}; where version_parent = null; limit 5;`;
+  const body = `search "${cleanName}"; fields name, category, ${field}; where version_parent = null; limit 5;`;
   let results;
-  try { results = await igdbQuery('games', body); } catch (e) { return null; }
+  try { results = await igdbQueryWithRetry('games', body); } catch (e) { return null; }
   if (!Array.isArray(results) || !results.length) return null;
   const normalized = cleanName.trim().toLowerCase();
   const best = results.find(r => (r.name || '').trim().toLowerCase() === normalized) || results[0];
@@ -74,7 +112,7 @@ async function fetchStatForGame(name, category) {
 }
 
 async function pickPairForCategory(category, excludeNames = new Set()) {
-  for (let attempt = 0; attempt < 4; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     const pool = await fetchCandidatePool(category, excludeNames);
     if (pool.length >= 2) {
       const base = pool[Math.floor(Math.random() * pool.length)];
@@ -88,15 +126,21 @@ async function pickPairForCategory(category, excludeNames = new Set()) {
 
 async function buildContinuation(category, previousBase) {
   const excludeNames = new Set([previousBase.name]);
-  const pool = await fetchCandidatePool(category, excludeNames);
-  if (!pool.length) return null;
-  const challenger = pool[Math.floor(Math.random() * pool.length)];
-  return { base: previousBase, challenger };
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const pool = await fetchCandidatePool(category, excludeNames);
+    if (pool.length) {
+      const challenger = pool[Math.floor(Math.random() * pool.length)];
+      return { base: previousBase, challenger };
+    }
+  }
+  return null;
 }
 
 function roundKey(id) { return 'pom_round_' + id; }
 
 export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
+
   if (!isIgdbConfigured()) {
     return res.status(500).json({ error: "IGDB non configuré (TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET manquants)." });
   }

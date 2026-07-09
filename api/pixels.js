@@ -34,6 +34,8 @@ async function fetchImageAsDataUri(url) {
 }
 
 export default async function handler(req, res) {
+    res.setHeader('Cache-Control', 'no-store');
+
     if (!isIgdbConfigured()) {
         return res.status(500).json({ error: "IGDB non configuré (TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET manquants)." });
     }

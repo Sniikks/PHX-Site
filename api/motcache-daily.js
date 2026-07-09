@@ -65,6 +65,8 @@ function puzzleKey(date) { return 'motcache_' + date; }
 function secretKey(date) { return 'motcache_secret_' + date; }
 
 export default async function handler(req, res) {
+    res.setHeader('Cache-Control', 'no-store');
+
     if (!isIgdbConfigured()) {
         return res.status(500).json({ error: "IGDB non configuré (TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET manquants)." });
     }
@@ -86,11 +88,17 @@ export default async function handler(req, res) {
         }
 
         const maxTries = Math.min(8, picked.word.length + 1);
+        // Identifiant unique de CETTE génération (pas seulement la date) : si tu
+        // vides les tables Supabase pour forcer un nouveau mot le même jour, ce
+        // puzzleId change, ce qui invalide la progression sauvegardée localement
+        // (sinon le navigateur restaurait l'ancienne partie terminée en pensant
+        // que "même date" = "même partie").
+        const puzzleId = dateStr + '_' + Math.random().toString(36).slice(2, 8);
 
-        const secret = { word: picked.word, name: picked.name, cover: picked.cover };
+        const secret = { word: picked.word, name: picked.name, cover: picked.cover, puzzleId };
         await supabase.from('app_data').upsert({ id: secretKey(dateStr), data: secret, updated_at: new Date().toISOString() });
 
-        const publicData = { date: dateStr, wordLength: picked.word.length, maxTries };
+        const publicData = { date: dateStr, puzzleId, wordLength: picked.word.length, maxTries };
         await supabase.from('app_data').upsert({ id: puzzleKey(dateStr), data: publicData, updated_at: new Date().toISOString() });
 
         usedWords.add(picked.word);

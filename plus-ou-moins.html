@@ -208,7 +208,7 @@
     document.getElementById('loading').style.display = 'block';
     document.getElementById('game').style.display = 'none';
     try {
-      const res = await fetch('/api/plusoumoins');
+      const res = await fetch('/api/plusoumoins', { cache: 'no-store' });
       const round = await safeJson(res);
       if (!res.ok) throw new Error(round.error || 'Erreur serveur');
       document.getElementById('loading').style.display = 'none';
