@@ -46,10 +46,15 @@
 
   .grid {
     display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));
     gap:1.2rem;
-    width:100%;
-    max-width:900px;
+    justify-content:center;
+  }
+  .grid-nonjeux {
+    grid-template-columns:repeat(3, 190px);
+  }
+  .grid-jeux {
+    grid-template-columns:repeat(6, 190px);
+    margin-top:1.2rem;
   }
 
   .tile {
@@ -107,16 +112,18 @@
   }
 
   @media (min-width:641px) and (max-width:1024px) {
-    .grid { grid-template-columns:repeat(3, 1fr); max-width:640px; }
+    .grid-nonjeux { grid-template-columns:repeat(3, 1fr); max-width:640px; width:100%; }
+    .grid-jeux { grid-template-columns:repeat(3, 1fr); max-width:640px; width:100%; }
   }
 
   @media (max-width:640px) {
     body { padding:1.4rem .9rem; }
     .subtitle { margin-bottom:1.6rem; }
-    .grid {
+    .grid-nonjeux, .grid-jeux {
       grid-template-columns:repeat(2, 1fr);
       gap:.7rem;
       max-width:480px;
+      width:100%;
     }
     .tile { aspect-ratio:1/1; border-radius:2px; gap:.55rem; }
     .tile-icon { font-size:1.9rem; }
@@ -141,17 +148,7 @@
   <div class="title">Pignoufs Hyper Xaotiques</div>
   <div class="subtitle">Choisis un onglet</div>
 
-  <div class="grid">
-    <a class="tile" href="bracket-jeux.html">
-      <div class="tile-icon">🏆</div>
-      <div class="tile-label">Bracket</div>
-    </a>
-
-    <a class="tile" href="zoomjeu.html">
-      <div class="tile-icon">🔍</div>
-      <div class="tile-label">ZoomJeu</div>
-    </a>
-
+  <div class="grid grid-nonjeux">
     <a class="tile" href="proposition.html">
       <div class="tile-icon">🎮</div>
       <div class="tile-label">Proposition<br>de Jeux</div>
@@ -166,6 +163,18 @@
       <div class="tile-icon">✋🏿</div>
       <div class="tile-label">Jeux <br>de 369</div>
       </a>
+  </div>
+
+  <div class="grid grid-jeux">
+    <a class="tile" href="bracket-jeux.html">
+      <div class="tile-icon">🏆</div>
+      <div class="tile-label">Bracket</div>
+    </a>
+
+    <a class="tile" href="zoomjeu.html">
+      <div class="tile-icon">🔍</div>
+      <div class="tile-label">ZoomJeu</div>
+    </a>
 
         <a class="tile" href="tierlistjeux.html">
       <div class="tile-icon">📊</div>
