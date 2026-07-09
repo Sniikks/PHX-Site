@@ -3,139 +3,167 @@
 // Jeu "Plus ou moins" (higher/lower) : compare deux jeux vidéo
 // sur une statistique (date de sortie, note IGDB, popularité).
 //
+// Tous les jeux et leurs stats viennent d'IGDB (pas de fichier JSON
+// local à embarquer — c'était la cause du 1er bug : Vercel ne bundle
+// pas automatiquement un fs.readFileSync sur un fichier non importé
+// statiquement, d'où le "A server error has occurred").
+//
+// Filtres appliqués à CHAQUE requête IGDB (pas seulement au champ de
+// la catégorie tirée) :
+//  - version_parent = null                 -> pas de rééditions/GOTY
+//  - first_release_date != null & < "maintenant" -> jeux déjà sortis
+//    uniquement (exclut les jeux annoncés pour 2027/2028 etc.)
+//  - filtre anti-DLC par nom en repli (le filtre IGDB "category = 0"
+//    seul est cassé côté API, comme déjà documenté dans
+//    generate-daily.js/search-games.js — donc filet de nom, testé).
+//
 // La valeur du "challenger" ne doit jamais être visible côté client
 // avant que le joueur ait répondu (sinon triche triviale en F12),
-// donc chaque round est stocké côté serveur (table app_data,
-// même pattern que zoomjeu_secret_*) et vérifié ici.
+// donc chaque round est stocké côté serveur (table app_data, même
+// pattern que zoomjeu_secret_*) et vérifié ici.
 //
-// GET  /api/plusoumoins?action=start                     -> nouveau round
+// GET  /api/plusoumoins                                    -> nouveau round
 // POST /api/plusoumoins  { roundId, guess:'higher'|'lower'} -> vérifie + round suivant
-//
-// Source des jeux : bracket_games.json (pool déjà utilisé par
-// bracket-jeux.html), enrichi à la volée par IGDB (mêmes identifiants
-// Twitch que generate-daily.js / search-games.js — pas de nouvelle
-// variable d'env nécessaire).
 // ==========================================================
 
 import { createClient } from '@supabase/supabase-js';
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
 import { igdbQuery, isIgdbConfigured } from './_igdb.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const POOL_PATH = fileURLToPath(new URL('../bracket_games.json', import.meta.url));
-let POOL = null;
-function getPool() {
-  if (!POOL) POOL = JSON.parse(readFileSync(POOL_PATH, 'utf-8'));
-  return POOL;
+const COVER_URL = id => `https://images.igdb.com/igdb/image/upload/t_cover_big/${id}.jpg`;
+
+// Timeout généreux : sur un "cold start" Vercel, le tout premier appel doit
+// négocier le token Twitch OAuth ET interroger IGDB — 3s (valeur par défaut
+// de igdbQuery) peut ne pas suffire pour les deux bouts à bout. On monte à
+// 8s ici, et on retente une fois en cas d'échec/timeout.
+const IGDB_TIMEOUT_MS = 8000;
+
+const DLC_NAME_PATTERN = /\b(dlc|season pass|expansion pass|expansion|add-?on|content pack|bonus content|artbook|art book|soundtrack|ost|skin pack|costume pack|weapon pack|outfit pack|upgrade pack|map pack|character pack|booster pack|challenge pack|premiere club|wallpaper|bundle|chapter|remaster(?:ed)?|definitive edition|goty|anniversary edition|enhanced edition|complete edition|deluxe edition|ultimate edition|hd edition)\b/i;
+// Catégories IGDB à exclure : 1=dlc_addon, 3=bundle, 5=mod, 6=episode, 7=season, 9=remaster, 13=pack, 14=update
+const EXCLUDED_CATEGORIES = new Set([1, 3, 5, 6, 7, 9, 13, 14]);
+
+function isUnwanted(game) {
+  if (EXCLUDED_CATEGORIES.has(game.category)) return true;
+  if (DLC_NAME_PATTERN.test(game.name || '')) return true;
+  if (/\bpack\b/i.test(game.name || '') && !/party pack/i.test(game.name || '')) return true;
+  return false;
 }
 
 const CATEGORIES = {
-  release: { label: 'Date de sortie', field: 'first_release_date', unit: 'date' },
-  rating: { label: 'Note IGDB', field: 'total_rating', unit: 'score' },
-  popularity: { label: 'Popularité (follows IGDB)', field: 'follows', unit: 'count' }
+  release: { label: 'Date de sortie', field: 'first_release_date' },
+  rating: { label: 'Note IGDB', field: 'total_rating' },
+  popularity: { label: 'Popularité (follows IGDB)', field: 'follows' }
 };
 
 function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 function displayValue(category, value) {
   if (category === 'release') {
-    const d = new Date(value * 1000);
-    return d.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
+    return new Date(value * 1000).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
   }
   if (category === 'rating') return `${Math.round(value)} / 100`;
   if (category === 'popularity') return `${value} follows`;
   return String(value);
 }
 
-// Interroge IGDB pour UN jeu et retourne la valeur de la catégorie demandée (ou null).
-async function fetchStat(name, category) {
-  const field = CATEGORIES[category].field;
-  const cleanName = name.replace(/["\\]/g, '');
-  const body = `search "${cleanName}"; fields name,first_release_date,total_rating,rating,follows,hypes; where version_parent = null; limit 5;`;
-  let results;
-  try {
-    results = await igdbQuery('games', body);
-  } catch (e) {
-    return null;
+// Petite couche de retry autour d'igdbQuery : sur un cold start, un premier
+// timeout/erreur réseau ne doit pas faire échouer tout le round direct.
+async function igdbQueryWithRetry(endpoint, body, attempts = 2) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try { return await igdbQuery(endpoint, body, IGDB_TIMEOUT_MS); }
+    catch (e) { lastErr = e; if (i < attempts - 1) await new Promise(r => setTimeout(r, 400)); }
   }
-  if (!Array.isArray(results) || !results.length) return null;
-
-  // Meilleure correspondance : nom exact (insensible casse) sinon 1er résultat.
-  const normalized = cleanName.trim().toLowerCase();
-  const best = results.find(r => (r.name || '').trim().toLowerCase() === normalized) || results[0];
-
-  let value = best[field];
-  if (value === undefined || value === null) {
-    // Filets de repli : rating -> total_rating, follows -> hypes
-    if (category === 'rating') value = best.total_rating ?? best.rating;
-    if (category === 'popularity') value = best.follows ?? best.hypes;
-  }
-  if (value === undefined || value === null) return null;
-  return { value, matchedName: best.name };
+  throw lastErr;
 }
 
-// Tire un jeu au hasard dans le pool ayant une statistique exploitable pour la catégorie,
-// en excluant les noms déjà utilisés dans ce round. Plusieurs tentatives bornées.
-async function pickGameWithStat(category, excludeNames, maxTries = 8) {
-  const pool = getPool();
-  const tried = new Set();
-  for (let i = 0; i < maxTries; i++) {
-    const candidate = pickRandom(pool);
-    if (excludeNames.has(candidate.name) || tried.has(candidate.name)) continue;
-    tried.add(candidate.name);
-    const stat = await fetchStat(candidate.name, category);
-    if (stat) {
-      return { name: candidate.name, src: candidate.src, value: stat.value };
+// Récupère un lot de jeux (déjà sortis, sans DLC/rééditions) avec jaquette +
+// la stat demandée renseignée, en un seul appel IGDB.
+async function fetchCandidatePool(category, excludeNames = new Set()) {
+  const field = CATEGORIES[category].field;
+  const nowUnix = Math.floor(Date.now() / 1000);
+  const offset = Math.floor(Math.random() * 500);
+  const body = `fields name, category, cover.image_id, ${field}; where version_parent = null & cover != null & ${field} != null & first_release_date != null & first_release_date < ${nowUnix}; sort follows desc; limit 100; offset ${offset};`;
+  let results;
+  try { results = await igdbQueryWithRetry('games', body); } catch (e) { return []; }
+  if (!Array.isArray(results)) return [];
+  return results
+    .filter(g => g.name && g.cover?.image_id && g[field] !== undefined && g[field] !== null && !excludeNames.has(g.name) && !isUnwanted(g))
+    .map(g => ({ name: g.name, src: COVER_URL(g.cover.image_id), value: g[field] }));
+}
+
+// Cherche la stat d'UN jeu précis dans une catégorie donnée (utilisé quand le
+// challenger gagnant devient la nouvelle base et que la catégorie change).
+async function fetchStatForGame(name, category) {
+  const field = CATEGORIES[category].field;
+  const cleanName = name.replace(/["\\]/g, '');
+  const body = `search "${cleanName}"; fields name, category, ${field}; where version_parent = null; limit 5;`;
+  let results;
+  try { results = await igdbQueryWithRetry('games', body); } catch (e) { return null; }
+  if (!Array.isArray(results) || !results.length) return null;
+  const normalized = cleanName.trim().toLowerCase();
+  const best = results.find(r => (r.name || '').trim().toLowerCase() === normalized) || results[0];
+  const value = best[field];
+  if (value === undefined || value === null) return null;
+  return value;
+}
+
+async function pickPairForCategory(category, excludeNames = new Set()) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const pool = await fetchCandidatePool(category, excludeNames);
+    if (pool.length >= 2) {
+      const base = pool[Math.floor(Math.random() * pool.length)];
+      let challenger;
+      do { challenger = pool[Math.floor(Math.random() * pool.length)]; } while (challenger.name === base.name);
+      return { base, challenger };
     }
   }
   return null;
 }
 
-async function buildRound(category, baseGame) {
-  const excludeNames = new Set([baseGame.name]);
-  const challenger = await pickGameWithStat(category, excludeNames);
-  if (!challenger) return null;
-  return { base: baseGame, challenger };
-}
-
-async function startNewGame() {
-  const category = pickRandom(Object.keys(CATEGORIES));
-  const base = await pickGameWithStat(category, new Set());
-  if (!base) return null;
-  const round = await buildRound(category, base);
-  if (!round) return null;
-  return { category, ...round };
+async function buildContinuation(category, previousBase) {
+  const excludeNames = new Set([previousBase.name]);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const pool = await fetchCandidatePool(category, excludeNames);
+    if (pool.length) {
+      const challenger = pool[Math.floor(Math.random() * pool.length)];
+      return { base: previousBase, challenger };
+    }
+  }
+  return null;
 }
 
 function roundKey(id) { return 'pom_round_' + id; }
 
 export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
+
   if (!isIgdbConfigured()) {
     return res.status(500).json({ error: "IGDB non configuré (TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET manquants)." });
   }
 
   try {
     if (req.method === 'GET') {
-      const built = await startNewGame();
-      if (!built) return res.status(503).json({ error: "Impossible de trouver deux jeux comparables pour l'instant, réessaie." });
+      const category = pickRandom(Object.keys(CATEGORIES));
+      const pair = await pickPairForCategory(category);
+      if (!pair) return res.status(503).json({ error: "Impossible de trouver deux jeux comparables pour l'instant, réessaie." });
 
       const roundId = Math.random().toString(36).slice(2) + Date.now().toString(36);
       await supabase.from('app_data').upsert({
         id: roundKey(roundId),
-        data: { category: built.category, base: built.base, challenger: built.challenger },
+        data: { category, base: pair.base, challenger: pair.challenger },
         updated_at: new Date().toISOString()
       });
 
       return res.status(200).json({
         roundId,
-        category: built.category,
-        categoryLabel: CATEGORIES[built.category].label,
-        base: { name: built.base.name, src: built.base.src, displayValue: displayValue(built.category, built.base.value) },
-        challenger: { name: built.challenger.name, src: built.challenger.src }
+        category,
+        categoryLabel: CATEGORIES[category].label,
+        base: { name: pair.base.name, src: pair.base.src, displayValue: displayValue(category, pair.base.value) },
+        challenger: { name: pair.challenger.name, src: pair.challenger.src }
       });
     }
 
@@ -148,8 +176,8 @@ export default async function handler(req, res) {
       if (!row || !row.data) return res.status(404).json({ error: 'Round introuvable ou expiré.' });
 
       const { category, base, challenger } = row.data;
-      const actualHigher = challenger.value > base.value;
       const actualEqual = challenger.value === base.value;
+      const actualHigher = challenger.value > base.value;
       const correct = actualEqual ? true : (guess === 'higher' ? actualHigher : !actualHigher);
 
       const reveal = {
@@ -161,30 +189,25 @@ export default async function handler(req, res) {
         return res.status(200).json({ correct: false, reveal });
       }
 
-      // Bonne réponse : le challenger devient la nouvelle base, on tire un nouveau challenger.
+      // Bonne réponse : le challenger devient la nouvelle base. Nouvelle catégorie tirée au hasard.
       const nextCategory = pickRandom(Object.keys(CATEGORIES));
-      const newBase = { name: challenger.name, src: challenger.src, value: challenger.value };
-      // Si la catégorie change, la "value" de la nouvelle base doit être ré-interrogée dans la nouvelle catégorie.
-      let nextBase = newBase;
+      let nextBaseValue = challenger.value;
+      let finalCategory = category;
       if (nextCategory !== category) {
-        const stat = await fetchStat(challenger.name, nextCategory);
-        if (!stat) {
-          // repli : on reste sur la même catégorie si la nouvelle ne donne rien pour ce jeu
-          nextBase = newBase;
-        } else {
-          nextBase = { name: challenger.name, src: challenger.src, value: stat.value };
-        }
+        const stat = await fetchStatForGame(challenger.name, nextCategory);
+        if (stat !== null) { nextBaseValue = stat; finalCategory = nextCategory; }
       }
-      const finalCategory = (nextCategory !== category && nextBase !== newBase) ? nextCategory : category;
-      const nextRound = await buildRound(finalCategory, nextBase);
-      if (!nextRound) {
+      const nextBase = { name: challenger.name, src: challenger.src, value: nextBaseValue };
+
+      const continuation = await buildContinuation(finalCategory, nextBase);
+      if (!continuation) {
         return res.status(200).json({ correct: true, reveal, gameEnded: true });
       }
 
       const newRoundId = Math.random().toString(36).slice(2) + Date.now().toString(36);
       await supabase.from('app_data').upsert({
         id: roundKey(newRoundId),
-        data: { category: finalCategory, base: nextRound.base, challenger: nextRound.challenger },
+        data: { category: finalCategory, base: continuation.base, challenger: continuation.challenger },
         updated_at: new Date().toISOString()
       });
 
@@ -195,8 +218,8 @@ export default async function handler(req, res) {
           roundId: newRoundId,
           category: finalCategory,
           categoryLabel: CATEGORIES[finalCategory].label,
-          base: { name: nextRound.base.name, src: nextRound.base.src, displayValue: displayValue(finalCategory, nextRound.base.value) },
-          challenger: { name: nextRound.challenger.name, src: nextRound.challenger.src }
+          base: { name: continuation.base.name, src: continuation.base.src, displayValue: displayValue(finalCategory, continuation.base.value) },
+          challenger: { name: continuation.challenger.name, src: continuation.challenger.src }
         }
       });
     }

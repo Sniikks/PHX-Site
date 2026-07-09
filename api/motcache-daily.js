@@ -87,7 +87,7 @@ export default async function handler(req, res) {
             return res.status(503).json({ error: "Impossible de trouver un mot pour aujourd'hui, réessaie dans un instant." });
         }
 
-        const maxTries = Math.min(8, picked.word.length + 1);
+        const maxTries = 6;
         // Identifiant unique de CETTE génération (pas seulement la date) : si tu
         // vides les tables Supabase pour forcer un nouveau mot le même jour, ce
         // puzzleId change, ce qui invalide la progression sauvegardée localement

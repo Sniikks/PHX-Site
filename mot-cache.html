@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>PHX - Mot Caché</title>
-<meta name="description" content="Devine le nom du jeu vidéo caché en 6 essais, façon Wordle.">
+<meta name="description" content="Devine le nom du jeu vidéo caché en plusieurs essais, façon Wordle. Le mot du jour est le même pour tout le monde.">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -45,24 +45,14 @@
   }
   .menu-btn:hover { background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.24); color:#fff; }
 
-  .title {
-    font-family:'Rajdhani',sans-serif;
-    font-size:clamp(1.3rem,4vw,1.9rem);
-    font-weight:700;
-    letter-spacing:.1em;
-    color:var(--gold);
-    text-transform:uppercase;
-  }
+  .title { font-family:'Rajdhani',sans-serif; font-size:clamp(1.3rem,4vw,1.9rem); font-weight:700; letter-spacing:.1em; color:var(--gold); text-transform:uppercase; }
   .subtitle { color:var(--text2); font-size:12.5px; margin-top:.35rem; margin-bottom:1.4rem; letter-spacing:.03em; text-align:center; }
 
-  #loading { color:var(--text2); font-size:13px; margin-top:2rem; }
+  #loading { color:var(--text2); font-size:13px; margin-top:2rem; text-align:center; max-width:320px; }
 
   #game { display:none; flex-direction:column; align-items:center; width:100%; max-width:480px; }
 
-  .grid {
-    display:flex; flex-direction:column; gap:6px;
-    margin-bottom:1.4rem;
-  }
+  .grid { display:flex; flex-direction:column; gap:6px; margin-bottom:1.4rem; }
   .row { display:flex; gap:6px; justify-content:center; }
   .cell {
     width:44px; height:44px;
@@ -77,12 +67,7 @@
   .cell.pop { animation:pop .12s ease; }
   @keyframes pop { 0%{transform:scale(1)} 50%{transform:scale(1.08)} 100%{transform:scale(1)} }
   .cell.flip { animation:flip .5s ease forwards; }
-  @keyframes flip {
-    0% { transform:rotateX(0deg); }
-    50% { transform:rotateX(90deg); }
-    51% { }
-    100% { transform:rotateX(0deg); }
-  }
+  @keyframes flip { 0%{transform:rotateX(0deg);} 50%{transform:rotateX(90deg);} 100%{transform:rotateX(0deg);} }
   .cell.correct { background:var(--good); border-color:var(--good); color:#08130c; }
   .cell.present { background:var(--warn); border-color:var(--warn); color:#1a1206; }
   .cell.absent  { background:var(--bg3); border-color:var(--bg3); color:var(--text2); }
@@ -103,6 +88,7 @@
   .key.present { background:var(--warn); color:#1a1206; }
   .key.absent  { background:#232634; color:var(--text2); }
   .key:hover:not(.correct):not(.present):not(.absent) { background:#232634; }
+  .key:disabled { opacity:.4; cursor:default; }
 
   .msg-banner {
     position:fixed; top:14px; left:50%; transform:translateX(-50%);
@@ -113,38 +99,22 @@
   }
   .msg-banner.show { opacity:1; top:22px; }
 
-  .result-modal {
-    position:fixed; inset:0; background:rgba(0,0,0,.72);
-    display:none; align-items:center; justify-content:center; z-index:900; padding:1.2rem;
-  }
+  .result-modal { position:fixed; inset:0; background:rgba(0,0,0,.72); display:none; align-items:center; justify-content:center; z-index:900; padding:1.2rem; }
   .result-modal.open { display:flex; }
-  .result-box {
-    background:var(--bg2); border:1px solid var(--border); border-radius:16px;
-    padding:1.8rem; max-width:360px; width:100%; text-align:center;
-  }
+  .result-box { background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:1.8rem; max-width:360px; width:100%; text-align:center; }
   .result-box img { width:100%; border-radius:10px; margin-bottom:1rem; border:1px solid var(--border); }
   .result-title { font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.3rem; letter-spacing:.06em; margin-bottom:.3rem; }
   .result-title.win { color:var(--good); }
   .result-title.lose { color:var(--bad); }
-  .result-name { color:var(--gold); font-weight:700; font-size:1.15rem; margin-bottom:.9rem; }
-  .result-stats { display:flex; justify-content:center; gap:1.6rem; margin-bottom:1.1rem; }
-  .stat-num { font-family:'Rajdhani',sans-serif; font-size:1.5rem; font-weight:700; color:var(--text); }
-  .stat-label { font-size:10px; color:var(--text2); letter-spacing:.06em; text-transform:uppercase; }
+  .result-name { color:var(--gold); font-weight:700; font-size:1.15rem; margin-bottom:1.1rem; }
   .result-actions { display:flex; gap:.6rem; justify-content:center; flex-wrap:wrap; }
-  .btn-io {
-    padding:.6rem 1.1rem; background:var(--bg3); border:1px solid var(--border); border-radius:8px;
-    color:var(--text); font-size:12.5px; font-weight:600; cursor:pointer;
-  }
+  .btn-io { padding:.6rem 1.1rem; background:var(--bg3); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:12.5px; font-weight:600; cursor:pointer; }
   .btn-io:hover { border-color:var(--gold-dim); color:var(--gold); }
   .btn-io.primary { background:var(--gold-dim); color:#04262a; border-color:var(--gold-dim); }
 
-  .solvers { margin-top:.9rem; font-size:11.5px; color:var(--text2); max-width:300px; }
-  .solvers b { color:var(--text); }
 
-  @media (max-width:420px) {
-    .cell { width:38px; height:38px; font-size:1.1rem; }
-    .key { height:44px; }
-  }
+
+  @media (max-width:420px) { .cell { width:38px; height:38px; font-size:1.1rem; } .key { height:44px; } }
 </style>
 <link rel="stylesheet" href="cyber-theme.css">
 </head>
@@ -152,9 +122,9 @@
 
 <a class="menu-btn" href="index.html">☰ Menu</a>
 <div class="title">🔤 Mot Caché</div>
-<div class="subtitle" id="subtitle">Devine le jeu vidéo du jour en 6 essais</div>
+<div class="subtitle" id="subtitle">Devine le jeu vidéo du jour — même mot pour tout le monde</div>
 
-<div id="loading">Chargement du pool de jeux…</div>
+<div id="loading">Chargement du mot du jour…</div>
 
 <div id="game">
   <div class="grid" id="grid"></div>
@@ -165,15 +135,9 @@
 
 <div class="result-modal" id="resultModal">
   <div class="result-box">
-    <img id="resultImg" src="" alt="">
+    <img id="resultImg" src="" alt="" style="display:none;">
     <div class="result-title" id="resultTitle"></div>
     <div class="result-name" id="resultName"></div>
-    <div class="result-stats">
-      <div><div class="stat-num" id="statStreak">0</div><div class="stat-label">Série</div></div>
-      <div><div class="stat-num" id="statMax">0</div><div class="stat-label">Record</div></div>
-      <div><div class="stat-num" id="statPlayed">0</div><div class="stat-label">Joués</div></div>
-    </div>
-    <div class="solvers" id="solversList"></div>
     <div class="result-actions">
       <button class="btn-io primary" id="closeResultBtn">Fermer</button>
     </div>
@@ -186,77 +150,26 @@
 <script src="nav.js"></script>
 <script>
 (function () {
-  const LAUNCH_DATE = '2026-01-01';
-
-  function normalize(str) {
-    return String(str || '')
-      .toUpperCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^A-Z]/g, '');
-  }
-
-  function getParisDateString(offsetDays = 0) {
-    const now = new Date(Date.now() + offsetDays * 86400000);
-    const parts = new Intl.DateTimeFormat('en-CA', { timeZone:'Europe/Paris', year:'numeric', month:'2-digit', day:'2-digit' }).formatToParts(now);
-    const get = t => parts.find(p => p.type === t).value;
-    return `${get('year')}-${get('month')}-${get('day')}`;
-  }
-  function dayIndex(dateStr) {
-    const d1 = new Date(`${LAUNCH_DATE}T00:00:00Z`);
-    const d2 = new Date(`${dateStr}T00:00:00Z`);
-    return Math.max(0, Math.round((d2 - d1) / 86400000));
-  }
-
-  // ── Construit le pool de mots à partir de bracket_games.json :
-  // on ne garde que les jeux dont le nom est un seul mot de 5 à 9 lettres,
-  // pour rester fidèle à l'esprit "Portal / Skyrim / Halo / Celeste".
-  async function buildPool() {
-    const res = await fetch('bracket_games.json');
-    const games = await res.json();
-    const seen = new Set();
-    const pool = [];
-    games.forEach(g => {
-      const name = (g.name || '').trim();
-      if (!name || name.includes(' ')) return;
-      const core = name.split(/[:\-]/)[0].trim();
-      if (core.includes(' ')) return;
-      const clean = normalize(core);
-      if (clean.length < 5 || clean.length > 9) return;
-      if (seen.has(clean)) return;
-      seen.add(clean);
-      pool.push({ word: clean, name, src: g.src });
-    });
-    pool.sort((a, b) => a.word.localeCompare(b.word)); // ordre stable dans le temps
-    return pool;
-  }
-
   const ROWS_LABELS = [
     ['A','Z','E','R','T','Y','U','I','O','P'],
     ['Q','S','D','F','G','H','J','K','L','M'],
     ['ENTER','W','X','C','V','B','N','←']
   ];
 
-  let target = null;     // { word, name, src }
-  let maxTries = 6;
+  let puzzle = null;      // { date, wordLength, maxTries }
   let wordLen = 5;
+  let maxTries = 6;
   let curRow = 0;
   let curGuess = '';
   let finished = false;
-  let letterStates = {}; // letter -> 'correct'|'present'|'absent'
-  let pseudo = null;
-  const todayKey = getParisDateString();
-  const statsKey = 'motcache_stats';
-
-  function loadStats() {
-    try { return JSON.parse(localStorage.getItem(statsKey)) || { played:0, wins:0, streak:0, maxStreak:0, lastWinDate:null }; }
-    catch (e) { return { played:0, wins:0, streak:0, maxStreak:0, lastWinDate:null }; }
-  }
-  function saveStats(s) { localStorage.setItem(statsKey, JSON.stringify(s)); }
+  let won = false;
+  let letterStates = {};
+  let guessesHistory = []; // [{ guess, result }]
+  let submitting = false;
 
   function showBanner(text, ms = 1500) {
     const b = document.getElementById('banner');
-    b.textContent = text;
-    b.classList.add('show');
+    b.textContent = text; b.classList.add('show');
     clearTimeout(showBanner._t);
     showBanner._t = setTimeout(() => b.classList.remove('show'), ms);
   }
@@ -266,12 +179,10 @@
     grid.innerHTML = '';
     for (let r = 0; r < maxTries; r++) {
       const row = document.createElement('div');
-      row.className = 'row';
-      row.id = 'row-' + r;
+      row.className = 'row'; row.id = 'row-' + r;
       for (let c = 0; c < wordLen; c++) {
         const cell = document.createElement('div');
-        cell.className = 'cell';
-        cell.id = `cell-${r}-${c}`;
+        cell.className = 'cell'; cell.id = `cell-${r}-${c}`;
         row.appendChild(cell);
       }
       grid.appendChild(row);
@@ -304,18 +215,15 @@
     });
   }
 
+  function lockInputs(locked) {
+    document.querySelectorAll('.key').forEach(k => k.disabled = locked);
+  }
+
   function handleKey(k) {
-    if (finished) return;
+    if (finished || submitting) return;
     if (k === 'ENTER') { submitGuess(); return; }
-    if (k === '←') {
-      curGuess = curGuess.slice(0, -1);
-      renderCurrentRow();
-      return;
-    }
-    if (/^[A-Z]$/.test(k) && curGuess.length < wordLen) {
-      curGuess += k;
-      renderCurrentRow(true);
-    }
+    if (k === '←') { curGuess = curGuess.slice(0, -1); renderCurrentRow(); return; }
+    if (/^[A-Z]$/.test(k) && curGuess.length < wordLen) { curGuess += k; renderCurrentRow(true); }
   }
 
   function renderCurrentRow(pop) {
@@ -324,53 +232,8 @@
       const letter = curGuess[c] || '';
       cell.textContent = letter;
       cell.classList.toggle('filled', !!letter);
-      if (pop && c === curGuess.length - 1) {
-        cell.classList.remove('pop'); void cell.offsetWidth; cell.classList.add('pop');
-      }
+      if (pop && c === curGuess.length - 1) { cell.classList.remove('pop'); void cell.offsetWidth; cell.classList.add('pop'); }
     }
-  }
-
-  function submitGuess() {
-    if (curGuess.length !== wordLen) { showBanner('Pas assez de lettres'); shakeRow(); return; }
-
-    const guess = curGuess;
-    const answer = target.word;
-    const result = new Array(wordLen).fill('absent');
-    const answerLetters = answer.split('');
-    const used = new Array(wordLen).fill(false);
-
-    for (let i = 0; i < wordLen; i++) {
-      if (guess[i] === answerLetters[i]) { result[i] = 'correct'; used[i] = true; }
-    }
-    for (let i = 0; i < wordLen; i++) {
-      if (result[i] === 'correct') continue;
-      const idx = answerLetters.findIndex((l, j) => l === guess[i] && !used[j]);
-      if (idx !== -1) { result[i] = 'present'; used[idx] = true; }
-    }
-
-    for (let c = 0; c < wordLen; c++) {
-      const cell = document.getElementById(`cell-${curRow}-${c}`);
-      setTimeout(() => {
-        cell.classList.add('flip');
-        cell.classList.add(result[c]);
-        const letter = guess[c];
-        const rank = { absent:0, present:1, correct:2 };
-        if (!letterStates[letter] || rank[result[c]] > rank[letterStates[letter]]) {
-          letterStates[letter] = result[c];
-        }
-      }, c * 90);
-    }
-
-    setTimeout(() => {
-      refreshKeyboardColors();
-      if (guess === answer) {
-        endGame(true);
-      } else if (curRow === maxTries - 1) {
-        endGame(false);
-      } else {
-        curRow++; curGuess = '';
-      }
-    }, wordLen * 90 + 200);
   }
 
   function shakeRow() {
@@ -380,70 +243,74 @@
     setTimeout(() => { row.style.transform = ''; }, 120);
   }
 
-  function ensurePseudo() {
-    pseudo = localStorage.getItem('phx_pseudo');
-    if (!pseudo) {
-      pseudo = (prompt('Ton pseudo (pour le classement du jour, optionnel) :', '') || '').trim().slice(0, 24) || null;
-      if (pseudo) localStorage.setItem('phx_pseudo', pseudo);
-    }
-    return pseudo;
-  }
+  async function submitGuess() {
+    if (curGuess.length !== wordLen) { showBanner('Pas assez de lettres'); shakeRow(); return; }
+    submitting = true;
+    lockInputs(true);
 
-  async function endGame(won) {
-    finished = true;
-    const s = loadStats();
-    s.played++;
-    if (won) {
-      s.wins++;
-      if (s.lastWinDate !== todayKey) {
-        s.streak = (s.lastWinDate === yesterdayKey()) ? s.streak + 1 : 1;
-      }
-      s.lastWinDate = todayKey;
-    } else {
-      s.streak = 0;
-    }
-    s.maxStreak = Math.max(s.maxStreak || 0, s.streak);
-    saveStats(s);
-
-    document.getElementById('resultImg').src = target.src || '';
-    document.getElementById('resultTitle').textContent = won ? '🎉 Gagné !' : '💀 Perdu';
-    document.getElementById('resultTitle').className = 'result-title ' + (won ? 'win' : 'lose');
-    document.getElementById('resultName').textContent = target.name;
-    document.getElementById('statStreak').textContent = s.streak;
-    document.getElementById('statMax').textContent = s.maxStreak;
-    document.getElementById('statPlayed').textContent = s.played;
-    document.getElementById('resultModal').classList.add('open');
-
-    // Partage optionnel du résultat du jour avec les potes (clé partagée Supabase)
     try {
-      const key = 'motcache_' + todayKey;
-      await RemoteStore.init([key]);
-      const list = RemoteStore.get(key, []) || [];
-      const name = ensurePseudo();
-      if (name && !list.some(e => e.pseudo === name)) {
-        list.push({ pseudo: name, tries: curRow + 1, won });
-        RemoteStore.set(key, list);
+      const res = await fetch('/api/motcache-guess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guess: curGuess, isFinalAttempt: curRow === maxTries - 1 })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+
+      const guess = curGuess;
+      const result = data.result;
+
+      for (let c = 0; c < wordLen; c++) {
+        const cell = document.getElementById(`cell-${curRow}-${c}`);
+        setTimeout(() => {
+          cell.classList.add('flip');
+          cell.classList.add(result[c]);
+          cell.textContent = guess[c];
+          const rank = { absent:0, present:1, correct:2 };
+          if (!letterStates[guess[c]] || rank[result[c]] > rank[letterStates[guess[c]]]) letterStates[guess[c]] = result[c];
+        }, c * 90);
       }
-      renderSolvers(list, name);
-    } catch (e) { /* pas grave si hors-ligne */ }
+
+      guessesHistory.push({ guess, result });
+
+      setTimeout(() => {
+        refreshKeyboardColors();
+        submitting = false;
+        if (data.correct) {
+          finished = true; won = true;
+          lockInputs(true);
+          showResult(data.reveal, true);
+        } else if (curRow === maxTries - 1) {
+          finished = true; won = false;
+          lockInputs(true);
+          showResult(data.reveal, false);
+        } else {
+          curRow++; curGuess = '';
+          lockInputs(false);
+        }
+      }, wordLen * 90 + 200);
+    } catch (e) {
+      submitting = false;
+      lockInputs(false);
+      showBanner("Erreur : " + e.message, 2200);
+    }
   }
 
-  function renderSolvers(list, me) {
-    const el = document.getElementById('solversList');
-    if (!list || !list.length) { el.textContent = ''; return; }
-    el.innerHTML = '<b>Aujourd\'hui :</b> ' + list.map(e =>
-      `${e.pseudo}${e.pseudo === me ? ' (toi)' : ''} — ${e.won ? e.tries + '/' + maxTries : '❌'}`
-    ).join(' · ');
+  function showResult(reveal, didWin) {
+    document.getElementById('resultTitle').textContent = didWin ? '🎉 Gagné !' : '💀 Perdu';
+    document.getElementById('resultTitle').className = 'result-title ' + (didWin ? 'win' : 'lose');
+    const img = document.getElementById('resultImg');
+    if (reveal && reveal.cover) { img.src = reveal.cover; img.style.display = 'block'; } else { img.style.display = 'none'; }
+    document.getElementById('resultName').textContent = reveal ? reveal.name : '';
+    document.getElementById('resultModal').classList.add('open');
   }
 
   document.getElementById('closeResultBtn').addEventListener('click', () => {
     document.getElementById('resultModal').classList.remove('open');
   });
 
-  function yesterdayKey() { return getParisDateString(-1); }
-
   document.addEventListener('keydown', e => {
-    if (finished) return;
+    if (finished || submitting) return;
     if (document.getElementById('resultModal').classList.contains('open')) return;
     if (e.key === 'Enter') handleKey('ENTER');
     else if (e.key === 'Backspace') handleKey('←');
@@ -452,25 +319,22 @@
 
   async function init() {
     RemoteStore.init([]);
-    const pool = await buildPool();
-    if (!pool.length) {
-      document.getElementById('loading').textContent = "Aucun jeu exploitable trouvé dans bracket_games.json.";
-      return;
+    try {
+      const res = await fetch('/api/motcache-daily', { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+      puzzle = data;
+      wordLen = puzzle.wordLength;
+      maxTries = puzzle.maxTries;
+
+      document.getElementById('subtitle').textContent = `${wordLen} lettres · ${maxTries} essais · même mot pour tout le monde aujourd'hui`;
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('game').style.display = 'flex';
+      buildGrid();
+      buildKeyboard();
+    } catch (e) {
+      document.getElementById('loading').textContent = "Impossible de charger le mot du jour (" + e.message + "). Réessaie dans un instant.";
     }
-    const idx = dayIndex(todayKey) % pool.length;
-    target = pool[idx];
-    wordLen = target.word.length;
-    maxTries = Math.min(8, wordLen + 1);
-
-    document.getElementById('subtitle').textContent = `Jeu #${dayIndex(todayKey) + 1} du jour · ${wordLen} lettres · ${maxTries} essais`;
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('game').style.display = 'flex';
-    buildGrid();
-    buildKeyboard();
-
-    // Si déjà joué aujourd'hui (stat locale + clé du jour), on pourrait bloquer une 2e partie ;
-    // ici on laisse rejouer librement en local (pas de triche possible entre potes de toute façon,
-    // chacun a son propre navigateur), on affiche juste les scores partagés au clic sur Entrée du 1er coup.
   }
 
   init();

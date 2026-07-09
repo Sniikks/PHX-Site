@@ -1,8 +1,9 @@
 // ==========================================================
 // /api/pixels.js — Vercel Serverless Function
-// Jeu "Pixels" : pioche un jeu + un screenshot au hasard via IGDB
-// (mêmes identifiants Twitch que generate-daily.js / search-games.js),
-// et renvoie l'image encodée en base64 directement dans le JSON.
+// Jeu "Pixels" : pioche un jeu + sa JAQUETTE (cover art, pas un
+// screenshot in-game) au hasard via IGDB (mêmes identifiants Twitch
+// que generate-daily.js / search-games.js), renvoyée en base64
+// directement dans le JSON.
 //
 // Pourquoi en base64 et pas une URL directe vers images.igdb.com ?
 // Le mini-jeu doit lire les pixels de l'image (canvas.getImageData)
@@ -15,14 +16,14 @@
 
 import { igdbQuery, isIgdbConfigured } from './_igdb.js';
 
-const SCREENSHOT_URL = id => `https://images.igdb.com/igdb/image/upload/t_1080p/${id}.jpg`;
+const COVER_URL = id => `https://images.igdb.com/igdb/image/upload/t_cover_big_2x/${id}.jpg`;
 
 async function fetchCandidatePool() {
     const offset = Math.floor(Math.random() * 600);
-    const body = `fields name, screenshots.image_id; where version_parent = null & screenshots != null & name != null; sort follows desc; limit 80; offset ${offset};`;
+    const body = `fields name, cover.image_id; where version_parent = null & cover != null & name != null; sort follows desc; limit 80; offset ${offset};`;
     const results = await igdbQuery('games', body);
     if (!Array.isArray(results)) return [];
-    return results.filter(g => g.name && Array.isArray(g.screenshots) && g.screenshots.length > 0);
+    return results.filter(g => g.name && g.cover?.image_id);
 }
 
 async function fetchImageAsDataUri(url) {
@@ -50,8 +51,7 @@ export default async function handler(req, res) {
         }
 
         const game = pool[Math.floor(Math.random() * pool.length)];
-        const shot = game.screenshots[Math.floor(Math.random() * game.screenshots.length)];
-        const image = await fetchImageAsDataUri(SCREENSHOT_URL(shot.image_id));
+        const image = await fetchImageAsDataUri(COVER_URL(game.cover.image_id));
 
         return res.status(200).json({ name: game.name, image });
     } catch (e) {

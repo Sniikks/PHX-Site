@@ -153,7 +153,7 @@
       <div><div class="stat-num" id="statScore">0</div><div class="stat-label">Série</div></div>
       <div><div class="stat-num" id="statBest">0</div><div class="stat-label">Record</div></div>
     </div>
-    <div class="board" id="boardList"></div>
+    <div class="board" id="boardList" style="display:none;"></div>
     <div class="result-actions">
       <button class="btn-io primary" id="retryBtn">Rejouer</button>
       <button class="btn-io" id="closeResultBtn">Fermer</button>
@@ -198,13 +198,19 @@
     document.getElementById('higherBtn').disabled = false;
   }
 
+  async function safeJson(res) {
+    const text = await res.text();
+    try { return JSON.parse(text); }
+    catch (e) { throw new Error('Réponse serveur invalide (' + res.status + ')'); }
+  }
+
   async function startGame() {
     document.getElementById('loading').style.display = 'block';
     document.getElementById('game').style.display = 'none';
     try {
-      const res = await fetch('/api/plusoumoins');
-      if (!res.ok) throw new Error((await res.json()).error || 'Erreur serveur');
-      const round = await res.json();
+      const res = await fetch('/api/plusoumoins', { cache: 'no-store' });
+      const round = await safeJson(res);
+      if (!res.ok) throw new Error(round.error || 'Erreur serveur');
       document.getElementById('loading').style.display = 'none';
       document.getElementById('game').style.display = 'flex';
       renderRound(round);
@@ -225,7 +231,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ roundId: current.roundId, guess })
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error || 'Erreur serveur');
 
       document.getElementById('challengerValue').textContent = data.reveal.challenger.displayValue;
@@ -264,35 +270,6 @@
     document.getElementById('statScore').textContent = streak;
     document.getElementById('statBest').textContent = s.best;
     document.getElementById('resultModal').classList.add('open');
-
-    try {
-      const pseudo = localStorage.getItem('phx_pseudo');
-      if (pseudo) {
-        await RemoteStore.init(['plusoumoins_leaderboard']);
-        const board = RemoteStore.get('plusoumoins_leaderboard', []) || [];
-        const existing = board.find(e => e.pseudo === pseudo);
-        if (!existing || streak > existing.streak) {
-          const updated = board.filter(e => e.pseudo !== pseudo);
-          updated.push({ pseudo, streak });
-          updated.sort((a, b) => b.streak - a.streak);
-          RemoteStore.set('plusoumoins_leaderboard', updated.slice(0, 20));
-          renderBoard(updated.slice(0, 10));
-        } else {
-          renderBoard(board.slice(0, 10));
-        }
-      } else {
-        await RemoteStore.init(['plusoumoins_leaderboard']);
-        renderBoard((RemoteStore.get('plusoumoins_leaderboard', []) || []).slice(0, 10));
-      }
-    } catch (e) {}
-  }
-
-  function renderBoard(list) {
-    const el = document.getElementById('boardList');
-    if (!list.length) { el.innerHTML = ''; return; }
-    el.innerHTML = '<b style="color:var(--text)">Classement</b>' + list.map(e =>
-      `<div><span>${e.pseudo}</span><span>${e.streak}</span></div>`
-    ).join('');
   }
 
   document.getElementById('lowerBtn').addEventListener('click', () => submitGuess('lower'));
