@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Correction titres Steam — 369 (admin)</title>
+<title>Correction titres Steam (admin)</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,7 +11,7 @@
 <style>
   :root {
     --bg:#0d0e14; --bg2:#12141d; --bg3:#181a25;
-    --gold:#b967ff; --gold-dim:#8a4fd6;
+    --gold:#ff9500; --gold-dim:#a86000;
     --text:#f0f1f5; --text2:#939ab0; --border:#2a2d3a;
     --good:#5fbf86; --bad:#e2685f;
   }
@@ -42,6 +42,7 @@
   .arrow { color:var(--text2); margin:0 .3rem; }
   .new { color:var(--good); font-weight:600; }
   .meta { color:var(--text2); font-size:.7rem; margin-top:.1rem; }
+  .skip { color:var(--text2); font-size:.78rem; padding:.3rem 0; }
   .toolbar-select { display:flex; gap:.9rem; font-size:.78rem; color:var(--text2); margin:.6rem 0; }
   .toolbar-select a { color:var(--gold); cursor:pointer; text-decoration:underline; }
   .empty { color:var(--text2); font-size:.85rem; text-align:center; padding:1rem 0; }
@@ -54,13 +55,12 @@
 <link rel="stylesheet" href="cyber-theme.css">
 </head>
 <body>
-  <h1>Correction des titres Steam — 369</h1>
+  <h1>Correction des titres Steam</h1>
   <p class="sub">
-    Relit tous les jeux de la liste 369, réinterroge l'API Steam (<code>/api/steam</code>)
-    pour chaque jeu Steam, et propose une correction quand le titre ne correspond pas
-    exactement au titre officiel (ponctuation, casse, etc.). Le titre final reste bien en
-    <strong>MAJUSCULES</strong>, comme le reste de la liste. Rien n'est modifié tant que tu
-    n'as pas cliqué sur « Appliquer ».
+    Relit les <strong>250+ jeux</strong> de la liste Sniikks, réinterroge l'API Steam
+    (<code>/api/steam</code>) pour chaque jeu Steam, et propose une correction du titre
+    quand il ne correspond pas exactement au titre officiel (ponctuation, casse, etc.).
+    Rien n'est modifié tant que tu n'as pas cliqué sur « Appliquer ».
   </p>
 
   <div class="card">
@@ -86,22 +86,14 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script>
-const STORAGE_KEY = 'backlog_cards_v1';
+const STORAGE_KEY = 'backlog_jeux_v4';
 let games = [];
-let diffs = []; // { idx, oldTitle, newTitle, appId }
+let diffs = []; // { idx, oldName, newName, appId }
 
-function extractSteamAppId(url){
-  if(!url) return null;
-  const m=url.match(/store\.steampowered\.com(?:\/agecheck)?\/app\/(\d+)/i);
-  return m?m[1]:null;
-}
-function extractSteamAppIdFromImage(url){
-  if(!url) return null;
-  const m=url.match(/steam\/apps\/(\d+)/i);
-  return m?m[1]:null;
-}
-function getAppId(g){
-  return extractSteamAppId(g.steamId) || extractSteamAppIdFromImage(g.steamId);
+function extractAppIdFromImg(img) {
+  if (!img) return null;
+  const m = img.match(/steam\/apps\/(\d+)\//i);
+  return m ? m[1] : null;
 }
 
 function setProgress(done, total) {
@@ -111,6 +103,7 @@ function setProgress(done, total) {
   wrap.style.display = 'block';
   stats.style.display = 'flex';
   bar.style.width = total ? Math.round(done / total * 100) + '%' : '0%';
+  stats.textContent = '';
   stats.innerHTML = `<span>${done} / ${total} jeux vérifiés</span>`;
 }
 
@@ -140,27 +133,24 @@ async function scan() {
   }
 
   games = data.data || [];
-  const withId = games.map((g, idx) => ({ ...g, idx })).filter(g => getAppId(g));
-  const noPlatformTag = withId.filter(g => g.platform !== 'Steam').length;
+  const withId = games.map((g, idx) => ({ ...g, idx })).filter(g => extractAppIdFromImg(g.img));
+  const noPlatformTag = withId.filter(g => g.platform !== 'steam').length;
   const steamGames = withId;
 
   logLine.textContent = `${games.length} jeux au total, ${steamGames.length} avec un appid Steam détecté` +
-    (noPlatformTag ? ` (dont ${noPlatformTag} sans étiquette "platform: Steam" explicite, inclus quand même)` : '') +
+    (noPlatformTag ? ` (dont ${noPlatformTag} sans étiquette "platform: steam" explicite, inclus quand même)` : '') +
     '. Interrogation de l\'API…';
 
   let done = 0;
   setProgress(0, steamGames.length);
 
   for (const g of steamGames) {
-    const appId = getAppId(g);
+    const appId = extractAppIdFromImg(g.img);
     try {
       const r = await fetch(`/api/steam?appid=${appId}`);
       const json = await r.json();
-      if (json && json.name) {
-        const officialUpper = json.name.trim().toUpperCase();
-        if (officialUpper !== (g.title || '').trim().toUpperCase()) {
-          diffs.push({ idx: g.idx, oldTitle: g.title, newTitle: officialUpper, appId });
-        }
+      if (json && json.name && json.name.trim() !== (g.name || '').trim()) {
+        diffs.push({ idx: g.idx, oldName: g.name, newName: json.name, appId });
       }
     } catch (e) {
       console.error('Erreur appid', appId, e);
@@ -190,7 +180,7 @@ function renderDiffs() {
     row.innerHTML = `
       <input type="checkbox" checked data-i="${i}">
       <div class="names">
-        <div><span class="old">${escHtml(d.oldTitle)}</span><span class="arrow">→</span><span class="new">${escHtml(d.newTitle)}</span></div>
+        <div><span class="old">${escHtml(d.oldName)}</span><span class="arrow">→</span><span class="new">${escHtml(d.newName)}</span></div>
         <div class="meta">appid ${d.appId}</div>
       </div>`;
     list.appendChild(row);
@@ -216,7 +206,7 @@ async function apply() {
   logLine.textContent = 'Application des corrections…';
 
   selected.forEach(d => {
-    if (games[d.idx]) games[d.idx].title = d.newTitle; // déjà en MAJUSCULES
+    if (games[d.idx]) games[d.idx].name = d.newName;
   });
 
   const { error } = await supabaseClient
