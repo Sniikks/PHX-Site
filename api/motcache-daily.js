@@ -14,10 +14,12 @@
 // jamais lue par le navigateur : /api/motcache-guess.js est seul à
 // comparer les essais.
 //
-// Source du mot : IGDB. On tire un lot de jeux populaires et on ne
-// garde que les noms d'UN SEUL mot, 5 à 9 lettres (esprit "Portal /
-// Skyrim / Halo / Celeste"), jamais réutilisé (mots déjà tombés
-// gardés dans 'motcache_used').
+// Source du mot : SteamSpy donne le pool de jeux CONNUS (≥ 10 000
+// propriétaires estimés, même mécanisme que pixels.js/plusoumoins.js),
+// filtré aux noms d'UN SEUL mot de 5 à 9 lettres (esprit "Portal /
+// Skyrim / Halo / Celeste"), puis validé sur IGDB pour écarter tout
+// DLC/extension/réédition et récupérer la jaquette. Jamais réutilisé
+// (mots déjà tombés gardés dans 'motcache_used').
 // ==========================================================
 
 import { createClient } from '@supabase/supabase-js';
@@ -27,7 +29,25 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+const STEAMSPY_BASE = 'https://steamspy.com/api.php';
+const MIN_OWNERS = 10000;
+const IGDB_TIMEOUT_MS = 8000;
 const MAX_TRIES = 6;
+
+const DLC_NAME_PATTERN = /\b(dlc|season pass|expansion pass|expansion|add-?on|content pack|bonus content|artbook|art book|soundtrack|ost|skin pack|costume pack|weapon pack|outfit pack|upgrade pack|map pack|character pack|booster pack|challenge pack|premiere club|wallpaper|bundle|chapter|remaster(?:ed)?|definitive edition|goty|anniversary edition|enhanced edition|complete edition|deluxe edition|ultimate edition|hd edition)\b/i;
+// 1=dlc_addon, 3=bundle, 5=mod, 6=episode, 7=season, 9=remaster, 13=pack, 14=update
+const EXCLUDED_CATEGORIES = new Set([1, 3, 5, 6, 7, 9, 13, 14]);
+
+function isUnwantedName(name) {
+    if (!name) return true;
+    if (DLC_NAME_PATTERN.test(name)) return true;
+    if (/\bpack\b/i.test(name) && !/party pack/i.test(name)) return true;
+    return false;
+}
+function isUnwantedIgdb(game) {
+    if (EXCLUDED_CATEGORIES.has(game.category)) return true;
+    return isUnwantedName(game.name);
+}
 
 function normalizeWord(name) {
     return String(name || '')
@@ -43,27 +63,72 @@ function getParisDateString(offsetDays = 0) {
     return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
-async function pickWordFromIgdb(usedWords) {
-    for (let attempt = 0; attempt < 6; attempt++) {
-        const offset = Math.floor(Math.random() * 800);
-        const body = `fields name, cover.image_id; where version_parent = null & name != null & cover != null; sort follows desc; limit 500; offset ${offset};`;
-        let results;
-        try { results = await igdbQuery('games', body, 8000); } catch (e) { continue; }
-        if (!Array.isArray(results)) continue;
+function parseOwnersLowerBound(ownersStr) {
+    if (!ownersStr) return null;
+    const match = ownersStr.match(/[\d,]+/);
+    if (!match) return null;
+    const n = parseInt(match[0].replace(/,/g, ''), 10);
+    return isNaN(n) ? null : n;
+}
 
-        const candidates = results.filter(r => {
-            const name = (r.name || '').trim();
-            if (!name || name.includes(' ')) return false;
-            const core = name.split(/[:\-]/)[0].trim();
-            if (core.includes(' ')) return false;
-            const clean = normalizeWord(core);
-            return clean.length >= 5 && clean.length <= 9 && !usedWords.has(clean);
-        });
-        if (candidates.length) {
-            const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-            const clean = normalizeWord(chosen.name.split(/[:\-]/)[0].trim());
-            const cover = chosen.cover?.image_id ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${chosen.cover.image_id}.jpg` : null;
-            return { word: clean, name: chosen.name, cover };
+// Pool de noms de jeux CONNUS (≥ MIN_OWNERS), déjà filtré DLC/pack par le
+// nom, réduit aux candidats "un seul mot de 5 à 9 lettres".
+async function fetchSingleWordCandidates(usedWords) {
+    const roll = Math.random();
+    let url;
+    if (roll < 0.35) url = `${STEAMSPY_BASE}?request=top100forever`;
+    else if (roll < 0.6) url = `${STEAMSPY_BASE}?request=top100in2weeks`;
+    else url = `${STEAMSPY_BASE}?request=all&page=${Math.floor(Math.random() * 40)}`;
+
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+
+    return Object.values(data || {})
+        .filter(g => g && g.name)
+        .map(g => ({ name: g.name.trim(), owners: parseOwnersLowerBound(g.owners) }))
+        .filter(g => g.owners !== null && g.owners >= MIN_OWNERS)
+        .filter(g => !isUnwantedName(g.name))
+        .filter(g => !g.name.includes(' '))
+        .map(g => {
+            const clean = normalizeWord(g.name);
+            return { name: g.name, word: clean };
+        })
+        .filter(g => g.word.length >= 5 && g.word.length <= 9 && !usedWords.has(g.word));
+}
+
+async function igdbQueryWithRetry(endpoint, body, attempts = 2) {
+    let lastErr;
+    for (let i = 0; i < attempts; i++) {
+        try { return await igdbQuery(endpoint, body, IGDB_TIMEOUT_MS); }
+        catch (e) { lastErr = e; if (i < attempts - 1) await new Promise(r => setTimeout(r, 400)); }
+    }
+    throw lastErr;
+}
+
+// Valide un candidat sur IGDB : rejette DLC/extension/réédition, renvoie la jaquette.
+async function validateOnIgdb(name) {
+    const cleanName = name.replace(/["\\]/g, '');
+    const body = `search "${cleanName}"; fields name, category, cover.image_id; where version_parent = null; limit 5;`;
+    let results;
+    try { results = await igdbQueryWithRetry('games', body); } catch (e) { return null; }
+    if (!Array.isArray(results) || !results.length) return null;
+
+    const normalized = cleanName.trim().toLowerCase();
+    const candidates = results.filter(r => !isUnwantedIgdb(r) && r.cover?.image_id);
+    const best = candidates.find(r => (r.name || '').trim().toLowerCase() === normalized) || candidates[0];
+    if (!best) return null;
+    return { name: best.name, cover: `https://images.igdb.com/igdb/image/upload/t_cover_big/${best.cover.image_id}.jpg` };
+}
+
+async function pickWord(usedWords, maxAttempts = 8) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const candidates = await fetchSingleWordCandidates(usedWords);
+        if (!candidates.length) continue;
+        const candidate = candidates[Math.floor(Math.random() * candidates.length)];
+        const validated = await validateOnIgdb(candidate.name);
+        if (validated) {
+            return { word: candidate.word, name: validated.name, cover: validated.cover };
         }
     }
     return null;
@@ -92,7 +157,7 @@ export default async function handler(req, res) {
         const { data: usedRow } = await supabase.from('app_data').select('data').eq('id', 'motcache_used').maybeSingle();
         const usedWords = new Set(usedRow?.data?.words || []);
 
-        const picked = await pickWordFromIgdb(usedWords);
+        const picked = await pickWord(usedWords);
         if (!picked) {
             return res.status(503).json({ error: "Impossible de trouver un mot pour aujourd'hui, réessaie dans un instant." });
         }

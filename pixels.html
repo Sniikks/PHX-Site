@@ -245,6 +245,7 @@
   }
 
   let current = null;     // { name, image }
+  let seenGames = [];     // noms déjà vus pendant cette partie (anti-doublon)
   let img = null;
   let cols = GRID_COLS, rows = 6;
   let cellColors = [];    // moyenne couleur par case
@@ -387,10 +388,12 @@
     document.getElementById('game').style.display = 'none';
 
     try {
-      const res = await fetch('/api/pixels', { cache: 'no-store' });
+      const excludeParam = seenGames.length ? '?exclude=' + encodeURIComponent(seenGames.join('|')) : '';
+      const res = await fetch('/api/pixels' + excludeParam, { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur serveur');
       current = data;
+      seenGames.push(data.name);
       img = await loadImage(data.image);
     } catch (e) {
       document.getElementById('loading').textContent = "Impossible de charger une image (" + e.message + "). Réessaie dans un instant.";
@@ -532,7 +535,7 @@
   }
 
   function resetGame() {
-    finished = false; roundOver = false; lives = MAX_LIVES; streak = 0;
+    finished = false; roundOver = false; lives = MAX_LIVES; streak = 0; seenGames = [];
     document.getElementById('continueBtn').style.display = 'none';
     document.getElementById('resultModal').classList.remove('open');
     setGuessControlsEnabled(true);

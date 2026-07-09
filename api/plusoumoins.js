@@ -19,6 +19,11 @@
 //    uniquement (exclut les jeux annoncés pour 2027/2028 etc.)
 //  - catégorie IGDB + motif de nom en repli         -> pas de DLC/pack
 //
+// Anti-doublons : chaque round garde la liste de TOUS les jeux déjà
+// tombés depuis le début de la série (usedNames, stockée dans la ligne
+// du round et transmise de round en round) — un jeu déjà vu dans cette
+// série ne peut pas être repioché comme prochain adversaire.
+//
 // La valeur du "challenger" ne doit jamais être visible côté client
 // avant que le joueur ait répondu (sinon triche triviale en F12),
 // donc chaque round est stocké côté serveur (table app_data, même
@@ -125,14 +130,17 @@ async function fetchStatForGame(name, category) {
 }
 
 // Pioche un jeu CONNU (SteamSpy) puis va chercher sa stat/jaquette sur IGDB.
+// excludeNames doit contenir des noms déjà en minuscules.
 async function pickGameWithStat(category, excludeNames = new Set(), maxAttempts = 8) {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const names = await fetchSteamSpyPoolFiltered();
     if (!names.length) continue;
     const candidateName = names[Math.floor(Math.random() * names.length)];
-    if (excludeNames.has(candidateName)) continue;
+    if (excludeNames.has(candidateName.toLowerCase())) continue;
     const stat = await fetchStatForGame(candidateName, category);
-    if (stat) return { name: stat.name, src: COVER_URL(stat.coverId), value: stat.value };
+    if (stat && !excludeNames.has(stat.name.toLowerCase())) {
+      return { name: stat.name, src: COVER_URL(stat.coverId), value: stat.value };
+    }
   }
   return null;
 }
@@ -140,9 +148,9 @@ async function pickGameWithStat(category, excludeNames = new Set(), maxAttempts 
 async function pickPairForCategory(category) {
   const base = await pickGameWithStat(category);
   if (!base) return null;
-  const challenger = await pickGameWithStat(category, new Set([base.name]));
+  const challenger = await pickGameWithStat(category, new Set([base.name.toLowerCase()]));
   if (!challenger) return null;
-  return { base, challenger };
+  return { base, challenger, usedNames: [base.name, challenger.name] };
 }
 
 function roundKey(id) { return 'pom_round_' + id; }
@@ -163,7 +171,7 @@ export default async function handler(req, res) {
       const roundId = Math.random().toString(36).slice(2) + Date.now().toString(36);
       await supabase.from('app_data').upsert({
         id: roundKey(roundId),
-        data: { category, base: pair.base, challenger: pair.challenger },
+        data: { category, base: pair.base, challenger: pair.challenger, usedNames: pair.usedNames },
         updated_at: new Date().toISOString()
       });
 
@@ -185,6 +193,7 @@ export default async function handler(req, res) {
       if (!row || !row.data) return res.status(404).json({ error: 'Round introuvable ou expiré.' });
 
       const { category, base, challenger } = row.data;
+      const usedNames = new Set((row.data.usedNames || [base.name, challenger.name]).map(n => n.toLowerCase()));
       const actualEqual = challenger.value === base.value;
       const actualHigher = challenger.value > base.value;
       const correct = actualEqual ? true : (guess === 'higher' ? actualHigher : !actualHigher);
@@ -207,15 +216,19 @@ export default async function handler(req, res) {
       }
       const nextBase = { name: challenger.name, src: challenger.src, value: nextBaseValue };
 
-      const nextChallenger = await pickGameWithStat(finalCategory, new Set([nextBase.name]));
+      const nextChallenger = await pickGameWithStat(finalCategory, usedNames);
       if (!nextChallenger) {
         return res.status(200).json({ correct: true, reveal, gameEnded: true });
       }
+      const newUsedNames = [...usedNames.values()].concat([nextChallenger.name.toLowerCase()]);
+      // On garde les noms d'origine (casse propre) pour l'affichage/le stockage suivant,
+      // en réutilisant ceux déjà connus + le nouveau challenger.
+      const usedNamesDisplay = (row.data.usedNames || [base.name, challenger.name]).concat([nextChallenger.name]);
 
       const newRoundId = Math.random().toString(36).slice(2) + Date.now().toString(36);
       await supabase.from('app_data').upsert({
         id: roundKey(newRoundId),
-        data: { category: finalCategory, base: nextBase, challenger: nextChallenger },
+        data: { category: finalCategory, base: nextBase, challenger: nextChallenger, usedNames: usedNamesDisplay },
         updated_at: new Date().toISOString()
       });
 
