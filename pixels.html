@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>PHX - Pixels</title>
+<meta name="description" content="Devine le jeu vidéo derrière l'image pixelisée avant de perdre tes 3 vies.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Exo+2:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d0e14; --bg2:#12141d; --bg3:#181a25;
+    --gold:#00f0ff; --gold2:#00c4cc; --gold-dim:#0097a7;
+    --text:#f0f1f5; --text2:#939ab0;
+    --border:#2a2d3a;
+    --good:#5fbf86; --bad:#e2685f; --warn:#e0b84a;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { min-height:100%; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Exo 2',sans-serif;
+    min-height:100vh;
+    display:flex; flex-direction:column; align-items:center;
+    padding:1.6rem 1.2rem 3rem;
+    padding-left:max(1.2rem, env(safe-area-inset-left));
+    padding-right:max(1.2rem, env(safe-area-inset-right));
+  }
+
+  .menu-btn {
+    align-self:flex-start;
+    display:inline-flex; align-items:center; gap:6px;
+    padding:9px 16px;
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:3px;
+    color:#e5e5e5;
+    font-family:'Exo 2',sans-serif; font-size:12.5px; font-weight:600; letter-spacing:.02em;
+    text-decoration:none; white-space:nowrap;
+    margin-bottom:1rem;
+    cursor:pointer; transition:all .15s ease;
+  }
+  .menu-btn:hover { background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.24); color:#fff; }
+
+  .title { font-family:'Rajdhani',sans-serif; font-size:clamp(1.3rem,4vw,1.9rem); font-weight:700; letter-spacing:.1em; color:var(--gold); text-transform:uppercase; }
+  .subtitle { color:var(--text2); font-size:12.5px; margin-top:.35rem; margin-bottom:1.2rem; letter-spacing:.03em; text-align:center; }
+
+  .lives { display:flex; gap:6px; margin-bottom:1rem; font-size:1.3rem; }
+  .lives span.lost { opacity:.25; filter:grayscale(1); }
+
+  #loading { color:var(--text2); font-size:13px; margin-top:2rem; }
+  #game { display:none; flex-direction:column; align-items:center; width:100%; max-width:460px; }
+
+  .canvas-wrap {
+    position:relative; width:100%; aspect-ratio:16/9;
+    background:var(--bg2); border:1px solid var(--border); border-radius:12px;
+    overflow:hidden; margin-bottom:1rem;
+  }
+  canvas { width:100%; height:100%; display:block; }
+  .attempt-dots { display:flex; gap:5px; justify-content:center; margin-bottom:.9rem; }
+  .attempt-dots span {
+    width:9px; height:9px; border-radius:50%; background:var(--border);
+  }
+  .attempt-dots span.used { background:var(--bad); }
+  .attempt-dots span.current { background:var(--gold); }
+
+  .guess-row { display:flex; gap:.5rem; width:100%; position:relative; margin-bottom:.6rem; }
+  #guessInput {
+    flex:1; padding:.8rem .9rem; background:var(--bg2); border:1px solid var(--border); border-radius:8px;
+    color:var(--text); font-family:'Exo 2',sans-serif; font-size:14px; outline:none;
+  }
+  #guessInput:focus { border-color:var(--gold-dim); }
+  #skipBtn, #submitBtn {
+    padding:.8rem 1rem; border-radius:8px; border:1px solid var(--border); background:var(--bg3);
+    color:var(--text); font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;
+  }
+  #submitBtn { background:var(--gold-dim); color:#04262a; border-color:var(--gold-dim); }
+  #skipBtn:hover, #submitBtn:hover { filter:brightness(1.1); }
+
+  .suggestions {
+    position:absolute; top:100%; left:0; right:0; margin-top:4px;
+    background:var(--bg2); border:1px solid var(--border); border-radius:8px;
+    max-height:220px; overflow-y:auto; z-index:50; display:none;
+  }
+  .suggestions.open { display:block; }
+  .suggestions div {
+    padding:.55rem .8rem; font-size:13px; cursor:pointer; color:var(--text);
+    border-bottom:1px solid var(--border);
+  }
+  .suggestions div:last-child { border-bottom:none; }
+  .suggestions div:hover, .suggestions div.active { background:var(--bg3); color:var(--gold); }
+
+  .history { display:flex; flex-direction:column; gap:5px; width:100%; margin-top:.4rem; }
+  .history .h-item {
+    display:flex; align-items:center; gap:.5rem; padding:.45rem .7rem;
+    background:var(--bg2); border:1px solid var(--border); border-radius:6px; font-size:12.5px;
+  }
+  .h-item.wrong { border-color:color-mix(in srgb, var(--bad) 40%, var(--border)); }
+
+  .msg-banner {
+    position:fixed; top:14px; left:50%; transform:translateX(-50%);
+    background:var(--bg3); border:1px solid var(--border); border-radius:8px;
+    padding:.55rem 1.1rem; font-size:13px; font-weight:600; color:var(--text);
+    z-index:800; opacity:0; pointer-events:none; transition:opacity .2s ease, top .2s ease;
+    box-shadow:0 10px 26px rgba(0,0,0,.4);
+  }
+  .msg-banner.show { opacity:1; top:22px; }
+
+  .result-modal { position:fixed; inset:0; background:rgba(0,0,0,.72); display:none; align-items:center; justify-content:center; z-index:900; padding:1.2rem; }
+  .result-modal.open { display:flex; }
+  .result-box { background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:1.8rem; max-width:360px; width:100%; text-align:center; }
+  .result-title { font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.35rem; letter-spacing:.06em; margin-bottom:.9rem; }
+  .result-title.win { color:var(--good); }
+  .result-title.over { color:var(--bad); }
+  .result-stats { display:flex; justify-content:center; gap:1.6rem; margin-bottom:1.1rem; }
+  .stat-num { font-family:'Rajdhani',sans-serif; font-size:1.5rem; font-weight:700; color:var(--text); }
+  .stat-label { font-size:10px; color:var(--text2); letter-spacing:.06em; text-transform:uppercase; }
+  .result-actions { display:flex; gap:.6rem; justify-content:center; flex-wrap:wrap; margin-top:.4rem; }
+  .btn-io { padding:.6rem 1.1rem; background:var(--bg3); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:12.5px; font-weight:600; cursor:pointer; }
+  .btn-io:hover { border-color:var(--gold-dim); color:var(--gold); }
+  .btn-io.primary { background:var(--gold-dim); color:#04262a; border-color:var(--gold-dim); }
+</style>
+<link rel="stylesheet" href="cyber-theme.css">
+</head>
+<body>
+
+<a class="menu-btn" href="index.html">☰ Menu</a>
+<div class="title">🧩 Pixels</div>
+<div class="subtitle">Devine le jeu avant qu'il soit trop tard — 5 essais par image, 3 vies</div>
+<div class="lives" id="lives"></div>
+
+<div id="loading">Chargement du pool de jeux…</div>
+
+<div id="game">
+  <div class="canvas-wrap"><canvas id="canvas"></canvas></div>
+  <div class="attempt-dots" id="dots"></div>
+
+  <div class="guess-row">
+    <input id="guessInput" type="text" placeholder="Nom du jeu…" autocomplete="off">
+    <button id="submitBtn">Valider</button>
+    <button id="skipBtn">Passer</button>
+    <div class="suggestions" id="suggestions"></div>
+  </div>
+
+  <div class="history" id="history"></div>
+</div>
+
+<div class="msg-banner" id="banner"></div>
+
+<div class="result-modal" id="resultModal">
+  <div class="result-box">
+    <div class="result-title" id="resultTitle"></div>
+    <div class="result-stats">
+      <div><div class="stat-num" id="statScore">0</div><div class="stat-label">Série</div></div>
+      <div><div class="stat-num" id="statBest">0</div><div class="stat-label">Record</div></div>
+    </div>
+    <div class="result-actions">
+      <button class="btn-io primary" id="retryBtn">Rejouer</button>
+      <button class="btn-io" id="closeResultBtn">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="db.js"></script>
+<script src="nav.js"></script>
+<script>
+(function () {
+  const MAX_LIVES = 3;
+  const MAX_ATTEMPTS = 5;
+  // Paliers de pixelisation : taille de bloc en % de la largeur de l'image,
+  // du plus flou (essai 1) au plus net (dernier essai avant la révélation).
+  const PIXEL_STEPS = [42, 28, 18, 10, 5];
+
+  function normalize(str) {
+    return String(str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function levenshtein(a, b) {
+    const m = a.length, n = b.length;
+    if (m === 0) return n; if (n === 0) return m;
+    const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+    return dp[m][n];
+  }
+  function isCorrectGuess(guessRaw, name) {
+    const guess = normalize(guessRaw);
+    if (guess.length < 2) return false;
+    const target = normalize(name.replace(/\s*\(\d{4}\)\s*$/, ''));
+    if (guess === target) return true;
+    const maxLen = Math.max(guess.length, target.length);
+    const threshold = maxLen <= 8 ? 1 : (maxLen <= 14 ? 2 : 3);
+    return levenshtein(guess, target) <= threshold;
+  }
+
+  let pool = [];
+  let queue = [];
+  let current = null;
+  let attempt = 0;
+  let lives = MAX_LIVES;
+  let streak = 0;
+  let finished = false;
+  let img = null;
+
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+
+  function showBanner(text, ms = 1600) {
+    const b = document.getElementById('banner');
+    b.textContent = text; b.classList.add('show');
+    clearTimeout(showBanner._t);
+    showBanner._t = setTimeout(() => b.classList.remove('show'), ms);
+  }
+
+  function renderLives() {
+    const el = document.getElementById('lives');
+    el.innerHTML = '';
+    for (let i = 0; i < MAX_LIVES; i++) {
+      const span = document.createElement('span');
+      span.textContent = '❤️';
+      if (i >= lives) span.classList.add('lost');
+      el.appendChild(span);
+    }
+  }
+  function renderDots() {
+    const el = document.getElementById('dots');
+    el.innerHTML = '';
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      const span = document.createElement('span');
+      if (i < attempt) span.classList.add('used');
+      else if (i === attempt) span.classList.add('current');
+      el.appendChild(span);
+    }
+  }
+
+  function drawPixelated(blockPct) {
+    const w = canvas.width = canvas.clientWidth * (window.devicePixelRatio || 1);
+    const h = canvas.height = canvas.clientHeight * (window.devicePixelRatio || 1);
+    const blocks = Math.max(3, Math.round(100 / blockPct));
+    const tmp = document.createElement('canvas');
+    tmp.width = blocks; tmp.height = Math.round(blocks * (h / w));
+    const tctx = tmp.getContext('2d');
+    tctx.drawImage(img, 0, 0, tmp.width, tmp.height);
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(tmp, 0, 0, tmp.width, tmp.height, 0, 0, w, h);
+  }
+
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const im = new Image();
+      im.crossOrigin = 'anonymous';
+      im.onload = () => resolve(im);
+      im.onerror = reject;
+      im.src = src;
+    });
+  }
+
+  async function nextImage() {
+    if (queue.length === 0) queue = shuffledCopy(pool);
+    current = queue.pop();
+    attempt = 0;
+    document.getElementById('history').innerHTML = '';
+    document.getElementById('guessInput').value = '';
+    try {
+      img = await loadImage(current.src);
+    } catch (e) {
+      // image cassée : on saute directement au jeu suivant
+      return nextImage();
+    }
+    renderDots();
+    drawPixelated(PIXEL_STEPS[0]);
+  }
+
+  function shuffledCopy(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+
+  function addHistory(text, wrong) {
+    const el = document.getElementById('history');
+    const div = document.createElement('div');
+    div.className = 'h-item' + (wrong ? ' wrong' : '');
+    div.textContent = text;
+    el.prepend(div);
+  }
+
+  function loseLife() {
+    lives--;
+    renderLives();
+    addHistory(`❌ Réponse : ${current.name}`, true);
+    if (lives <= 0) {
+      gameOver(false);
+    } else {
+      showBanner('Perdu une vie — jeu suivant');
+      setTimeout(nextImage, 900);
+    }
+  }
+
+  function winRound() {
+    streak++;
+    addHistory(`✅ ${current.name} — trouvé en ${attempt}/${MAX_ATTEMPTS}`, false);
+    showBanner('Bien joué ! 🎉');
+    setTimeout(nextImage, 900);
+  }
+
+  function handleGuess(guessText) {
+    if (finished || !guessText.trim()) return;
+    if (isCorrectGuess(guessText, current.name)) {
+      winRound();
+    } else {
+      attempt++;
+      renderDots();
+      if (attempt >= MAX_ATTEMPTS) {
+        loseLife();
+      } else {
+        drawPixelated(PIXEL_STEPS[Math.min(attempt, PIXEL_STEPS.length - 1)]);
+        addHistory(`✖ ${guessText}`, true);
+        showBanner('Pas ça…', 1000);
+      }
+    }
+    document.getElementById('guessInput').value = '';
+    hideSuggestions();
+  }
+
+  function handleSkip() {
+    if (finished) return;
+    attempt = MAX_ATTEMPTS;
+    renderDots();
+    loseLife();
+  }
+
+  function gameOver(userQuit) {
+    finished = true;
+    const statsKey = 'pixels_stats';
+    let s = {};
+    try { s = JSON.parse(localStorage.getItem(statsKey)) || {}; } catch (e) {}
+    s.best = Math.max(s.best || 0, streak);
+    localStorage.setItem(statsKey, JSON.stringify(s));
+
+    document.getElementById('resultTitle').textContent = '💀 Partie terminée';
+    document.getElementById('resultTitle').className = 'result-title over';
+    document.getElementById('statScore').textContent = streak;
+    document.getElementById('statBest').textContent = s.best;
+    document.getElementById('resultModal').classList.add('open');
+
+    // Meilleur score partagé (optionnel) avec les potes
+    try {
+      const pseudo = localStorage.getItem('phx_pseudo');
+      if (pseudo) {
+        RemoteStore.init(['pixels_leaderboard']).then(() => {
+          const board = RemoteStore.get('pixels_leaderboard', []) || [];
+          const existing = board.find(e => e.pseudo === pseudo);
+          if (!existing || streak > existing.streak) {
+            const updated = board.filter(e => e.pseudo !== pseudo);
+            updated.push({ pseudo, streak, date: new Date().toISOString().slice(0,10) });
+            updated.sort((a,b) => b.streak - a.streak);
+            RemoteStore.set('pixels_leaderboard', updated.slice(0, 20));
+          }
+        });
+      }
+    } catch (e) {}
+  }
+
+  function resetGame() {
+    finished = false; lives = MAX_LIVES; streak = 0;
+    document.getElementById('resultModal').classList.remove('open');
+    renderLives();
+    nextImage();
+  }
+
+  // ── Autocomplétion ──
+  let activeSuggestions = [];
+  let activeIndex = -1;
+  function showSuggestions(query) {
+    const box = document.getElementById('suggestions');
+    if (!query.trim()) { hideSuggestions(); return; }
+    const q = normalize(query);
+    activeSuggestions = pool
+      .filter(g => normalize(g.name).includes(q))
+      .slice(0, 8);
+    activeIndex = -1;
+    if (!activeSuggestions.length) { hideSuggestions(); return; }
+    box.innerHTML = '';
+    activeSuggestions.forEach((g, i) => {
+      const div = document.createElement('div');
+      div.textContent = g.name;
+      div.addEventListener('click', () => { handleGuess(g.name); });
+      box.appendChild(div);
+    });
+    box.classList.add('open');
+  }
+  function hideSuggestions() {
+    document.getElementById('suggestions').classList.remove('open');
+    activeSuggestions = []; activeIndex = -1;
+  }
+
+  document.getElementById('guessInput').addEventListener('input', e => showSuggestions(e.target.value));
+  document.getElementById('guessInput').addEventListener('keydown', e => {
+    const box = document.getElementById('suggestions');
+    if (e.key === 'ArrowDown' && activeSuggestions.length) {
+      e.preventDefault();
+      activeIndex = Math.min(activeIndex + 1, activeSuggestions.length - 1);
+      Array.from(box.children).forEach((c, i) => c.classList.toggle('active', i === activeIndex));
+    } else if (e.key === 'ArrowUp' && activeSuggestions.length) {
+      e.preventDefault();
+      activeIndex = Math.max(activeIndex - 1, 0);
+      Array.from(box.children).forEach((c, i) => c.classList.toggle('active', i === activeIndex));
+    } else if (e.key === 'Enter') {
+      if (activeIndex >= 0 && activeSuggestions[activeIndex]) handleGuess(activeSuggestions[activeIndex].name);
+      else handleGuess(e.target.value);
+    } else if (e.key === 'Escape') hideSuggestions();
+  });
+  document.addEventListener('click', e => {
+    if (!document.getElementById('suggestions').contains(e.target) && e.target !== document.getElementById('guessInput')) hideSuggestions();
+  });
+
+  document.getElementById('submitBtn').addEventListener('click', () => handleGuess(document.getElementById('guessInput').value));
+  document.getElementById('skipBtn').addEventListener('click', handleSkip);
+  document.getElementById('retryBtn').addEventListener('click', resetGame);
+  document.getElementById('closeResultBtn').addEventListener('click', () => document.getElementById('resultModal').classList.remove('open'));
+
+  window.addEventListener('resize', () => { if (current && !finished) drawPixelated(PIXEL_STEPS[Math.min(attempt, PIXEL_STEPS.length - 1)]); });
+
+  async function init() {
+    RemoteStore.init([]);
+    const res = await fetch('bracket_games.json');
+    const games = await res.json();
+    pool = games.filter(g => g.name && g.src);
+    if (!pool.length) { document.getElementById('loading').textContent = 'Pool de jeux vide.'; return; }
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('game').style.display = 'flex';
+    renderLives();
+    resetGame();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
