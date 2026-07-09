@@ -60,8 +60,6 @@
         color: var(--gold, #00f0ff);
         background: var(--bg3, #181a25);
         font-weight: 700;
-        cursor: default;
-        pointer-events: none;
       }
     `;
     const style = document.createElement('style');
