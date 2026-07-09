@@ -82,6 +82,14 @@
   .choice-btn:hover:not(:disabled) { border-color:var(--gold-dim); color:var(--gold); }
   .choice-btn:disabled { opacity:.5; cursor:default; }
 
+  #continueBtn {
+    display:none; width:100%; padding:.9rem;
+    border-radius:10px; border:1px solid var(--gold-dim); background:var(--gold-dim);
+    color:#04262a; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1rem; letter-spacing:.04em;
+    cursor:pointer;
+  }
+  #continueBtn:hover { filter:brightness(1.1); }
+
   .msg-banner {
     position:fixed; top:14px; left:50%; transform:translateX(-50%);
     background:var(--bg3); border:1px solid var(--border); border-radius:8px;
@@ -116,7 +124,7 @@
 <div class="subtitle" id="subtitle">Le 2ᵉ jeu a-t-il une valeur plus haute ou plus basse ?</div>
 <div class="streak-badge" id="streakBadge">Série : 0</div>
 
-<div id="loading">Recherche de deux jeux comparables…</div>
+<div id="loading">Chargement de la partie…</div>
 
 <div id="game">
   <div class="category-label" id="categoryLabel"></div>
@@ -138,10 +146,11 @@
     </div>
   </div>
 
-  <div class="choice-buttons">
+  <div class="choice-buttons" id="choiceButtons">
     <button class="choice-btn" id="lowerBtn">▼ Plus bas</button>
     <button class="choice-btn" id="higherBtn">▲ Plus haut</button>
   </div>
+  <button id="continueBtn">Manche suivante →</button>
 </div>
 
 <div class="msg-banner" id="banner"></div>
@@ -167,9 +176,9 @@
 <script src="nav.js"></script>
 <script>
 (function () {
-  let streak = 0;
-  let current = null; // { roundId, category, categoryLabel, base:{name,src,displayValue}, challenger:{name,src} }
-  let locked = false;
+  let state = null; // dernier état public reçu (plusoumoins_game)
+  let submitting = false;
+  let realtimeChannel = null;
 
   function showBanner(text, ms = 1500) {
     const b = document.getElementById('banner');
@@ -178,113 +187,147 @@
     showBanner._t = setTimeout(() => b.classList.remove('show'), ms);
   }
 
-  function renderRound(round) {
-    current = round;
-    locked = false;
-    document.getElementById('categoryLabel').textContent = round.categoryLabel;
-    document.getElementById('baseImg').src = round.base.src || '';
-    document.getElementById('baseName').textContent = round.base.name;
-    document.getElementById('baseValue').textContent = round.base.displayValue;
-    document.getElementById('baseValue').classList.remove('hidden-value');
-
-    document.getElementById('challengerImg').src = round.challenger.src || '';
-    document.getElementById('challengerName').textContent = round.challenger.name;
-    const cv = document.getElementById('challengerValue');
-    cv.textContent = '?'; cv.classList.add('hidden-value');
-
-    document.getElementById('baseCard').className = 'card';
-    document.getElementById('challengerCard').className = 'card';
-    document.getElementById('lowerBtn').disabled = false;
-    document.getElementById('higherBtn').disabled = false;
-  }
-
   async function safeJson(res) {
     const text = await res.text();
     try { return JSON.parse(text); }
     catch (e) { throw new Error('Réponse serveur invalide (' + res.status + ')'); }
   }
 
-  async function startGame() {
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('game').style.display = 'none';
-    try {
-      const res = await fetch('/api/plusoumoins', { cache: 'no-store' });
-      const round = await safeJson(res);
-      if (!res.ok) throw new Error(round.error || 'Erreur serveur');
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('game').style.display = 'flex';
-      renderRound(round);
-    } catch (e) {
-      document.getElementById('loading').textContent = "Impossible de charger le duel (" + e.message + "). Réessaie dans un instant.";
+  function setChoiceButtonsEnabled(enabled) {
+    document.getElementById('lowerBtn').disabled = !enabled;
+    document.getElementById('higherBtn').disabled = !enabled;
+  }
+
+  // Applique un nouvel état public (chargement initial, réponse d'action,
+  // OU temps réel) — source de vérité unique : un simple rechargement de
+  // page ne génère jamais de nouveau duel, seules les actions le font.
+  function render() {
+    document.getElementById('streakBadge').textContent = 'Série : ' + state.streak;
+    document.getElementById('categoryLabel').textContent = state.categoryLabel;
+
+    document.getElementById('baseImg').src = state.base.src || '';
+    document.getElementById('baseName').textContent = state.base.name;
+    document.getElementById('baseValue').textContent = state.base.displayValue;
+    document.getElementById('baseValue').classList.remove('hidden-value');
+
+    document.getElementById('challengerImg').src = state.challenger.src || '';
+    document.getElementById('challengerName').textContent = state.challenger.name;
+    const cv = document.getElementById('challengerValue');
+
+    const baseCard = document.getElementById('baseCard');
+    const challengerCard = document.getElementById('challengerCard');
+    baseCard.className = 'card';
+    challengerCard.className = 'card';
+
+    if (state.reveal) {
+      cv.textContent = state.reveal.challenger.displayValue;
+      cv.classList.remove('hidden-value');
+      challengerCard.classList.add(state.reveal.correct ? 'correct' : 'wrong');
+    } else {
+      cv.textContent = '?';
+      cv.classList.add('hidden-value');
+    }
+
+    const roundOver = !!state.roundOver;
+    document.getElementById('choiceButtons').style.display = roundOver ? 'none' : 'flex';
+    document.getElementById('continueBtn').style.display = (roundOver && !state.gameOver) ? 'block' : 'none';
+    setChoiceButtonsEnabled(!roundOver && !state.gameOver);
+
+    if (state.gameOver) {
+      showGameOverModal();
+    } else {
+      document.getElementById('resultModal').classList.remove('open');
     }
   }
 
-  async function submitGuess(guess) {
-    if (locked || !current) return;
-    locked = true;
-    document.getElementById('lowerBtn').disabled = true;
-    document.getElementById('higherBtn').disabled = true;
-
-    try {
-      const res = await fetch('/api/plusoumoins', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roundId: current.roundId, guess })
-      });
-      const data = await safeJson(res);
-      if (!res.ok) throw new Error(data.error || 'Erreur serveur');
-
-      document.getElementById('challengerValue').textContent = data.reveal.challenger.displayValue;
-      document.getElementById('challengerValue').classList.remove('hidden-value');
-
-      if (data.correct) {
-        streak++;
-        document.getElementById('streakBadge').textContent = 'Série : ' + streak;
-        document.getElementById('challengerCard').classList.add('correct');
-        showBanner('✅ Bien joué !');
-        if (data.gameEnded) {
-          setTimeout(() => endGame(), 1200);
-        } else {
-          setTimeout(() => renderRound(data.next), 1200);
-        }
-      } else {
-        document.getElementById('challengerCard').classList.add('wrong');
-        showBanner('❌ Perdu…');
-        setTimeout(() => endGame(), 1300);
-      }
-    } catch (e) {
-      showBanner('Erreur réseau, réessaie.');
-      locked = false;
-      document.getElementById('lowerBtn').disabled = false;
-      document.getElementById('higherBtn').disabled = false;
-    }
-  }
-
-  async function endGame() {
+  function showGameOverModal() {
     const statsKey = 'pom_stats';
     let s = {};
     try { s = JSON.parse(localStorage.getItem(statsKey)) || {}; } catch (e) {}
-    s.best = Math.max(s.best || 0, streak);
+    s.best = Math.max(s.best || 0, state.streak);
     localStorage.setItem(statsKey, JSON.stringify(s));
 
-    document.getElementById('statScore').textContent = streak;
+    document.getElementById('statScore').textContent = state.streak;
     document.getElementById('statBest').textContent = s.best;
     document.getElementById('resultModal').classList.add('open');
   }
 
+  async function loadState() {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('game').style.display = 'none';
+    try {
+      const res = await fetch('/api/plusoumoins-state', { cache: 'no-store' });
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+      state = data;
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('game').style.display = 'flex';
+      render();
+      subscribeRealtime();
+    } catch (e) {
+      document.getElementById('loading').textContent = "Impossible de charger la partie (" + e.message + "). Réessaie dans un instant.";
+    }
+  }
+
+  async function sendAction(action, extra) {
+    if (submitting) return;
+    submitting = true;
+    setChoiceButtonsEnabled(false);
+    document.getElementById('continueBtn').disabled = true;
+    try {
+      const res = await fetch('/api/plusoumoins-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ...extra })
+      });
+      const data = await safeJson(res);
+      if (!res.ok) {
+        if (data.state) { state = data.state; render(); }
+        showBanner(data.error || 'Erreur serveur', 1800);
+        return;
+      }
+      state = data;
+      render();
+    } catch (e) {
+      showBanner('Erreur réseau : ' + e.message, 1800);
+    } finally {
+      submitting = false;
+      document.getElementById('continueBtn').disabled = false;
+      if (state && !state.roundOver && !state.gameOver) setChoiceButtonsEnabled(true);
+    }
+  }
+
+  function submitGuess(guess) {
+    if (!state || state.roundOver || state.gameOver) return;
+    sendAction('guess', { guess });
+  }
+  function handleContinue() {
+    if (!state || !state.roundOver || state.gameOver) return;
+    sendAction('continue');
+  }
+  function handleRetry() {
+    document.getElementById('resultModal').classList.remove('open');
+    sendAction('retry');
+  }
+
   document.getElementById('lowerBtn').addEventListener('click', () => submitGuess('lower'));
   document.getElementById('higherBtn').addEventListener('click', () => submitGuess('higher'));
-  document.getElementById('retryBtn').addEventListener('click', () => {
-    streak = 0;
-    document.getElementById('streakBadge').textContent = 'Série : 0';
-    document.getElementById('resultModal').classList.remove('open');
-    startGame();
-  });
+  document.getElementById('continueBtn').addEventListener('click', handleContinue);
+  document.getElementById('retryBtn').addEventListener('click', handleRetry);
   document.getElementById('closeResultBtn').addEventListener('click', () => document.getElementById('resultModal').classList.remove('open'));
 
-  RemoteStore.init([]);
-  startGame();
+  function subscribeRealtime() {
+    realtimeChannel = supabaseClient
+      .channel('plusoumoins_game')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_data', filter: 'id=eq.plusoumoins_game' }, payload => {
+        if (payload.new?.data?.roundId) { state = payload.new.data; render(); }
+      })
+      .subscribe();
+  }
+
+  loadState();
 })();
 </script>
+
 </body>
 </html>

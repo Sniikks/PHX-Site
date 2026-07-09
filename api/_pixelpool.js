@@ -1,35 +1,11 @@
 // ==========================================================
-// /api/pixels.js — Vercel Serverless Function
-// Jeu "Pixels" : pioche un jeu CONNU (≥ 10 000 propriétaires estimés,
-// toutes plateformes confondues via SteamSpy), sans DLC/extension/
-// réédition, et renvoie sa JAQUETTE (cover art IGDB, pas un
-// screenshot) encodée en base64.
+// /api/_pixelpool.js — Bibliothèque partagée (non exposée en HTTP,
+// le préfixe "_" empêche Vercel d'en faire une route).
 //
-// Pourquoi SteamSpy pour le seuil de popularité ? IGDB n'expose aucun
-// "nombre de joueurs" comparable entre plateformes. SteamSpy, lui,
-// donne une estimation directe du nombre de propriétaires par jeu —
-// c'est exactement le même mécanisme déjà utilisé par
-// generate-daily.js (ZoomJeu) pour ne piocher que des jeux connus
-// (MIN_OWNERS). Ça restreint de fait le pool aux jeux disponibles sur
-// Steam, mais en pratique ça couvre l'écrasante majorité des jeux
-// "connus".
-//
-// Filtres anti-DLC/extension/réédition : motif de nom (repli commun
-// à tout le site, voir generate-daily.js/search-games.js/
-// plusoumoins.js) + catégorie IGDB (dlc_addon, bundle, mod, episode,
-// season, remaster, pack, update exclus) + version_parent = null.
-//
-// Anti-doublons : le client envoie la liste des jeux déjà vus pendant
-// la partie en cours (?exclude=Nom1|Nom2|...) ; on les exclut du
-// tirage pour ne pas retomber sur le même jeu deux fois de suite.
-//
-// Pourquoi en base64 et pas une URL directe vers images.igdb.com ?
-// Le mini-jeu doit lire les pixels de l'image (canvas.getImageData)
-// pour calculer une couleur moyenne par case de la grille, ce qui
-// exige une image "same-origin" côté canvas (sinon SecurityError).
-// En la renvoyant en base64 dans notre propre réponse JSON, l'image
-// est techniquement embarquée depuis notre propre origine : zéro
-// souci CORS.
+// Pioche un jeu CONNU (≥ 10 000 propriétaires estimés via SteamSpy),
+// sans DLC/extension/réédition, et renvoie sa jaquette IGDB en base64.
+// Utilisé par pixels-state.js (1re génération) et pixels-action.js
+// (manche suivante / nouvelle partie).
 // ==========================================================
 
 import { igdbQuery, isIgdbConfigured } from './_igdb.js';
@@ -62,13 +38,7 @@ function parseOwnersLowerBound(ownersStr) {
     return isNaN(n) ? null : n;
 }
 
-function parseExcludeList(req) {
-    const raw = req.query?.exclude;
-    if (!raw) return new Set();
-    return new Set(String(raw).split('|').map(s => s.trim().toLowerCase()).filter(Boolean));
-}
-
-async function fetchSteamSpyPool(excludeNames) {
+async function fetchSteamSpyPool(excludeNamesLower) {
     const roll = Math.random();
     let url;
     if (roll < 0.35) url = `${STEAMSPY_BASE}?request=top100forever`;
@@ -83,7 +53,7 @@ async function fetchSteamSpyPool(excludeNames) {
         .map(g => ({ name: g.name, owners: parseOwnersLowerBound(g.owners) }))
         .filter(g => g.owners !== null && g.owners >= MIN_OWNERS)
         .filter(g => !isUnwantedName(g.name))
-        .filter(g => !excludeNames.has(g.name.trim().toLowerCase()));
+        .filter(g => !excludeNamesLower.has(g.name.trim().toLowerCase()));
 }
 
 async function igdbQueryWithRetry(endpoint, body, attempts = 2) {
@@ -108,42 +78,47 @@ async function fetchIgdbCover(name) {
     return best ? { name: best.name, coverId: best.cover.image_id } : null;
 }
 
-async function pickGameWithCover(excludeNames, maxAttempts = 8) {
+// excludeNames : tableau de noms déjà vus dans la partie en cours (anti-doublon).
+export async function pickGameWithCover(excludeNames = [], maxAttempts = 8) {
+    if (!isIgdbConfigured()) return null;
+    const excludeLower = new Set(excludeNames.map(n => n.trim().toLowerCase()));
     for (let i = 0; i < maxAttempts; i++) {
-        const pool = await fetchSteamSpyPool(excludeNames);
+        const pool = await fetchSteamSpyPool(excludeLower);
         if (!pool.length) continue;
         const candidate = pool[Math.floor(Math.random() * pool.length)];
         const found = await fetchIgdbCover(candidate.name);
-        if (found && !excludeNames.has(found.name.trim().toLowerCase())) return found;
+        if (found && !excludeLower.has(found.name.trim().toLowerCase())) return found;
     }
     return null;
 }
 
-async function fetchImageAsDataUri(url) {
-    const res = await fetch(url);
+export async function fetchImageAsDataUri(coverId) {
+    const res = await fetch(COVER_URL(coverId));
     if (!res.ok) throw new Error(`Image IGDB a répondu ${res.status}`);
     const buf = Buffer.from(await res.arrayBuffer());
     const contentType = res.headers.get('content-type') || 'image/jpeg';
     return `data:${contentType};base64,${buf.toString('base64')}`;
 }
 
-export default async function handler(req, res) {
-    res.setHeader('Cache-Control', 'no-store');
-
-    if (!isIgdbConfigured()) {
-        return res.status(500).json({ error: "IGDB non configuré (TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET manquants)." });
-    }
-
-    try {
-        const excludeNames = parseExcludeList(req);
-        const picked = await pickGameWithCover(excludeNames);
-        if (!picked) {
-            return res.status(503).json({ error: "Aucun jeu connu exploitable trouvé, réessaie." });
-        }
-        const image = await fetchImageAsDataUri(COVER_URL(picked.coverId));
-        return res.status(200).json({ name: picked.name, image });
-    } catch (e) {
-        console.error('❌ pixels error:', e);
-        return res.status(500).json({ error: e.message });
-    }
+// Comparaison floue essai <-> nom réel (mêmes règles que côté client).
+export function normalize(str) {
+    return String(str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function levenshtein(a, b) {
+    const m = a.length, n = b.length;
+    if (m === 0) return n; if (n === 0) return m;
+    const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++)
+        dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    return dp[m][n];
+}
+export function isCorrectGuess(guessRaw, name) {
+    const guess = normalize(guessRaw);
+    if (guess.length < 2) return false;
+    const target = normalize(String(name || '').replace(/\s*\(\d{4}\)\s*$/, ''));
+    if (guess === target) return true;
+    const maxLen = Math.max(guess.length, target.length);
+    const threshold = maxLen <= 8 ? 1 : (maxLen <= 14 ? 2 : 3);
+    return levenshtein(guess, target) <= threshold;
 }

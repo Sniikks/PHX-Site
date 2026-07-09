@@ -159,7 +159,7 @@
 <div class="title">🧩 Pixels</div>
 <div class="subtitle">Devine le jeu avant qu'il soit trop tard — 5 essais par image, 3 vies</div>
 
-<div id="loading">Recherche d'une image…</div>
+<div id="loading">Chargement de la partie…</div>
 
 <div id="game">
   <div class="game-layout">
@@ -222,40 +222,13 @@
   // Fraction cumulée de cases révélées après 0,1,2,3,4,5 essais ratés.
   const REVEAL_SCHEDULE = [0.06, 0.18, 0.34, 0.52, 0.72, 1];
 
-  function normalize(str) {
-    return String(str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-  }
-  function levenshtein(a, b) {
-    const m = a.length, n = b.length;
-    if (m === 0) return n; if (n === 0) return m;
-    const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
-    for (let j = 0; j <= n; j++) dp[0][j] = j;
-    for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++)
-      dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
-    return dp[m][n];
-  }
-  function isCorrectGuess(guessRaw, name) {
-    const guess = normalize(guessRaw);
-    if (guess.length < 2) return false;
-    const target = normalize(name.replace(/\s*\(\d{4}\)\s*$/, ''));
-    if (guess === target) return true;
-    const maxLen = Math.max(guess.length, target.length);
-    const threshold = maxLen <= 8 ? 1 : (maxLen <= 14 ? 2 : 3);
-    return levenshtein(guess, target) <= threshold;
-  }
-
-  let current = null;     // { name, image }
-  let seenGames = [];     // noms déjà vus pendant cette partie (anti-doublon)
+  let state = null;        // dernier état public reçu (pixels_game)
   let img = null;
   let cols = GRID_COLS, rows = 6;
-  let cellColors = [];    // moyenne couleur par case
-  let revealed = [];      // bool par case
-  let attempt = 0;
-  let lives = MAX_LIVES;
-  let streak = 0;
-  let finished = false;
-  let roundOver = false; // true entre la révélation et le clic sur "Jeu suivant"
-  let attemptsLog = [];  // {text, wrong} par essai utilisé, complété par des "Passé"
+  let cellColors = [];
+  let revealed = [];
+  let submitting = false;
+  let realtimeChannel = null;
 
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
@@ -269,31 +242,72 @@
     showBanner._t = setTimeout(() => b.classList.remove('show'), ms);
   }
 
+  async function safeJson(res) {
+    const text = await res.text();
+    try { return JSON.parse(text); }
+    catch (e) { throw new Error('Réponse serveur invalide (' + res.status + ')'); }
+  }
+
   function renderLives() {
     const el = document.getElementById('lives');
     el.innerHTML = '';
     for (let i = 0; i < MAX_LIVES; i++) {
       const span = document.createElement('span');
       span.textContent = '❤️';
-      if (i >= lives) span.classList.add('lost');
+      if (i >= state.lives) span.classList.add('lost');
       el.appendChild(span);
     }
   }
-  function renderDots(finalState) {
+
+  function renderDots() {
     const el = document.getElementById('dots');
     el.innerHTML = '';
+    const won = state.reveal && state.reveal.win;
     for (let i = 0; i < MAX_ATTEMPTS; i++) {
       const tab = document.createElement('div');
       tab.className = 'attempt-tab';
       tab.textContent = i + 1;
-      if (finalState === 'won' && i === attempt) tab.classList.add('correct');
-      else if (i < attempt) tab.classList.add('wrong');
-      else if (i === attempt) tab.classList.add('current');
+      if (won && i === state.attempt) tab.classList.add('correct');
+      else if (i < state.attempt) tab.classList.add('wrong');
+      else if (i === state.attempt) tab.classList.add('current');
       el.appendChild(tab);
     }
   }
 
-  function loadImage(src) {
+  function renderHistoryList() {
+    const el = document.getElementById('history');
+    el.innerHTML = '';
+    const guesses = state.guesses || [];
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      const entry = guesses[i];
+      const div = document.createElement('div');
+      if (entry) {
+        div.className = 'h-item' + (entry.wrong ? ' wrong' : '');
+        div.textContent = entry.text;
+      } else {
+        div.className = 'h-item placeholder';
+        div.textContent = '» Passé';
+      }
+      el.appendChild(div);
+    }
+  }
+
+  function showStatus() {
+    const r = state.reveal;
+    if (!r) { document.getElementById('statusBox').style.display = 'none'; return; }
+    document.getElementById('statusName').textContent = r.name;
+    document.getElementById('statusVerdict').textContent = r.verdict;
+    document.getElementById('statusBox').className = 'status-box ' + (r.win ? 'win' : 'lose');
+    document.getElementById('statusBox').style.display = 'block';
+  }
+
+  function setGuessControlsEnabled(enabled) {
+    document.getElementById('guessInput').disabled = !enabled;
+    document.getElementById('submitBtn').disabled = !enabled;
+    document.getElementById('skipBtn').disabled = !enabled;
+  }
+
+  function loadImageEl(src) {
     return new Promise((resolve, reject) => {
       const im = new Image();
       im.onload = () => resolve(im);
@@ -378,169 +392,122 @@
     draw();
   }
 
-  async function nextImage() {
-    attempt = 0;
-    resetHistory();
-    hideStatus();
-    document.getElementById('guessInput').value = '';
+  function revealFractionForState() {
+    if (state.reveal) return 1; // manche conclue : image entière visible
+    return REVEAL_SCHEDULE[Math.min(state.attempt, REVEAL_SCHEDULE.length - 1)];
+  }
+
+  async function loadImageForRound(roundId) {
     document.getElementById('loading').style.display = 'block';
-    document.getElementById('loading').textContent = 'Recherche d\'une image…';
+    document.getElementById('loading').textContent = 'Chargement de l\'image…';
     document.getElementById('game').style.display = 'none';
 
-    try {
-      const excludeParam = seenGames.length ? '?exclude=' + encodeURIComponent(seenGames.join('|')) : '';
-      const res = await fetch('/api/pixels' + excludeParam, { cache: 'no-store' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erreur serveur');
-      current = data;
-      seenGames.push(data.name);
-      img = await loadImage(data.image);
-    } catch (e) {
-      document.getElementById('loading').textContent = "Impossible de charger une image (" + e.message + "). Réessaie dans un instant.";
-      return;
-    }
-
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('game').style.display = 'block';
+    const res = await fetch('/api/pixels-image', { cache: 'no-store' });
+    const data = await safeJson(res);
+    if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+    img = await loadImageEl(data.image);
 
     rows = Math.max(5, Math.min(14, Math.round(GRID_COLS * img.height / img.width)));
+    cols = GRID_COLS;
     resizeCanvasToDisplay();
     cellColors = computeCellColors();
     revealed = new Array(cols * rows).fill(false);
-    revealToFraction(REVEAL_SCHEDULE[0]);
-    renderDots();
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('game').style.display = 'block';
   }
 
-  function resetHistory() { attemptsLog = []; renderHistoryList(); }
+  // Applique un nouvel état public (venant du chargement initial, d'une
+  // réponse d'action, OU du temps réel) — source de vérité unique, aucune
+  // écriture locale : c'est ce qui garantit que tout le monde voit la
+  // même chose, et qu'un simple rechargement de page ne génère rien.
+  async function applyState(newState) {
+    if (!newState || !newState.roundId) return;
+    const roundChanged = !state || state.roundId !== newState.roundId;
+    state = newState;
 
-  function pushHistory(text, wrong) {
-    attemptsLog.push({ text, wrong });
-    renderHistoryList();
-  }
-
-  function renderHistoryList() {
-    const el = document.getElementById('history');
-    el.innerHTML = '';
-    for (let i = 0; i < MAX_ATTEMPTS; i++) {
-      const entry = attemptsLog[i];
-      const div = document.createElement('div');
-      if (entry) {
-        div.className = 'h-item' + (entry.wrong ? ' wrong' : '');
-        div.textContent = entry.text;
-      } else {
-        div.className = 'h-item placeholder';
-        div.textContent = '» Passé';
-      }
-      el.appendChild(div);
+    if (roundChanged) {
+      try { await loadImageForRound(state.roundId); }
+      catch (e) { document.getElementById('loading').textContent = "Impossible de charger l'image (" + e.message + ")."; return; }
     }
-  }
 
-  function showStatus(name, verdictText, cls) {
-    document.getElementById('statusName').textContent = name;
-    document.getElementById('statusVerdict').textContent = verdictText;
-    document.getElementById('statusBox').className = 'status-box ' + cls;
-    document.getElementById('statusBox').style.display = 'block';
-  }
-  function hideStatus() {
-    document.getElementById('statusBox').style.display = 'none';
-  }
-
-  function setGuessControlsEnabled(enabled) {
-    document.getElementById('guessInput').disabled = !enabled;
-    document.getElementById('submitBtn').disabled = !enabled;
-    document.getElementById('skipBtn').disabled = !enabled;
-  }
-
-  // Révèle l'image complète, fige les contrôles de saisie, et attend un
-  // clic explicite sur "Jeu suivant" avant de passer à l'image suivante
-  // (ou d'afficher l'écran de fin si c'était la dernière vie) — histoire
-  // de laisser le temps de voir de quel jeu il s'agissait.
-  function pauseForContinue(onContinue) {
-    roundOver = true;
-    setGuessControlsEnabled(false);
-    const btn = document.getElementById('continueBtn');
-    btn.style.display = 'block';
-    btn.onclick = () => {
-      btn.style.display = 'none';
-      roundOver = false;
-      onContinue();
-    };
-  }
-
-  function loseLife() {
-    lives--;
+    revealToFraction(revealFractionForState());
     renderLives();
-    revealToFraction(1);
-    pushHistory(`✕ Réponse : ${current.name}`, true);
-    showStatus(current.name, lives <= 0 ? 'Perdu — bien joué quand même' : 'Perdu cette image', 'lose');
-    if (lives <= 0) {
-      showBanner('Partie terminée');
-      pauseForContinue(gameOver);
-    } else {
-      showBanner('Vie perdue');
-      pauseForContinue(() => { setGuessControlsEnabled(true); nextImage(); });
-    }
-  }
-
-  function winRound() {
-    streak++;
-    revealToFraction(1);
-    renderDots('won');
-    pushHistory(`✓ Trouvé en ${attempt + 1}/${MAX_ATTEMPTS}`, false);
-    showStatus(current.name, 'Trouvé ! 🎉', 'win');
-    showBanner('Bien joué ! 🎉');
-    pauseForContinue(() => { setGuessControlsEnabled(true); nextImage(); });
-  }
-
-  function handleGuess(guessText) {
-    if (finished || roundOver || !guessText.trim() || !current) return;
-    if (isCorrectGuess(guessText, current.name)) {
-      winRound();
-    } else {
-      attempt++;
-      renderDots();
-      if (attempt >= MAX_ATTEMPTS) {
-        loseLife();
-      } else {
-        revealToFraction(REVEAL_SCHEDULE[attempt]);
-        pushHistory(`✕ ${guessText}`, true);
-        showBanner('Pas ça…', 1000);
-      }
-    }
-    document.getElementById('guessInput').value = '';
-    hideSuggestions();
-  }
-
-  function handleSkip() {
-    if (finished || roundOver) return;
-    attempt = MAX_ATTEMPTS;
     renderDots();
-    loseLife();
+    renderHistoryList();
+    showStatus();
+
+    const roundOver = !!state.reveal;
+    setGuessControlsEnabled(!roundOver && !state.gameOver);
+    document.getElementById('continueBtn').style.display = (roundOver && !state.gameOver) ? 'block' : 'none';
+
+    if (state.gameOver) {
+      showGameOverModal();
+    } else {
+      document.getElementById('resultModal').classList.remove('open');
+    }
   }
 
-  function gameOver() {
-    finished = true;
-    roundOver = false;
+  function showGameOverModal() {
     const statsKey = 'pixels_stats';
     let s = {};
     try { s = JSON.parse(localStorage.getItem(statsKey)) || {}; } catch (e) {}
-    s.best = Math.max(s.best || 0, streak);
+    s.best = Math.max(s.best || 0, state.streak);
     localStorage.setItem(statsKey, JSON.stringify(s));
 
     document.getElementById('resultTitle').textContent = '💀 Partie terminée';
     document.getElementById('resultTitle').className = 'result-title over';
-    document.getElementById('statScore').textContent = streak;
+    document.getElementById('statScore').textContent = state.streak;
     document.getElementById('statBest').textContent = s.best;
     document.getElementById('resultModal').classList.add('open');
   }
 
-  function resetGame() {
-    finished = false; roundOver = false; lives = MAX_LIVES; streak = 0; seenGames = [];
-    document.getElementById('continueBtn').style.display = 'none';
+  async function sendAction(action, extra) {
+    if (submitting) return;
+    submitting = true;
+    setGuessControlsEnabled(false);
+    document.getElementById('continueBtn').disabled = true;
+    try {
+      const res = await fetch('/api/pixels-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ...extra })
+      });
+      const data = await safeJson(res);
+      if (!res.ok) {
+        // Désynchro (ex : l'autre a déjà joué avant nous) : on se resynchronise
+        // simplement sur l'état renvoyé plutôt que d'afficher une vraie erreur.
+        if (data.state) { await applyState(data.state); }
+        showBanner(data.error || 'Erreur serveur', 1800);
+        return;
+      }
+      await applyState(data);
+    } catch (e) {
+      showBanner('Erreur réseau : ' + e.message, 1800);
+    } finally {
+      submitting = false;
+      document.getElementById('continueBtn').disabled = false;
+      if (state && !state.reveal && !state.gameOver) setGuessControlsEnabled(true);
+    }
+  }
+
+  function handleGuess(guessText) {
+    if (!state || state.reveal || state.gameOver || !guessText.trim()) return;
+    sendAction('guess', { text: guessText.trim() });
+    document.getElementById('guessInput').value = '';
+    hideSuggestions();
+  }
+  function handleSkip() {
+    if (!state || state.reveal || state.gameOver) return;
+    sendAction('skip');
+  }
+  function handleContinue() {
+    if (!state || !state.reveal || state.gameOver) return;
+    sendAction('continue');
+  }
+  function handleRetry() {
     document.getElementById('resultModal').classList.remove('open');
-    setGuessControlsEnabled(true);
-    renderLives();
-    nextImage();
+    sendAction('retry');
   }
 
   // ── Autocomplétion (réutilise l'API existante du site) ──
@@ -596,14 +563,36 @@
 
   document.getElementById('submitBtn').addEventListener('click', () => handleGuess(document.getElementById('guessInput').value));
   document.getElementById('skipBtn').addEventListener('click', handleSkip);
-  document.getElementById('retryBtn').addEventListener('click', resetGame);
+  document.getElementById('continueBtn').addEventListener('click', handleContinue);
+  document.getElementById('retryBtn').addEventListener('click', handleRetry);
   document.getElementById('closeResultBtn').addEventListener('click', () => document.getElementById('resultModal').classList.remove('open'));
 
-  window.addEventListener('resize', () => { if (img && !finished) { resizeCanvasToDisplay(); draw(); } });
+  window.addEventListener('resize', () => { if (img && state) { resizeCanvasToDisplay(); draw(); } });
 
-  renderLives();
-  resetGame();
+  function subscribeRealtime() {
+    realtimeChannel = supabaseClient
+      .channel('pixels_game')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_data', filter: 'id=eq.pixels_game' }, payload => {
+        if (payload.new?.data?.roundId) applyState(payload.new.data);
+      })
+      .subscribe();
+  }
+
+  async function init() {
+    try {
+      const res = await fetch('/api/pixels-state', { cache: 'no-store' });
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+      await applyState(data);
+      subscribeRealtime();
+    } catch (e) {
+      document.getElementById('loading').textContent = "Impossible de charger la partie (" + e.message + "). Réessaie dans un instant.";
+    }
+  }
+
+  init();
 })();
 </script>
+
 </body>
 </html>
