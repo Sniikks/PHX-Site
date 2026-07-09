@@ -52,7 +52,7 @@
   .lives span.lost { opacity:.25; filter:grayscale(1); }
 
   #loading { color:var(--text2); font-size:13px; margin-top:2rem; text-align:center; max-width:320px; }
-  #game { display:none; flex-direction:column; align-items:center; width:100%; max-width:680px; }
+  #game { display:none; flex-direction:column; align-items:center; width:100%; max-width:580px; }
 
   .canvas-wrap {
     position:relative; width:100%;
@@ -77,6 +77,14 @@
   }
   #submitBtn { background:var(--gold-dim); color:#04262a; border-color:var(--gold-dim); }
   #skipBtn:hover, #submitBtn:hover { filter:brightness(1.1); }
+
+  #continueBtn {
+    display:none; width:100%; padding:.85rem; margin-bottom:.6rem;
+    border-radius:8px; border:1px solid var(--gold-dim); background:var(--gold-dim);
+    color:#04262a; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1rem; letter-spacing:.04em;
+    cursor:pointer;
+  }
+  #continueBtn:hover { filter:brightness(1.1); }
 
   .suggestions {
     position:absolute; top:100%; left:0; right:0; margin-top:4px;
@@ -128,6 +136,8 @@
 <div id="game">
   <div class="canvas-wrap"><canvas id="canvas"></canvas></div>
   <div class="attempt-dots" id="dots"></div>
+
+  <button id="continueBtn">Jeu suivant →</button>
 
   <div class="guess-row">
     <input id="guessInput" type="text" placeholder="Nom du jeu…" autocomplete="off">
@@ -198,6 +208,7 @@
   let lives = MAX_LIVES;
   let streak = 0;
   let finished = false;
+  let roundOver = false; // true entre la révélation et le clic sur "Jeu suivant"
 
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
@@ -355,16 +366,39 @@
     el.prepend(div);
   }
 
+  function setGuessControlsEnabled(enabled) {
+    document.getElementById('guessInput').disabled = !enabled;
+    document.getElementById('submitBtn').disabled = !enabled;
+    document.getElementById('skipBtn').disabled = !enabled;
+  }
+
+  // Révèle l'image complète, fige les contrôles de saisie, et attend un
+  // clic explicite sur "Jeu suivant" avant de passer à l'image suivante
+  // (ou d'afficher l'écran de fin si c'était la dernière vie) — histoire
+  // de laisser le temps de voir de quel jeu il s'agissait.
+  function pauseForContinue(onContinue) {
+    roundOver = true;
+    setGuessControlsEnabled(false);
+    const btn = document.getElementById('continueBtn');
+    btn.style.display = 'block';
+    btn.onclick = () => {
+      btn.style.display = 'none';
+      roundOver = false;
+      onContinue();
+    };
+  }
+
   function loseLife() {
     lives--;
     renderLives();
     revealToFraction(1);
     addHistory(`❌ Réponse : ${current.name}`, true);
     if (lives <= 0) {
-      gameOver();
+      showBanner('Partie terminée');
+      pauseForContinue(gameOver);
     } else {
-      showBanner('Perdu une vie — jeu suivant');
-      setTimeout(nextImage, 1100);
+      showBanner('Vie perdue');
+      pauseForContinue(() => { setGuessControlsEnabled(true); nextImage(); });
     }
   }
 
@@ -373,11 +407,11 @@
     revealToFraction(1);
     addHistory(`✅ ${current.name} — trouvé en ${attempt + 1}/${MAX_ATTEMPTS}`, false);
     showBanner('Bien joué ! 🎉');
-    setTimeout(nextImage, 1100);
+    pauseForContinue(() => { setGuessControlsEnabled(true); nextImage(); });
   }
 
   function handleGuess(guessText) {
-    if (finished || !guessText.trim() || !current) return;
+    if (finished || roundOver || !guessText.trim() || !current) return;
     if (isCorrectGuess(guessText, current.name)) {
       winRound();
     } else {
@@ -396,7 +430,7 @@
   }
 
   function handleSkip() {
-    if (finished) return;
+    if (finished || roundOver) return;
     attempt = MAX_ATTEMPTS;
     renderDots();
     loseLife();
@@ -404,6 +438,7 @@
 
   function gameOver() {
     finished = true;
+    roundOver = false;
     const statsKey = 'pixels_stats';
     let s = {};
     try { s = JSON.parse(localStorage.getItem(statsKey)) || {}; } catch (e) {}
@@ -418,8 +453,10 @@
   }
 
   function resetGame() {
-    finished = false; lives = MAX_LIVES; streak = 0;
+    finished = false; roundOver = false; lives = MAX_LIVES; streak = 0;
+    document.getElementById('continueBtn').style.display = 'none';
     document.getElementById('resultModal').classList.remove('open');
+    setGuessControlsEnabled(true);
     renderLives();
     nextImage();
   }

@@ -1,17 +1,23 @@
 // ==========================================================
 // /api/motcache-daily.js — Vercel Serverless Function
 // Génère (une seule fois par jour, paresseusement : au 1er visiteur)
-// le mot du jour de "Mot Caché", et le stocke dans Supabase (app_data)
-// pour qu'il soit identique pour toutes les sessions/joueurs.
+// le mot du jour de "Mot Caché" et le stocke dans Supabase (app_data).
 //
-// Le mot lui-même reste dans une ligne SECRÈTE (comme zoomjeu_secret_*) :
-// la ligne publique ne contient que la longueur du mot et le nombre
-// d'essais — /api/motcache-guess.js est seul à comparer les essais.
+// Comme ZoomJeu : la ligne publique porte AUSSI la "session" partagée
+// (essais déjà tentés, résolu/échoué) — pas juste les infos du puzzle.
+// mot-cache.html s'abonne en temps réel à cette ligne (Supabase
+// Realtime) : les deux joueurs voient donc exactement la même grille,
+// et si tu régénères un mot en vidant les tables, la nouvelle ligne
+// (nouvelle session vide) arrive automatiquement chez tout le monde.
 //
-// Source du mot : IGDB (comme le reste du site). On tire un lot de jeux
-// populaires et on ne garde que les noms d'UN SEUL mot, 5 à 9 lettres
-// (dans l'esprit "Portal / Skyrim / Halo / Celeste"), jamais réutilisé
-// (liste des mots déjà tombés gardée dans 'motcache_used').
+// Le mot lui-même reste dans une ligne SECRÈTE (comme zoomjeu_secret_*),
+// jamais lue par le navigateur : /api/motcache-guess.js est seul à
+// comparer les essais.
+//
+// Source du mot : IGDB. On tire un lot de jeux populaires et on ne
+// garde que les noms d'UN SEUL mot, 5 à 9 lettres (esprit "Portal /
+// Skyrim / Halo / Celeste"), jamais réutilisé (mots déjà tombés
+// gardés dans 'motcache_used').
 // ==========================================================
 
 import { createClient } from '@supabase/supabase-js';
@@ -20,6 +26,8 @@ import { igdbQuery, isIgdbConfigured } from './_igdb.js';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const MAX_TRIES = 6;
 
 function normalizeWord(name) {
     return String(name || '')
@@ -40,7 +48,7 @@ async function pickWordFromIgdb(usedWords) {
         const offset = Math.floor(Math.random() * 800);
         const body = `fields name, cover.image_id; where version_parent = null & name != null & cover != null; sort follows desc; limit 500; offset ${offset};`;
         let results;
-        try { results = await igdbQuery('games', body); } catch (e) { continue; }
+        try { results = await igdbQuery('games', body, 8000); } catch (e) { continue; }
         if (!Array.isArray(results)) continue;
 
         const candidates = results.filter(r => {
@@ -76,7 +84,9 @@ export default async function handler(req, res) {
 
         const { data: existing } = await supabase.from('app_data').select('data').eq('id', puzzleKey(dateStr)).maybeSingle();
         if (existing?.data?.wordLength) {
-            return res.status(200).json(existing.data);
+            const publicData = existing.data;
+            publicData.session = publicData.session || { guesses: [], solved: false, failed: false };
+            return res.status(200).json(publicData);
         }
 
         const { data: usedRow } = await supabase.from('app_data').select('data').eq('id', 'motcache_used').maybeSingle();
@@ -87,18 +97,18 @@ export default async function handler(req, res) {
             return res.status(503).json({ error: "Impossible de trouver un mot pour aujourd'hui, réessaie dans un instant." });
         }
 
-        const maxTries = 6;
-        // Identifiant unique de CETTE génération (pas seulement la date) : si tu
-        // vides les tables Supabase pour forcer un nouveau mot le même jour, ce
-        // puzzleId change, ce qui invalide la progression sauvegardée localement
-        // (sinon le navigateur restaurait l'ancienne partie terminée en pensant
-        // que "même date" = "même partie").
         const puzzleId = dateStr + '_' + Math.random().toString(36).slice(2, 8);
 
         const secret = { word: picked.word, name: picked.name, cover: picked.cover, puzzleId };
         await supabase.from('app_data').upsert({ id: secretKey(dateStr), data: secret, updated_at: new Date().toISOString() });
 
-        const publicData = { date: dateStr, puzzleId, wordLength: picked.word.length, maxTries };
+        const publicData = {
+            date: dateStr,
+            puzzleId,
+            wordLength: picked.word.length,
+            maxTries: MAX_TRIES,
+            session: { guesses: [], solved: false, failed: false }
+        };
         await supabase.from('app_data').upsert({ id: puzzleKey(dateStr), data: publicData, updated_at: new Date().toISOString() });
 
         usedWords.add(picked.word);

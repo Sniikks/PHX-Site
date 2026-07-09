@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>PHX - Mot Caché</title>
-<meta name="description" content="Devine le nom du jeu vidéo caché en plusieurs essais, façon Wordle. Le mot du jour est le même pour tout le monde.">
+<meta name="description" content="Devine le nom du jeu vidéo caché en 6 essais, façon Wordle. Une seule partie, partagée entre tout le monde.">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -112,8 +112,6 @@
   .btn-io:hover { border-color:var(--gold-dim); color:var(--gold); }
   .btn-io.primary { background:var(--gold-dim); color:#04262a; border-color:var(--gold-dim); }
 
-
-
   @media (max-width:420px) { .cell { width:38px; height:38px; font-size:1.1rem; } .key { height:44px; } }
 </style>
 <link rel="stylesheet" href="cyber-theme.css">
@@ -122,7 +120,7 @@
 
 <a class="menu-btn" href="index.html">☰ Menu</a>
 <div class="title">🔤 Mot Caché</div>
-<div class="subtitle" id="subtitle">Devine le jeu vidéo du jour — même mot pour tout le monde</div>
+<div class="subtitle" id="subtitle">Devine le jeu vidéo du jour — une seule partie, partagée entre tout le monde</div>
 
 <div id="loading">Chargement du mot du jour…</div>
 
@@ -156,16 +154,14 @@
     ['ENTER','W','X','C','V','B','N','←']
   ];
 
-  let puzzle = null;      // { date, wordLength, maxTries }
+  let puzzle = null;       // { date, puzzleId, wordLength, maxTries, session }
   let wordLen = 5;
   let maxTries = 6;
-  let curRow = 0;
   let curGuess = '';
-  let finished = false;
-  let won = false;
   let letterStates = {};
-  let guessesHistory = []; // [{ guess, result }]
   let submitting = false;
+  let renderedCount = 0;   // nb de lignes déjà affichées (pour n'animer que les nouvelles)
+  let realtimeChannel = null;
 
   function showBanner(text, ms = 1500) {
     const b = document.getElementById('banner');
@@ -219,16 +215,22 @@
     document.querySelectorAll('.key').forEach(k => k.disabled = locked);
   }
 
+  function curRow() { return puzzle?.session?.guesses?.length || 0; }
+  function isFinished() { return !!(puzzle?.session?.solved || puzzle?.session?.failed); }
+
   function handleKey(k) {
-    if (finished || submitting) return;
+    if (!puzzle || isFinished() || submitting) return;
     if (k === 'ENTER') { submitGuess(); return; }
     if (k === '←') { curGuess = curGuess.slice(0, -1); renderCurrentRow(); return; }
     if (/^[A-Z]$/.test(k) && curGuess.length < wordLen) { curGuess += k; renderCurrentRow(true); }
   }
 
   function renderCurrentRow(pop) {
+    const row = curRow();
+    if (row >= maxTries) return;
     for (let c = 0; c < wordLen; c++) {
-      const cell = document.getElementById(`cell-${curRow}-${c}`);
+      const cell = document.getElementById(`cell-${row}-${c}`);
+      if (!cell) continue;
       const letter = curGuess[c] || '';
       cell.textContent = letter;
       cell.classList.toggle('filled', !!letter);
@@ -237,14 +239,22 @@
   }
 
   function shakeRow() {
-    const row = document.getElementById('row-' + curRow);
+    const row = document.getElementById('row-' + curRow());
+    if (!row) return;
     row.style.transform = 'translateX(-6px)';
     setTimeout(() => { row.style.transform = 'translateX(6px)'; }, 60);
     setTimeout(() => { row.style.transform = ''; }, 120);
   }
 
+  async function safeJson(res) {
+    const text = await res.text();
+    try { return JSON.parse(text); }
+    catch (e) { throw new Error('Réponse serveur invalide (' + res.status + ')'); }
+  }
+
   async function submitGuess() {
     if (curGuess.length !== wordLen) { showBanner('Pas assez de lettres'); shakeRow(); return; }
+    if (submitting) return;
     submitting = true;
     lockInputs(true);
 
@@ -252,47 +262,56 @@
       const res = await fetch('/api/motcache-guess', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ guess: curGuess, isFinalAttempt: curRow === maxTries - 1 })
+        body: JSON.stringify({ guess: curGuess })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erreur serveur');
-
-      const guess = curGuess;
-      const result = data.result;
-
-      for (let c = 0; c < wordLen; c++) {
-        const cell = document.getElementById(`cell-${curRow}-${c}`);
-        setTimeout(() => {
-          cell.classList.add('flip');
-          cell.classList.add(result[c]);
-          cell.textContent = guess[c];
-          const rank = { absent:0, present:1, correct:2 };
-          if (!letterStates[guess[c]] || rank[result[c]] > rank[letterStates[guess[c]]]) letterStates[guess[c]] = result[c];
-        }, c * 90);
+      const data = await safeJson(res);
+      if (!res.ok) {
+        // Partie déjà finie entre-temps (ex : le pote a fini avant toi) : on
+        // resynchronise simplement sur l'état renvoyé plutôt que d'afficher
+        // une erreur qui n'en est pas vraiment une.
+        if (data.session) { puzzle.session = data.session; renderSession(); }
+        throw new Error(data.error || 'Erreur serveur');
       }
-
-      guessesHistory.push({ guess, result });
-
-      setTimeout(() => {
-        refreshKeyboardColors();
-        submitting = false;
-        if (data.correct) {
-          finished = true; won = true;
-          lockInputs(true);
-          showResult(data.reveal, true);
-        } else if (curRow === maxTries - 1) {
-          finished = true; won = false;
-          lockInputs(true);
-          showResult(data.reveal, false);
-        } else {
-          curRow++; curGuess = '';
-          lockInputs(false);
-        }
-      }, wordLen * 90 + 200);
+      curGuess = '';
+      puzzle.session = data.session;
+      renderSession();
     } catch (e) {
+      showBanner(e.message, 2200);
+    } finally {
       submitting = false;
-      lockInputs(false);
-      showBanner("Erreur : " + e.message, 2200);
+      if (!isFinished()) lockInputs(false);
+    }
+  }
+
+  // Applique l'état de session (guesses/solved/failed/reveal) reçu du
+  // serveur ou du temps réel — source de vérité unique, aucune écriture
+  // locale : c'est ce qui garantit que tout le monde voit la même chose.
+  function renderSession() {
+    const session = puzzle.session || { guesses: [], solved: false, failed: false };
+    const guesses = session.guesses || [];
+
+    for (let i = renderedCount; i < guesses.length; i++) {
+      const { guess, result } = guesses[i];
+      for (let c = 0; c < wordLen; c++) {
+        const cell = document.getElementById(`cell-${i}-${c}`);
+        if (!cell) continue;
+        cell.textContent = guess[c];
+        cell.classList.add('flip', 'filled', result[c]);
+        const rank = { absent:0, present:1, correct:2 };
+        if (!letterStates[guess[c]] || rank[result[c]] > rank[letterStates[guess[c]]]) {
+          letterStates[guess[c]] = result[c];
+        }
+      }
+    }
+    renderedCount = guesses.length;
+    refreshKeyboardColors();
+
+    const finished = session.solved || session.failed;
+    lockInputs(finished);
+    if (finished && session.reveal) {
+      showResult(session.reveal, session.solved);
+    } else {
+      document.getElementById('resultModal').classList.remove('open');
     }
   }
 
@@ -310,28 +329,56 @@
   });
 
   document.addEventListener('keydown', e => {
-    if (finished || submitting) return;
+    if (!puzzle || isFinished() || submitting) return;
     if (document.getElementById('resultModal').classList.contains('open')) return;
     if (e.key === 'Enter') handleKey('ENTER');
     else if (e.key === 'Backspace') handleKey('←');
     else if (/^[a-zA-Z]$/.test(e.key)) handleKey(e.key.toUpperCase());
   });
 
-  async function init() {
-    RemoteStore.init([]);
-    try {
-      const res = await fetch('/api/motcache-daily', { cache: 'no-store' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erreur serveur');
-      puzzle = data;
+  // Applique un nouvel objet puzzle (venant du chargement initial OU du
+  // temps réel). Si le puzzleId a changé (nouveau mot régénéré), on
+  // reconstruit tout depuis zéro pour TOUT LE MONDE, y compris en plein
+  // milieu d'une partie en cours.
+  function applyPuzzle(data) {
+    if (!data || !data.wordLength) return;
+    const isNewGeneration = !puzzle || puzzle.puzzleId !== data.puzzleId;
+    puzzle = data;
+    puzzle.session = puzzle.session || { guesses: [], solved: false, failed: false };
+
+    if (isNewGeneration) {
       wordLen = puzzle.wordLength;
       maxTries = puzzle.maxTries;
-
-      document.getElementById('subtitle').textContent = `${wordLen} lettres · ${maxTries} essais · même mot pour tout le monde aujourd'hui`;
+      renderedCount = 0;
+      curGuess = '';
+      letterStates = {};
+      document.getElementById('resultModal').classList.remove('open');
+      document.getElementById('subtitle').textContent = `${wordLen} lettres · ${maxTries} essais · une seule partie, partagée entre tout le monde`;
       document.getElementById('loading').style.display = 'none';
       document.getElementById('game').style.display = 'flex';
       buildGrid();
       buildKeyboard();
+    }
+    renderSession();
+  }
+
+  function subscribeRealtime(date) {
+    if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
+    realtimeChannel = supabaseClient
+      .channel('motcache_' + date)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_data', filter: `id=eq.motcache_${date}` }, payload => {
+        if (payload.new?.data?.wordLength) applyPuzzle(payload.new.data);
+      })
+      .subscribe();
+  }
+
+  async function init() {
+    try {
+      const res = await fetch('/api/motcache-daily', { cache: 'no-store' });
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+      applyPuzzle(data);
+      subscribeRealtime(data.date);
     } catch (e) {
       document.getElementById('loading').textContent = "Impossible de charger le mot du jour (" + e.message + "). Réessaie dans un instant.";
     }
