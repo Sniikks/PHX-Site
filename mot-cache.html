@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>PHX - Mot Caché</title>
+<meta name="description" content="Devine le nom du jeu vidéo caché en 6 essais, façon Wordle. Une seule partie, partagée entre tout le monde.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Exo+2:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d0e14; --bg2:#12141d; --bg3:#181a25;
+    --gold:#00f0ff; --gold2:#00c4cc; --gold-dim:#0097a7;
+    --text:#f0f1f5; --text2:#939ab0;
+    --border:#2a2d3a;
+    --good:#5fbf86; --bad:#e2685f; --warn:#e0b84a;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { min-height:100%; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Exo 2',sans-serif;
+    min-height:100vh;
+    display:flex; flex-direction:column; align-items:center;
+    padding:1.6rem 1.2rem 3rem;
+    padding-left:max(1.2rem, env(safe-area-inset-left));
+    padding-right:max(1.2rem, env(safe-area-inset-right));
+  }
+
+  .menu-btn {
+    align-self:flex-start;
+    display:inline-flex; align-items:center; gap:6px;
+    padding:9px 16px;
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:3px;
+    color:#e5e5e5;
+    font-family:'Exo 2',sans-serif; font-size:12.5px; font-weight:600; letter-spacing:.02em;
+    text-decoration:none; white-space:nowrap;
+    margin-bottom:1rem;
+    cursor:pointer; transition:all .15s ease;
+  }
+  .menu-btn:hover { background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.24); color:#fff; }
+
+  .title { font-family:'Rajdhani',sans-serif; font-size:clamp(1.3rem,4vw,1.9rem); font-weight:700; letter-spacing:.1em; color:var(--gold); text-transform:uppercase; }
+  .subtitle { color:var(--text2); font-size:12.5px; margin-top:.35rem; margin-bottom:1.4rem; letter-spacing:.03em; text-align:center; }
+
+  #loading { color:var(--text2); font-size:13px; margin-top:2rem; text-align:center; max-width:320px; }
+
+  #game { display:none; flex-direction:column; align-items:center; width:100%; max-width:480px; }
+
+  .grid { display:flex; flex-direction:column; gap:6px; margin-bottom:1.4rem; }
+  .row { display:flex; gap:6px; justify-content:center; }
+  .cell {
+    width:44px; height:44px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--bg2); border:2px solid var(--border);
+    border-radius:6px;
+    font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.25rem;
+    text-transform:uppercase; color:var(--text);
+    transition:transform .15s ease;
+  }
+  .cell.filled { border-color:var(--text2); }
+  .cell.pop { animation:pop .12s ease; }
+  @keyframes pop { 0%{transform:scale(1)} 50%{transform:scale(1.08)} 100%{transform:scale(1)} }
+  .cell.flip { animation:flip .5s ease forwards; }
+  @keyframes flip { 0%{transform:rotateX(0deg);} 50%{transform:rotateX(90deg);} 100%{transform:rotateX(0deg);} }
+  .cell.correct { background:var(--good); border-color:var(--good); color:#08130c; }
+  .cell.present { background:var(--warn); border-color:var(--warn); color:#1a1206; }
+  .cell.absent  { background:var(--bg3); border-color:var(--bg3); color:var(--text2); }
+
+  .keyboard { display:flex; flex-direction:column; gap:7px; width:100%; max-width:460px; }
+  .kb-row { display:flex; gap:5px; justify-content:center; }
+  .key {
+    flex:1; max-width:38px; height:48px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--bg3); border:none; border-radius:6px;
+    color:var(--text); font-family:'Exo 2',sans-serif; font-weight:700; font-size:.82rem;
+    text-transform:uppercase; cursor:pointer; user-select:none;
+    transition:background .15s ease, transform .1s ease;
+  }
+  .key:active { transform:scale(.92); }
+  .key.wide { max-width:64px; font-size:.68rem; }
+  .key.correct { background:var(--good); color:#08130c; }
+  .key.present { background:var(--warn); color:#1a1206; }
+  .key.absent  { background:#232634; color:var(--text2); }
+  .key:hover:not(.correct):not(.present):not(.absent) { background:#232634; }
+  .key:disabled { opacity:.4; cursor:default; }
+
+  .msg-banner {
+    position:fixed; top:14px; left:50%; transform:translateX(-50%);
+    background:var(--bg3); border:1px solid var(--border); border-radius:8px;
+    padding:.55rem 1.1rem; font-size:13px; font-weight:600; color:var(--text);
+    z-index:800; opacity:0; pointer-events:none; transition:opacity .2s ease, top .2s ease;
+    box-shadow:0 10px 26px rgba(0,0,0,.4);
+  }
+  .msg-banner.show { opacity:1; top:22px; }
+
+  .result-modal { position:fixed; inset:0; background:rgba(0,0,0,.72); display:none; align-items:center; justify-content:center; z-index:900; padding:1.2rem; }
+  .result-modal.open { display:flex; }
+  .result-box { background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:1.8rem; max-width:360px; width:100%; text-align:center; }
+  .result-box img { width:100%; border-radius:10px; margin-bottom:1rem; border:1px solid var(--border); }
+  .result-title { font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.3rem; letter-spacing:.06em; margin-bottom:.3rem; }
+  .result-title.win { color:var(--good); }
+  .result-title.lose { color:var(--bad); }
+  .result-name { color:var(--gold); font-weight:700; font-size:1.15rem; margin-bottom:1.1rem; }
+  .result-actions { display:flex; gap:.6rem; justify-content:center; flex-wrap:wrap; }
+  .btn-io { padding:.6rem 1.1rem; background:var(--bg3); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:12.5px; font-weight:600; cursor:pointer; }
+  .btn-io:hover { border-color:var(--gold-dim); color:var(--gold); }
+  .btn-io.primary { background:var(--gold-dim); color:#04262a; border-color:var(--gold-dim); }
+
+  @media (max-width:420px) { .cell { width:38px; height:38px; font-size:1.1rem; } .key { height:44px; } }
+</style>
+<link rel="stylesheet" href="cyber-theme.css">
+</head>
+<body>
+
+<a class="menu-btn" href="index.html">☰ Menu</a>
+<div class="title">🔤 Mot Caché</div>
+<div class="subtitle" id="subtitle">Devine le jeu vidéo du jour — une seule partie, partagée entre tout le monde</div>
+
+<div id="loading">Chargement du mot du jour…</div>
+
+<div id="game">
+  <div class="grid" id="grid"></div>
+  <div class="keyboard" id="keyboard"></div>
+</div>
+
+<div class="msg-banner" id="banner"></div>
+
+<div class="result-modal" id="resultModal">
+  <div class="result-box">
+    <img id="resultImg" src="" alt="" style="display:none;">
+    <div class="result-title" id="resultTitle"></div>
+    <div class="result-name" id="resultName"></div>
+    <div class="result-actions">
+      <button class="btn-io primary" id="closeResultBtn">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="db.js"></script>
+<script src="nav.js"></script>
+<script>
+(function () {
+  const ROWS_LABELS = [
+    ['A','Z','E','R','T','Y','U','I','O','P'],
+    ['Q','S','D','F','G','H','J','K','L','M'],
+    ['ENTER','W','X','C','V','B','N','←']
+  ];
+
+  let puzzle = null;       // { date, puzzleId, wordLength, maxTries, session }
+  let wordLen = 5;
+  let maxTries = 6;
+  let curGuess = '';
+  let letterStates = {};
+  let submitting = false;
+  let renderedCount = 0;   // nb de lignes déjà affichées (pour n'animer que les nouvelles)
+  let realtimeChannel = null;
+
+  function showBanner(text, ms = 1500) {
+    const b = document.getElementById('banner');
+    b.textContent = text; b.classList.add('show');
+    clearTimeout(showBanner._t);
+    showBanner._t = setTimeout(() => b.classList.remove('show'), ms);
+  }
+
+  function buildGrid() {
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    for (let r = 0; r < maxTries; r++) {
+      const row = document.createElement('div');
+      row.className = 'row'; row.id = 'row-' + r;
+      for (let c = 0; c < wordLen; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell'; cell.id = `cell-${r}-${c}`;
+        row.appendChild(cell);
+      }
+      grid.appendChild(row);
+    }
+  }
+
+  function buildKeyboard() {
+    const kb = document.getElementById('keyboard');
+    kb.innerHTML = '';
+    ROWS_LABELS.forEach(rowKeys => {
+      const row = document.createElement('div');
+      row.className = 'kb-row';
+      rowKeys.forEach(k => {
+        const btn = document.createElement('button');
+        btn.className = 'key' + (k.length > 1 ? ' wide' : '');
+        btn.textContent = k === '←' ? '⌫' : k;
+        btn.dataset.key = k;
+        btn.addEventListener('click', () => handleKey(k));
+        row.appendChild(btn);
+      });
+      kb.appendChild(row);
+    });
+  }
+
+  function refreshKeyboardColors() {
+    document.querySelectorAll('.key').forEach(btn => {
+      const k = btn.dataset.key;
+      btn.classList.remove('correct', 'present', 'absent');
+      if (letterStates[k]) btn.classList.add(letterStates[k]);
+    });
+  }
+
+  function lockInputs(locked) {
+    document.querySelectorAll('.key').forEach(k => k.disabled = locked);
+  }
+
+  function curRow() { return puzzle?.session?.guesses?.length || 0; }
+  function isFinished() { return !!(puzzle?.session?.solved || puzzle?.session?.failed); }
+
+  function handleKey(k) {
+    if (!puzzle || isFinished() || submitting) return;
+    if (k === 'ENTER') { submitGuess(); return; }
+    if (k === '←') { curGuess = curGuess.slice(0, -1); renderCurrentRow(); return; }
+    if (/^[A-Z]$/.test(k) && curGuess.length < wordLen) { curGuess += k; renderCurrentRow(true); }
+  }
+
+  function renderCurrentRow(pop) {
+    const row = curRow();
+    if (row >= maxTries) return;
+    for (let c = 0; c < wordLen; c++) {
+      const cell = document.getElementById(`cell-${row}-${c}`);
+      if (!cell) continue;
+      const letter = curGuess[c] || '';
+      cell.textContent = letter;
+      cell.classList.toggle('filled', !!letter);
+      if (pop && c === curGuess.length - 1) { cell.classList.remove('pop'); void cell.offsetWidth; cell.classList.add('pop'); }
+    }
+  }
+
+  function shakeRow() {
+    const row = document.getElementById('row-' + curRow());
+    if (!row) return;
+    row.style.transform = 'translateX(-6px)';
+    setTimeout(() => { row.style.transform = 'translateX(6px)'; }, 60);
+    setTimeout(() => { row.style.transform = ''; }, 120);
+  }
+
+  async function safeJson(res) {
+    const text = await res.text();
+    try { return JSON.parse(text); }
+    catch (e) { throw new Error('Réponse serveur invalide (' + res.status + ')'); }
+  }
+
+  async function submitGuess() {
+    if (curGuess.length !== wordLen) { showBanner('Pas assez de lettres'); shakeRow(); return; }
+    if (submitting) return;
+    submitting = true;
+    lockInputs(true);
+
+    try {
+      const res = await fetch('/api/motcache-guess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guess: curGuess })
+      });
+      const data = await safeJson(res);
+      if (!res.ok) {
+        // Partie déjà finie entre-temps (ex : le pote a fini avant toi) : on
+        // resynchronise simplement sur l'état renvoyé plutôt que d'afficher
+        // une erreur qui n'en est pas vraiment une.
+        if (data.session) { puzzle.session = data.session; renderSession(); }
+        throw new Error(data.error || 'Erreur serveur');
+      }
+      curGuess = '';
+      puzzle.session = data.session;
+      renderSession();
+    } catch (e) {
+      showBanner(e.message, 2200);
+    } finally {
+      submitting = false;
+      if (!isFinished()) lockInputs(false);
+    }
+  }
+
+  // Applique l'état de session (guesses/solved/failed/reveal) reçu du
+  // serveur ou du temps réel — source de vérité unique, aucune écriture
+  // locale : c'est ce qui garantit que tout le monde voit la même chose.
+  function renderSession() {
+    const session = puzzle.session || { guesses: [], solved: false, failed: false };
+    const guesses = session.guesses || [];
+
+    for (let i = renderedCount; i < guesses.length; i++) {
+      const { guess, result } = guesses[i];
+      for (let c = 0; c < wordLen; c++) {
+        const cell = document.getElementById(`cell-${i}-${c}`);
+        if (!cell) continue;
+        cell.textContent = guess[c];
+        cell.classList.add('flip', 'filled', result[c]);
+        const rank = { absent:0, present:1, correct:2 };
+        if (!letterStates[guess[c]] || rank[result[c]] > rank[letterStates[guess[c]]]) {
+          letterStates[guess[c]] = result[c];
+        }
+      }
+    }
+    renderedCount = guesses.length;
+    refreshKeyboardColors();
+
+    const finished = session.solved || session.failed;
+    lockInputs(finished);
+    if (finished && session.reveal) {
+      showResult(session.reveal, session.solved);
+    } else {
+      document.getElementById('resultModal').classList.remove('open');
+    }
+  }
+
+  function showResult(reveal, didWin) {
+    document.getElementById('resultTitle').textContent = didWin ? '🎉 Gagné !' : '💀 Perdu';
+    document.getElementById('resultTitle').className = 'result-title ' + (didWin ? 'win' : 'lose');
+    const img = document.getElementById('resultImg');
+    if (reveal && reveal.cover) { img.src = reveal.cover; img.style.display = 'block'; } else { img.style.display = 'none'; }
+    document.getElementById('resultName').textContent = reveal ? reveal.name : '';
+    document.getElementById('resultModal').classList.add('open');
+  }
+
+  document.getElementById('closeResultBtn').addEventListener('click', () => {
+    document.getElementById('resultModal').classList.remove('open');
+  });
+
+  document.addEventListener('keydown', e => {
+    if (!puzzle || isFinished() || submitting) return;
+    if (document.getElementById('resultModal').classList.contains('open')) return;
+    if (e.key === 'Enter') handleKey('ENTER');
+    else if (e.key === 'Backspace') handleKey('←');
+    else if (/^[a-zA-Z]$/.test(e.key)) handleKey(e.key.toUpperCase());
+  });
+
+  // Applique un nouvel objet puzzle (venant du chargement initial OU du
+  // temps réel). Si le puzzleId a changé (nouveau mot régénéré), on
+  // reconstruit tout depuis zéro pour TOUT LE MONDE, y compris en plein
+  // milieu d'une partie en cours.
+  function applyPuzzle(data) {
+    if (!data || !data.wordLength) return;
+    const isNewGeneration = !puzzle || puzzle.puzzleId !== data.puzzleId;
+    puzzle = data;
+    puzzle.session = puzzle.session || { guesses: [], solved: false, failed: false };
+
+    if (isNewGeneration) {
+      wordLen = puzzle.wordLength;
+      maxTries = puzzle.maxTries;
+      renderedCount = 0;
+      curGuess = '';
+      letterStates = {};
+      document.getElementById('resultModal').classList.remove('open');
+      document.getElementById('subtitle').textContent = `${wordLen} lettres · ${maxTries} essais · une seule partie, partagée entre tout le monde`;
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('game').style.display = 'flex';
+      buildGrid();
+      buildKeyboard();
+    }
+    renderSession();
+  }
+
+  function subscribeRealtime(date) {
+    if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
+    realtimeChannel = supabaseClient
+      .channel('motcache_' + date)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_data', filter: `id=eq.motcache_${date}` }, payload => {
+        if (payload.new?.data?.wordLength) applyPuzzle(payload.new.data);
+      })
+      .subscribe();
+  }
+
+  async function init() {
+    try {
+      const res = await fetch('/api/motcache-daily', { cache: 'no-store' });
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+      applyPuzzle(data);
+      subscribeRealtime(data.date);
+    } catch (e) {
+      document.getElementById('loading').textContent = "Impossible de charger le mot du jour (" + e.message + "). Réessaie dans un instant.";
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
