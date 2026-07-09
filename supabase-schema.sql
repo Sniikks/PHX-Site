@@ -10,7 +10,16 @@
 --   'backlog_jeux_v4'          -> liste des jeux réalisés (jeux-realises.html)
 --   'bracketJeux_savedImports' -> listes de jeux sauvegardées (bracket-jeux.html)
 --   'bracketJeux_blacklists'   -> blacklists sauvegardées (bracket-jeux.html)
---   (tes 2 futures pages pourront simplement utiliser de nouvelles clés)
+--   'motcache_YYYY-MM-DD'        -> puzzle public du jour (longueur, essais,
+--                                    ET session partagée : essais/solved/failed) — mot-cache.html
+--   'motcache_secret_YYYY-MM-DD' -> mot secret du jour (jamais lu par le navigateur) — /api/motcache-guess.js
+--   'motcache_used'               -> mots déjà tombés (pour ne jamais répéter)
+--   'pixels_game'                 -> partie partagée en cours (image/vies/série/historique) — pixels.html
+--   'pixels_game_secret'          -> nom du jeu de la manche en cours (jamais lu par le navigateur)
+--   'pixels_game_image'           -> jaquette (base64) de la manche en cours, à part pour alléger le temps réel
+--   'plusoumoins_game'            -> partie partagée en cours (duel/série) — plus-ou-moins.html
+--   'plusoumoins_game_secret'     -> valeurs cachées du duel en cours (jamais lues par le navigateur)
+--   (tes futures pages pourront simplement utiliser de nouvelles clés)
 
 create table if not exists app_data (
   id text primary key,
