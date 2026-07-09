@@ -112,7 +112,177 @@
   .btn-io:hover { border-color:var(--gold-dim); color:var(--gold); }
   .btn-io.primary { background:var(--gold-dim); color:#04262a; border-color:var(--gold-dim); }
 
+  /* ── Navigation par date / archives / stats / génération (comme ZoomJeu) ── */
+  button {
+    font-family:'Rajdhani',sans-serif; font-weight:600; font-size:.8rem; letter-spacing:.04em;
+    border-radius:3px; border:1px solid var(--gold-dim); background:transparent; color:var(--gold);
+    padding:.75rem 1.1rem; cursor:pointer; transition:background .2s ease, color .2s ease;
+    white-space:nowrap;
+  }
+  button:hover:not(:disabled) { background:var(--gold); color:#08130c; }
+  button:disabled { opacity:.35; cursor:default; }
+  button.ghost { border-color:var(--border); color:var(--text2); }
+  button.ghost:hover:not(:disabled) { background:var(--bg3); color:var(--text); }
+
+  .date-nav {
+    display:flex; align-items:center; justify-content:center; gap:.4rem;
+    margin-bottom:1.2rem; flex-wrap:wrap; width:100%; max-width:480px; row-gap:.5rem;
+  }
+  .date-nav button {
+    width:34px; height:34px; padding:0; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:3px; border:1px solid var(--border); background:var(--bg2); color:var(--text2);
+    font-size:.85rem; cursor:pointer;
+  }
+  .date-nav button:hover:not(:disabled) { background:var(--bg3); border-color:var(--gold-dim); color:var(--gold); }
+  .date-nav button:disabled { opacity:.3; cursor:default; }
+  .date-nav .date-label {
+    font-family:'Rajdhani',sans-serif; font-weight:600; font-size:.85rem; color:var(--text);
+    min-width:180px; text-align:center; letter-spacing:.02em;
+  }
+  .archive-toggle {
+    width:auto !important; padding:0 .8rem !important; gap:.35rem; display:flex; align-items:center; flex-shrink:0;
+    font-family:'Rajdhani',sans-serif; font-size:.72rem !important; font-weight:600; letter-spacing:.03em;
+  }
+
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,.6);
+    display:none; align-items:center; justify-content:center;
+    z-index:1000; padding:1rem;
+  }
+  .modal-overlay.visible { display:flex; }
+  .modal-box {
+    width:100%; max-width:340px;
+    background:var(--bg2); border:1px solid var(--border); border-radius:10px;
+    padding:1.4rem 1.4rem 1.2rem;
+    box-shadow:0 20px 50px rgba(0,0,0,.5);
+  }
+  .modal-box.stats-box { text-align:left; max-width:400px; }
+  .modal-title {
+    font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.05rem;
+    color:var(--gold); margin-bottom:.7rem;
+  }
+  .modal-title.danger { color:var(--bad); }
+  .modal-message { font-size:.88rem; color:var(--text); line-height:1.45; }
+  .modal-sub { font-size:.75rem; color:var(--text2); margin-top:.3rem; margin-bottom:1.3rem; line-height:1.4; }
+  .modal-input {
+    width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:.6rem .8rem; font-family:'Exo 2',sans-serif; font-size:.88rem;
+    outline:none; margin-bottom:1.1rem;
+  }
+  .modal-input:focus { border-color:var(--gold-dim); }
+  .modal-actions { display:flex; gap:.6rem; }
+  .modal-actions button {
+    flex:1; padding:.7rem 0; margin:0;
+    font-family:'Rajdhani',sans-serif; font-weight:600; font-size:.85rem; letter-spacing:.02em;
+    border-radius:6px; border:1px solid var(--border); background:var(--bg3); color:var(--text);
+    cursor:pointer; white-space:nowrap;
+  }
+  .modal-cancel:hover { background:var(--border); color:var(--text); }
+  .modal-confirm { border:none; background:var(--gold); color:#08130c; }
+  .modal-confirm:hover { background:var(--gold2); }
+  .modal-confirm.danger { background:var(--bad); color:#fff; }
+  .modal-confirm.danger:hover { background:#c9534a; }
+
+  /* ── Statistiques ── */
+  .stats-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:.6rem; margin:.8rem 0 1rem; }
+  .stat-box { background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:.6rem; text-align:center; }
+  .stat-box .stat-num { font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.35rem; color:var(--gold); }
+  .stat-box .stat-label { font-size:.62rem; color:var(--text2); letter-spacing:.05em; text-transform:uppercase; margin-top:.15rem; }
+  .dist-title {
+    font-size:.7rem; color:var(--text2); letter-spacing:.05em; text-transform:uppercase;
+    font-family:'Rajdhani',sans-serif; font-weight:600; margin-bottom:.2rem;
+  }
+  .dist-row { display:flex; align-items:center; gap:.5rem; margin-top:.3rem; font-size:.72rem; }
+  .dist-row .dist-n { width:14px; color:var(--text2); text-align:right; flex-shrink:0; font-family:'JetBrains Mono',monospace; }
+  .dist-row .dist-bar { height:14px; background:var(--gold-dim); border-radius:2px; min-width:2px; }
+  .dist-row .dist-count { color:var(--text2); flex-shrink:0; }
+  .stats-note { font-size:.68rem; color:var(--text2); margin-top:.9rem; }
+  .state-msg { color:var(--text2); font-size:.85rem; text-align:center; margin-top:2rem; }
+
+  /* ── Archives (vue calendrier) ── */
+  #archiveArea { display:none; width:100%; max-width:920px; flex-direction:column; align-items:center; }
+  .archive-header {
+    display:flex; flex-direction:column; align-items:center; gap:.6rem; margin-bottom:1rem;
+    width:100%;
+  }
+  .archive-header .archive-nav-row {
+    display:flex; align-items:center; justify-content:center; gap:.4rem;
+    flex-wrap:wrap; width:100%; max-width:100%; row-gap:.5rem;
+  }
+  .archive-header .archive-nav-row button {
+    width:34px; height:34px; padding:0; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:.85rem;
+  }
+  .archive-header .archive-month-label {
+    font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1rem; color:var(--gold);
+    min-width:180px; text-align:center; text-transform:capitalize; flex-shrink:0;
+  }
+  .archive-grid {
+    display:grid; grid-template-columns:repeat(7, 1fr); gap:.4rem;
+    max-width:920px; width:100%; margin:0 auto;
+  }
+  .week-label {
+    display:none;
+    grid-column:1 / -1;
+    font-family:'Rajdhani',sans-serif; font-weight:700; font-size:.78rem; color:var(--gold);
+    letter-spacing:.04em; margin:.5rem 0 .1rem; text-transform:uppercase;
+  }
+  .week-label:first-of-type { margin-top:0; }
+  .archive-weekday {
+    text-align:center; font-size:10px; color:var(--text2); letter-spacing:.06em; padding-bottom:.15rem;
+  }
+  .archive-cell {
+    aspect-ratio:1/0.85; border-radius:6px; overflow:hidden; position:relative;
+    background:var(--bg3); border:2px solid var(--border);
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .archive-cell.empty { visibility:hidden; cursor:default; }
+  .archive-cell.disabled { opacity:.25; cursor:default; pointer-events:none; border-color:var(--border); }
+  .archive-cell.status-green { border-color:var(--good); }
+  .archive-cell.status-red { border-color:var(--bad); }
+  .archive-cell.status-yellow { border-color:var(--warn); }
+  .archive-cell img.cell-img {
+    position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+    -webkit-user-drag:none; user-select:none; pointer-events:none;
+  }
+  .archive-cell .cell-word-len {
+    font-family:'JetBrains Mono',monospace; font-size:.85rem; color:var(--text2);
+  }
+  .archive-cell::after {
+    content:''; position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.75), transparent 55%);
+    z-index:1; pointer-events:none;
+  }
+  .archive-cell .cell-day {
+    position:absolute; top:.25rem; left:.3rem; font-family:'Rajdhani',sans-serif; font-size:.62rem; font-weight:700;
+    color:#08130c; background:var(--text2); padding:1px 4px; border-radius:2px; z-index:2;
+  }
+  .archive-cell.status-green .cell-day { background:var(--good); }
+  .archive-cell.status-red .cell-day { background:var(--bad); }
+  .archive-cell.status-yellow .cell-day { background:var(--warn); }
+  .cell-mini-guesses { position:absolute; top:.3rem; right:.3rem; display:flex; gap:1.5px; flex-wrap:wrap; max-width:60%; justify-content:flex-end; z-index:2; }
+  .cell-mini-guesses span { width:5px; height:5px; border-radius:1px; background:rgba(255,255,255,.25); }
+  .cell-mini-guesses span.win { background:var(--good); }
+  .cell-mini-guesses span.used { background:var(--text2); }
+  .archive-cell .cell-name {
+    position:absolute; bottom:.3rem; left:.3rem; right:.3rem; z-index:2;
+    font-size:8.5px; color:var(--text); font-weight:600; line-height:1.1;
+    overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  }
+  .archive-cell:hover:not(.disabled) { filter:brightness(1.15); }
+
+  .history-banner {
+    width:100%; max-width:480px; background:var(--bg3); border:1px solid var(--border); border-radius:8px;
+    padding:.6rem .9rem; margin-bottom:1rem; font-size:.78rem; color:var(--text2); text-align:center;
+  }
+  .history-banner strong { color:var(--gold); }
+  .history-reveal { display:flex; align-items:center; gap:.7rem; margin-top:.6rem; }
+  .history-reveal img { width:44px; height:44px; object-fit:cover; border-radius:6px; border:1px solid var(--border); }
+  .history-reveal .history-name { color:var(--text); font-weight:700; font-size:.85rem; }
+
   @media (max-width:420px) { .cell { width:38px; height:38px; font-size:1.1rem; } .key { height:44px; } }
+  @media (max-width:640px) { .date-nav .date-label { min-width:120px; font-size:.72rem; } }
 </style>
 <link rel="stylesheet" href="cyber-theme.css">
 </head>
@@ -122,12 +292,29 @@
 <div class="title">🔤 Mot Caché</div>
 <div class="subtitle" id="subtitle">Devine le jeu vidéo du jour — une seule partie, partagée entre tout le monde</div>
 
-<div id="loading">Chargement du mot du jour…</div>
-
-<div id="game">
-  <div class="grid" id="grid"></div>
-  <div class="keyboard" id="keyboard"></div>
+<div class="date-nav" id="dateNavEl">
+  <button id="navFirst" title="Premier mot">⏮</button>
+  <button id="navPrev" title="Jour précédent">◀</button>
+  <div class="date-label" id="dateLabel">—</div>
+  <button id="navNext" title="Jour suivant">▶</button>
+  <button id="navLast" title="Aujourd'hui">⏭</button>
+  <button id="archiveToggle" class="archive-toggle" title="Archives">🗓 <span class="archive-label">Archives</span></button>
+  <button id="statsToggle" class="archive-toggle" title="Statistiques">📊 <span class="archive-label">Stats</span></button>
+  <button id="forceGenBtn" class="archive-toggle" title="Générer manuellement le mot du jour">⚡ <span class="archive-label">Générer</span></button>
 </div>
+
+<div id="playArea">
+  <div id="loading">Chargement du mot du jour…</div>
+
+  <div id="historyBanner" class="history-banner" style="display:none;"></div>
+
+  <div id="game">
+    <div class="grid" id="grid"></div>
+    <div class="keyboard" id="keyboard"></div>
+  </div>
+</div>
+
+<div id="archiveArea"></div>
 
 <div class="msg-banner" id="banner"></div>
 
@@ -142,6 +329,30 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-message" id="modalMessage"></div>
+    <div class="modal-sub" id="modalSub"></div>
+    <input type="password" id="modalInput" class="modal-input" style="display:none" autocomplete="off">
+    <div class="modal-actions">
+      <button class="modal-cancel" id="modalCancelBtn"></button>
+      <button class="modal-confirm" id="modalConfirmBtn"></button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="statsOverlay">
+  <div class="modal-box stats-box">
+    <div class="modal-title">📊 Statistiques</div>
+    <div id="statsBody"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" id="statsCloseBtn">Fermer</button>
+    </div>
+  </div>
+</div>
+
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="db.js"></script>
@@ -154,6 +365,12 @@
     ['ENTER','W','X','C','V','B','N','←']
   ];
 
+  const LAUNCH_DATE = '2026-01-01';
+  const WEEKDAYS_FR = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  const MONTHS_FR = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  const STATS_MAX_TRIES = 6; // maxTries est toujours 6 côté génération (api/motcache-daily.js)
+  const ADMIN_KEY_STORAGE = 'phx_admin_key'; // partagée avec ZoomJeu / la tier list
+
   let puzzle = null;       // { date, puzzleId, wordLength, maxTries, session }
   let wordLen = 5;
   let maxTries = 6;
@@ -162,6 +379,41 @@
   let submitting = false;
   let renderedCount = 0;   // nb de lignes déjà affichées (pour n'animer que les nouvelles)
   let realtimeChannel = null;
+
+  // ── Dates ──
+  function parisDateString(offset = 0) {
+    const now = new Date(Date.now() + offset * 86400000);
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+    const get = t => parts.find(p => p.type === t).value;
+    return `${get('year')}-${get('month')}-${get('day')}`;
+  }
+  function addDays(dateStr, n) {
+    const d = new Date(`${dateStr}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
+  function formatDateFr(dateStr) {
+    const d = new Date(`${dateStr}T00:00:00Z`);
+    return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d);
+  }
+  function puzzleNumber(dateStr) {
+    const d1 = new Date(`${LAUNCH_DATE}T00:00:00Z`);
+    const d2 = new Date(`${dateStr}T00:00:00Z`);
+    return Math.max(1, Math.round((d2 - d1) / 86400000) + 1);
+  }
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  }
+
+  // ── État global de navigation ──
+  const todayStr = parisDateString();
+  const urlParams = new URLSearchParams(location.search);
+  let viewingDate = urlParams.get('date') || todayStr;
+  if (viewingDate > todayStr) viewingDate = todayStr;
+  let mode = 'play'; // 'play' | 'archive'
+  let archiveYear = parseInt(viewingDate.slice(0, 4), 10);
+  let archiveMonth = parseInt(viewingDate.slice(5, 7), 10);
+  function isLive() { return viewingDate === todayStr; }
 
   function showBanner(text, ms = 1500) {
     const b = document.getElementById('banner');
@@ -219,7 +471,7 @@
   function isFinished() { return !!(puzzle?.session?.solved || puzzle?.session?.failed); }
 
   function handleKey(k) {
-    if (!puzzle || isFinished() || submitting) return;
+    if (!isLive() || !puzzle || isFinished() || submitting) return;
     if (k === 'ENTER') { submitGuess(); return; }
     if (k === '←') { curGuess = curGuess.slice(0, -1); renderCurrentRow(); return; }
     if (/^[A-Z]$/.test(k) && curGuess.length < wordLen) { curGuess += k; renderCurrentRow(true); }
@@ -253,6 +505,7 @@
   }
 
   async function submitGuess() {
+    if (!isLive()) return;
     if (curGuess.length !== wordLen) { showBanner('Pas assez de lettres'); shakeRow(); return; }
     if (submitting) return;
     submitting = true;
@@ -279,7 +532,7 @@
       showBanner(e.message, 2200);
     } finally {
       submitting = false;
-      if (!isFinished()) lockInputs(false);
+      if (!isFinished() && isLive()) lockInputs(false);
     }
   }
 
@@ -307,12 +560,37 @@
     refreshKeyboardColors();
 
     const finished = session.solved || session.failed;
-    lockInputs(finished);
-    if (finished && session.reveal) {
-      showResult(session.reveal, session.solved);
+    lockInputs(finished || !isLive());
+    document.getElementById('historyBanner').style.display = 'none';
+
+    if (isLive()) {
+      // En direct : la modale de résultat s'ouvre normalement (y compris si un
+      // pote vient de finir la partie du jour avant que tu ne recharges).
+      if (finished && session.reveal) showResult(session.reveal, session.solved);
+      else document.getElementById('resultModal').classList.remove('open');
     } else {
+      // En consultation d'un jour passé : pas de popup intrusive, juste un
+      // bandeau discret sous la grille.
       document.getElementById('resultModal').classList.remove('open');
+      showHistoryBanner(session);
     }
+  }
+
+  function showHistoryBanner(session) {
+    const el = document.getElementById('historyBanner');
+    const guesses = session.guesses || [];
+    if (session.solved && session.reveal) {
+      el.innerHTML = `Trouvé en ${guesses.length} essai${guesses.length > 1 ? 's' : ''} 🎉
+        <div class="history-reveal">${session.reveal.cover ? `<img src="${session.reveal.cover}" alt="">` : ''}<span class="history-name">${escapeHtml(session.reveal.name)}</span></div>`;
+    } else if (session.failed && session.reveal) {
+      el.innerHTML = `Perdu 💀
+        <div class="history-reveal">${session.reveal.cover ? `<img src="${session.reveal.cover}" alt="">` : ''}<span class="history-name">${escapeHtml(session.reveal.name)}</span></div>`;
+    } else if (guesses.length) {
+      el.innerHTML = `Partie non terminée ce jour-là (${guesses.length}/${maxTries} essais) — seul le mot du jour actuel peut être joué.`;
+    } else {
+      el.innerHTML = `Personne n'a joué ce jour-là — seul le mot du jour actuel peut être joué.`;
+    }
+    el.style.display = 'block';
   }
 
   function showResult(reveal, didWin) {
@@ -329,7 +607,7 @@
   });
 
   document.addEventListener('keydown', e => {
-    if (!puzzle || isFinished() || submitting) return;
+    if (mode !== 'play' || !isLive() || !puzzle || isFinished() || submitting) return;
     if (document.getElementById('resultModal').classList.contains('open')) return;
     if (e.key === 'Enter') handleKey('ENTER');
     else if (e.key === 'Backspace') handleKey('←');
@@ -353,7 +631,9 @@
       curGuess = '';
       letterStates = {};
       document.getElementById('resultModal').classList.remove('open');
-      document.getElementById('subtitle').textContent = `${wordLen} lettres · ${maxTries} essais · une seule partie, partagée entre tout le monde`;
+      document.getElementById('subtitle').textContent = isLive()
+        ? `${wordLen} lettres · ${maxTries} essais · une seule partie, partagée entre tout le monde`
+        : `${wordLen} lettres · ${maxTries} essais · consultation d'un jour passé`;
       document.getElementById('loading').style.display = 'none';
       document.getElementById('game').style.display = 'flex';
       buildGrid();
@@ -364,6 +644,7 @@
 
   function subscribeRealtime(date) {
     if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
+    if (!isLive()) return; // pas besoin de temps réel en consultation d'un jour passé
     realtimeChannel = supabaseClient
       .channel('motcache_' + date)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_data', filter: `id=eq.motcache_${date}` }, payload => {
@@ -372,20 +653,366 @@
       .subscribe();
   }
 
-  async function init() {
+  // ── Navigation par date ──
+  function updateNavUI() {
+    document.getElementById('dateNavEl').style.display = mode === 'play' ? 'flex' : 'none';
+    if (mode !== 'play') return;
+    document.getElementById('dateLabel').textContent = formatDateFr(viewingDate) + ` · #${puzzleNumber(viewingDate)}`;
+    document.getElementById('navFirst').disabled = viewingDate <= LAUNCH_DATE;
+    document.getElementById('navPrev').disabled = viewingDate <= LAUNCH_DATE;
+    document.getElementById('navNext').disabled = viewingDate >= todayStr;
+    document.getElementById('navLast').disabled = viewingDate >= todayStr;
+  }
+  function goToDate(d) {
+    if (d < LAUNCH_DATE) d = LAUNCH_DATE;
+    if (d > todayStr) d = todayStr;
+    viewingDate = d;
+    mode = 'play';
+    const params = new URLSearchParams(location.search);
+    params.set('date', viewingDate);
+    history.replaceState(null, '', location.pathname + '?' + params.toString());
+    document.getElementById('archiveArea').style.display = 'none';
+    document.getElementById('playArea').style.display = 'block';
+    loadForDate();
+  }
+  document.getElementById('navFirst').addEventListener('click', () => goToDate(LAUNCH_DATE));
+  document.getElementById('navPrev').addEventListener('click', () => goToDate(addDays(viewingDate, -1)));
+  document.getElementById('navNext').addEventListener('click', () => goToDate(addDays(viewingDate, 1)));
+  document.getElementById('navLast').addEventListener('click', () => goToDate(todayStr));
+  document.getElementById('archiveToggle').addEventListener('click', () => {
+    mode = 'archive';
+    archiveYear = parseInt(viewingDate.slice(0, 4), 10);
+    archiveMonth = parseInt(viewingDate.slice(5, 7), 10);
+    updateNavUI();
+    document.getElementById('playArea').style.display = 'none';
+    document.getElementById('archiveArea').style.display = 'flex';
+    renderArchive();
+  });
+
+  // ── Chargement du mot du jour (aujourd'hui) ou d'un jour passé (archives) ──
+  async function loadForDate() {
+    updateNavUI();
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('loading').textContent = 'Chargement…';
+    document.getElementById('game').style.display = 'none';
+    document.getElementById('historyBanner').style.display = 'none';
+    if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
+
     try {
-      const res = await fetch('/api/motcache-daily', { cache: 'no-store' });
-      const data = await safeJson(res);
-      if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+      let data;
+      if (isLive()) {
+        // Aujourd'hui : génération paresseuse si besoin (comportement inchangé).
+        const res = await fetch('/api/motcache-daily', { cache: 'no-store' });
+        data = await safeJson(res);
+        if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+      } else {
+        // Jour passé : lecture directe de la ligne publique (déjà générée ce
+        // jour-là, ou inexistante si le site n'existait pas encore).
+        const { data: row, error } = await supabaseClient.from('app_data').select('data').eq('id', 'motcache_' + viewingDate).maybeSingle();
+        if (error) throw error;
+        if (!row?.data?.wordLength) {
+          document.getElementById('loading').textContent = 'Aucun mot pour cette date.';
+          puzzle = null;
+          return;
+        }
+        data = row.data;
+      }
       applyPuzzle(data);
-      subscribeRealtime(data.date);
+      subscribeRealtime(data.date || viewingDate);
     } catch (e) {
       document.getElementById('loading').textContent = "Impossible de charger le mot du jour (" + e.message + "). Réessaie dans un instant.";
     }
   }
 
-  init();
+  // ── Modale de confirmation personnalisée (comme ZoomJeu) ──
+  function showConfirmModal({ title, message, sub = '', confirmLabel = 'OK', cancelLabel = 'Annuler', danger = false, input = false, inputPlaceholder = '' }) {
+    return new Promise(resolve => {
+      const overlay = document.getElementById('modalOverlay');
+      const titleEl = document.getElementById('modalTitle');
+      const msgEl = document.getElementById('modalMessage');
+      const subEl = document.getElementById('modalSub');
+      const inputEl = document.getElementById('modalInput');
+      const cancelBtn = document.getElementById('modalCancelBtn');
+      const confirmBtn = document.getElementById('modalConfirmBtn');
+
+      titleEl.textContent = title;
+      titleEl.classList.toggle('danger', danger);
+      msgEl.textContent = message;
+      subEl.textContent = sub;
+      subEl.style.display = sub ? 'block' : 'none';
+      inputEl.style.display = input ? 'block' : 'none';
+      inputEl.value = '';
+      inputEl.placeholder = inputPlaceholder;
+      cancelBtn.textContent = cancelLabel;
+      confirmBtn.textContent = confirmLabel;
+      confirmBtn.classList.toggle('danger', danger);
+
+      function close(result) {
+        overlay.classList.remove('visible');
+        cancelBtn.removeEventListener('click', onCancel);
+        confirmBtn.removeEventListener('click', onConfirm);
+        overlay.removeEventListener('click', onOverlayClick);
+        inputEl.removeEventListener('keydown', onInputKey);
+        resolve(result);
+      }
+      function onCancel() { close(input ? null : false); }
+      function onConfirm() { close(input ? inputEl.value.trim() : true); }
+      function onOverlayClick(e) { if (e.target === overlay) onCancel(); }
+      function onInputKey(e) { if (e.key === 'Enter') onConfirm(); }
+
+      cancelBtn.addEventListener('click', onCancel);
+      confirmBtn.addEventListener('click', onConfirm);
+      overlay.addEventListener('click', onOverlayClick);
+      inputEl.addEventListener('keydown', onInputKey);
+      overlay.classList.add('visible');
+      if (input) inputEl.focus();
+    });
+  }
+
+  // ── Génération manuelle du mot du jour (bouton de secours) ──
+  // ⚠️ La clé admin n'est jamais écrite en dur ici. Elle est demandée à
+  // l'utilisateur puis mémorisée en sessionStorage (partagée avec ZoomJeu).
+  async function getAdminKey() {
+    const saved = sessionStorage.getItem(ADMIN_KEY_STORAGE);
+    if (saved) {
+      const ok = await showConfirmModal({
+        title: 'Générer le mot du jour',
+        message: 'Forcer la génération d\'un nouveau mot pour aujourd\'hui ?',
+        sub: 'Cela remplace le mot actuel et réinitialise la partie en cours.',
+        confirmLabel: 'Générer',
+        cancelLabel: 'Annuler'
+      });
+      return ok ? saved : null;
+    }
+    const key = await showConfirmModal({
+      title: 'Générer le mot du jour',
+      message: 'Forcer la génération d\'un nouveau mot ? Entre la clé admin pour confirmer.',
+      sub: 'Cela remplace le mot actuel et réinitialise la partie en cours. La clé sera mémorisée pour cette session uniquement.',
+      confirmLabel: 'Générer',
+      cancelLabel: 'Annuler',
+      input: true,
+      inputPlaceholder: 'ADMIN_KEY'
+    });
+    if (!key) return null;
+    sessionStorage.setItem(ADMIN_KEY_STORAGE, key);
+    return key;
+  }
+
+  document.getElementById('forceGenBtn').addEventListener('click', async () => {
+    const adminKey = await getAdminKey();
+    if (!adminKey) return;
+
+    const btn = document.getElementById('forceGenBtn');
+    btn.disabled = true;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '⏳ <span class="archive-label">Génération…</span>';
+
+    try {
+      const res = await fetch(`/api/motcache-daily?key=${encodeURIComponent(adminKey)}&force=true`);
+      if (res.status === 401) {
+        sessionStorage.removeItem(ADMIN_KEY_STORAGE);
+        btn.innerHTML = '🔒 <span class="archive-label">Clé invalide</span>';
+      } else if (!res.ok) {
+        btn.innerHTML = '⚠️ <span class="archive-label">Erreur</span>';
+      } else {
+        btn.innerHTML = '✅ <span class="archive-label">Généré</span>';
+      }
+    } catch (e) {
+      console.error('Erreur génération manuelle:', e);
+      btn.innerHTML = '⚠️ <span class="archive-label">Erreur</span>';
+    }
+
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+      if (mode === 'play' && isLive()) goToDate(todayStr);
+    }, 4000);
+  });
+
+  // ── Statistiques (sessions partagées -> stats de l'équipe) ──
+  document.getElementById('statsToggle').addEventListener('click', openStats);
+  document.getElementById('statsCloseBtn').addEventListener('click', () => document.getElementById('statsOverlay').classList.remove('visible'));
+  document.getElementById('statsOverlay').addEventListener('click', e => { if (e.target.id === 'statsOverlay') e.target.classList.remove('visible'); });
+
+  async function openStats() {
+    const overlay = document.getElementById('statsOverlay');
+    const body = document.getElementById('statsBody');
+    overlay.classList.add('visible');
+    body.innerHTML = '<div class="state-msg" style="margin-top:.5rem;">Calcul des statistiques…</div>';
+    try {
+      // 'motcache_2%' = uniquement les lignes datées (exclut motcache_used et
+      // les lignes secrètes motcache_secret_*, qui commencent différemment).
+      const { data: rows, error } = await supabaseClient.from('app_data').select('id,data').ilike('id', 'motcache_2%');
+      if (error) throw error;
+
+      const days = (rows || [])
+        .map(r => ({ date: r.id.replace('motcache_', ''), p: r.data }))
+        .filter(g => /^\d{4}-\d{2}-\d{2}$/.test(g.date) && g.p && g.p.session)
+        .sort((a, b) => (a.date < b.date ? -1 : 1));
+
+      const solvedByDate = {}; // true = gagné, false = fini mais perdu, absent = pas fini
+      let played = 0, wins = 0;
+      const dist = new Array(STATS_MAX_TRIES).fill(0);
+      days.forEach(g => {
+        const s = g.p.session;
+        const guesses = s.guesses || [];
+        const finished = s.solved || s.failed;
+        if (!finished) return;
+        played++;
+        solvedByDate[g.date] = !!s.solved;
+        if (s.solved) { wins++; dist[Math.min(guesses.length, STATS_MAX_TRIES) - 1]++; }
+      });
+
+      let current = 0;
+      let d = todayStr;
+      if (solvedByDate[d] === undefined) d = addDays(d, -1);
+      while (solvedByDate[d]) { current++; d = addDays(d, -1); }
+
+      let best = 0, run = 0, prev = null;
+      days.forEach(g => {
+        if (solvedByDate[g.date] === true) {
+          run = (prev !== null && g.date === addDays(prev, 1)) ? run + 1 : 1;
+          best = Math.max(best, run);
+          prev = g.date;
+        } else if (solvedByDate[g.date] === false) {
+          run = 0;
+          prev = null;
+        }
+      });
+
+      const rate = played ? Math.round((wins / played) * 100) : 0;
+      const maxDist = Math.max(1, ...dist);
+      let distHtml = '';
+      for (let i = 0; i < STATS_MAX_TRIES; i++) {
+        distHtml += `<div class="dist-row"><span class="dist-n">${i + 1}</span><div class="dist-bar" style="width:${Math.round((dist[i] / maxDist) * 100)}%"></div><span class="dist-count">${dist[i]}</span></div>`;
+      }
+
+      body.innerHTML = `
+        <div class="stats-grid">
+          <div class="stat-box"><div class="stat-num">${played}</div><div class="stat-label">Parties finies</div></div>
+          <div class="stat-box"><div class="stat-num">${rate}%</div><div class="stat-label">Victoires</div></div>
+          <div class="stat-box"><div class="stat-num">${current}</div><div class="stat-label">Série en cours</div></div>
+          <div class="stat-box"><div class="stat-num">${best}</div><div class="stat-label">Meilleure série</div></div>
+        </div>
+        <div class="dist-title">Répartition des victoires par essai</div>
+        ${distHtml}
+        <div class="stats-note"></div>
+      `;
+    } catch (e) {
+      body.innerHTML = `<div class="state-msg">Erreur de chargement des stats : ${escapeHtml(e.message || String(e))}</div>`;
+    }
+  }
+
+  // ── Archives (vue calendrier) ──
+  function monthPrefix(y, m) { return `motcache_${y}-${String(m).padStart(2, '0')}-`; }
+  let showNames = true;
+
+  async function renderArchive() {
+    const area = document.getElementById('archiveArea');
+    area.innerHTML = '<div class="state-msg">Chargement des archives…</div>';
+
+    try {
+      const prefix = monthPrefix(archiveYear, archiveMonth);
+      const { data: rows, error } = await supabaseClient.from('app_data').select('id,data').ilike('id', prefix + '%');
+      if (error) throw error;
+
+      const puzzleByDate = {};
+      (rows || []).forEach(r => {
+        const d = r.id.replace('motcache_', '');
+        if (r.data && r.data.wordLength) puzzleByDate[d] = r.data;
+      });
+
+      const daysInMonth = new Date(Date.UTC(archiveYear, archiveMonth, 0)).getUTCDate();
+      const firstWeekday = (new Date(Date.UTC(archiveYear, archiveMonth - 1, 1)).getUTCDay() + 6) % 7; // 0 = lundi
+
+      let cellsHtml = '';
+      let weekNum = 1;
+      cellsHtml += `<div class="week-label">Semaine ${weekNum}</div>`;
+      for (let i = 0; i < firstWeekday; i++) cellsHtml += '<div class="archive-cell empty"></div>';
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const posInGrid = firstWeekday + (day - 1);
+        if (posInGrid > 0 && posInGrid % 7 === 0) {
+          weekNum++;
+          cellsHtml += `<div class="week-label">Semaine ${weekNum}</div>`;
+        }
+        const dateStr = `${archiveYear}-${String(archiveMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const p = puzzleByDate[dateStr];
+        const isFuture = dateStr > todayStr;
+        const isBeforeLaunch = dateStr < LAUNCH_DATE;
+
+        if (!p || isFuture || isBeforeLaunch) {
+          cellsHtml += `<div class="archive-cell disabled"><div class="cell-day">${day}</div></div>`;
+          continue;
+        }
+
+        const s = p.session || { guesses: [] };
+        const guesses = s.guesses || [];
+        const finished = s.solved || s.failed;
+
+        let status = 'yellow';
+        if (finished) status = s.solved ? 'green' : 'red';
+
+        let miniHtml = '<div class="cell-mini-guesses">';
+        for (let i = 0; i < (p.maxTries || STATS_MAX_TRIES); i++) {
+          let segCls = '';
+          if (i < guesses.length) segCls = (s.solved && i === guesses.length - 1) ? 'win' : 'used';
+          miniHtml += `<span class="${segCls}"></span>`;
+        }
+        miniHtml += '</div>';
+
+        const bgHtml = (finished && s.reveal && s.reveal.cover)
+          ? `<img class="cell-img" src="${s.reveal.cover}" draggable="false" oncontextmenu="return false;">`
+          : `<span class="cell-word-len">${p.wordLength} lettres</span>`;
+
+        cellsHtml += `
+          <div class="archive-cell status-${status}" data-date="${dateStr}">
+            ${bgHtml}
+            <div class="cell-day">${day}</div>
+            ${miniHtml}
+            ${finished ? `<div class="cell-name">${escapeHtml((s.reveal && s.reveal.name) || '')}</div>` : ''}
+          </div>
+        `;
+      }
+
+      const monthLabel = `${MONTHS_FR[archiveMonth - 1]} ${archiveYear}`;
+      const isFirstMonth = archiveYear < parseInt(LAUNCH_DATE.slice(0,4)) || (archiveYear === parseInt(LAUNCH_DATE.slice(0,4)) && archiveMonth <= parseInt(LAUNCH_DATE.slice(5,7)));
+      const isLastMonth = archiveYear > parseInt(todayStr.slice(0,4)) || (archiveYear === parseInt(todayStr.slice(0,4)) && archiveMonth >= parseInt(todayStr.slice(5,7)));
+
+      area.innerHTML = `
+        <div class="archive-header">
+          <div class="archive-nav-row">
+            <button id="archFirst" title="Premier mois" ${isFirstMonth ? 'disabled' : ''}>⏮</button>
+            <button id="archPrev" title="Mois précédent" ${isFirstMonth ? 'disabled' : ''}>◀</button>
+            <div class="archive-month-label">${monthLabel}</div>
+            <button id="archNext" title="Mois suivant" ${isLastMonth ? 'disabled' : ''}>▶</button>
+            <button id="archLast" title="Mois actuel" ${isLastMonth ? 'disabled' : ''}>⏭</button>
+            <button id="archClose" class="ghost" title="Retour au jeu">✕</button>
+          </div>
+        </div>
+        <div class="archive-grid">
+          ${WEEKDAYS_FR.map(w => `<div class="archive-weekday">${w}</div>`).join('')}
+          ${cellsHtml}
+        </div>
+      `;
+
+      document.getElementById('archFirst').addEventListener('click', () => { archiveYear = parseInt(LAUNCH_DATE.slice(0,4)); archiveMonth = parseInt(LAUNCH_DATE.slice(5,7)); renderArchive(); });
+      document.getElementById('archLast').addEventListener('click', () => { archiveYear = parseInt(todayStr.slice(0,4)); archiveMonth = parseInt(todayStr.slice(5,7)); renderArchive(); });
+      document.getElementById('archPrev').addEventListener('click', () => { archiveMonth--; if (archiveMonth < 1) { archiveMonth = 12; archiveYear--; } renderArchive(); });
+      document.getElementById('archNext').addEventListener('click', () => { archiveMonth++; if (archiveMonth > 12) { archiveMonth = 1; archiveYear++; } renderArchive(); });
+      document.getElementById('archClose').addEventListener('click', () => { goToDate(viewingDate); });
+      document.querySelectorAll('.archive-cell[data-date]').forEach(el => {
+        el.addEventListener('click', () => goToDate(el.getAttribute('data-date')));
+      });
+    } catch (e) {
+      console.error('Erreur chargement archives Mot Caché:', e);
+      area.innerHTML = `<div class="state-msg">Erreur de chargement : ${escapeHtml(e.message || String(e))}</div>`;
+    }
+  }
+
+  goToDate(viewingDate);
 })();
 </script>
+
 </body>
 </html>

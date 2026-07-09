@@ -619,7 +619,7 @@ function confirmDeleteGame() {
 
 // ── RÉINITIALISER LES AVIS ────────────────────────
 // La réinitialisation exige la clé admin, vérifiée côté serveur
-// (/api/verify-admin, même ADMIN_KEY que la génération du ZoomJeu).
+// (/api/generate-daily?verify=1, même ADMIN_KEY que la génération du ZoomJeu).
 // La clé validée est mémorisée en sessionStorage le temps de l'onglet,
 // partagée avec le bouton "Générer" de ZoomJeu.
 async function confirmResetRatings() {
@@ -630,7 +630,7 @@ async function confirmResetRatings() {
   const btn = document.getElementById('resetConfirmBtn');
   btn.disabled = true;
   try {
-    const res = await fetch('/api/verify-admin?key=' + encodeURIComponent(key));
+    const res = await fetch('/api/generate-daily?verify=1&key=' + encodeURIComponent(key));
     if (!res.ok) {
       sessionStorage.removeItem('phx_admin_key');
       showToast('Clé admin invalide ✕');

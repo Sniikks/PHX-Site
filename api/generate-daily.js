@@ -546,6 +546,14 @@ export default async function handler(req, res) {
     const isCron = CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`;
     const isAdmin = ADMIN_KEY && req.query.key === ADMIN_KEY;
 
+    // Simple vérification de clé, sans génération (remplace l'ancienne
+    // fonction /api/verify-admin.js, fusionnée ici pour rester sous la
+    // limite de 12 fonctions serverless du plan Hobby de Vercel).
+    // Appel : /api/generate-daily?verify=1&key=TON_ADMIN_KEY
+    if (req.query.verify) {
+        return res.status(isAdmin ? 200 : 401).json({ ok: !!isAdmin });
+    }
+
     if (!isCron && !isAdmin) {
         return res.status(401).json({ error: 'Non autorisé' });
     }

@@ -28,6 +28,7 @@ import { igdbQuery, isIgdbConfigured } from './_igdb.js';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const ADMIN_KEY = process.env.ADMIN_KEY || null;
 
 const STEAMSPY_BASE = 'https://steamspy.com/api.php';
 const MIN_OWNERS = 10000;
@@ -144,11 +145,19 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: "IGDB non configuré (TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET manquants)." });
     }
 
+    // Bouton "Générer" (forcer un nouveau mot même si celui du jour existe déjà) :
+    // réservé à l'admin, même clé/vérification que ZoomJeu (/api/generate-daily?verify=1).
+    const isAdmin = ADMIN_KEY && req.query.key === ADMIN_KEY;
+    const force = req.query.force === 'true';
+    if (force && !isAdmin) {
+        return res.status(401).json({ error: 'Non autorisé' });
+    }
+
     try {
         const dateStr = getParisDateString();
 
         const { data: existing } = await supabase.from('app_data').select('data').eq('id', puzzleKey(dateStr)).maybeSingle();
-        if (existing?.data?.wordLength) {
+        if (existing?.data?.wordLength && !force) {
             const publicData = existing.data;
             publicData.session = publicData.session || { guesses: [], solved: false, failed: false };
             return res.status(200).json(publicData);
