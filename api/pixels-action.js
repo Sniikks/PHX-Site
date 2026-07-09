@@ -23,6 +23,7 @@ const SECRET_KEY = 'pixels_game_secret';
 const IMAGE_KEY = 'pixels_game_image';
 const MAX_LIVES = 3;
 const MAX_ATTEMPTS = 5;
+const LIFE_INTERVAL = 20; // +1 vie tous les X jeux trouvés d'affilée
 
 function newRoundId() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
 
@@ -105,8 +106,8 @@ export default async function handler(req, res) {
             }
             if (isCorrectGuess(text, secretName)) {
                 publicData.streak++;
-                // Tous les 10 niveaux réussis d'affilée : +1 vie, sauf si déjà au max.
-                const lifeGained = publicData.streak % 10 === 0 && publicData.lives < MAX_LIVES;
+                // Tous les LIFE_INTERVAL niveaux réussis d'affilée : +1 vie, sauf si déjà au max.
+                const lifeGained = publicData.streak % LIFE_INTERVAL === 0 && publicData.lives < MAX_LIVES;
                 if (lifeGained) publicData.lives++;
                 publicData.guesses.push({ text: `✓ Trouvé en ${publicData.attempt + 1}/${MAX_ATTEMPTS}`, wrong: false });
                 publicData.roundOver = true;
