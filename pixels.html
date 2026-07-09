@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>PHX - Pixels</title>
-<meta name="description" content="Devine le jeu vidéo derrière l'image pixelisée avant de perdre tes 3 vies.">
+<meta name="description" content="Devine le jeu vidéo derrière l'image en grille mosaïque avant de perdre tes 3 vies.">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -51,19 +51,17 @@
   .lives { display:flex; gap:6px; margin-bottom:1rem; font-size:1.3rem; }
   .lives span.lost { opacity:.25; filter:grayscale(1); }
 
-  #loading { color:var(--text2); font-size:13px; margin-top:2rem; }
-  #game { display:none; flex-direction:column; align-items:center; width:100%; max-width:460px; }
+  #loading { color:var(--text2); font-size:13px; margin-top:2rem; text-align:center; max-width:320px; }
+  #game { display:none; flex-direction:column; align-items:center; width:100%; max-width:680px; }
 
   .canvas-wrap {
-    position:relative; width:100%; aspect-ratio:16/9;
+    position:relative; width:100%;
     background:var(--bg2); border:1px solid var(--border); border-radius:12px;
     overflow:hidden; margin-bottom:1rem;
   }
-  canvas { width:100%; height:100%; display:block; }
+  canvas { width:100%; height:100%; display:block; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
   .attempt-dots { display:flex; gap:5px; justify-content:center; margin-bottom:.9rem; }
-  .attempt-dots span {
-    width:9px; height:9px; border-radius:50%; background:var(--border);
-  }
+  .attempt-dots span { width:9px; height:9px; border-radius:50%; background:var(--border); }
   .attempt-dots span.used { background:var(--bad); }
   .attempt-dots span.current { background:var(--gold); }
 
@@ -86,18 +84,12 @@
     max-height:220px; overflow-y:auto; z-index:50; display:none;
   }
   .suggestions.open { display:block; }
-  .suggestions div {
-    padding:.55rem .8rem; font-size:13px; cursor:pointer; color:var(--text);
-    border-bottom:1px solid var(--border);
-  }
+  .suggestions div { padding:.55rem .8rem; font-size:13px; cursor:pointer; color:var(--text); border-bottom:1px solid var(--border); }
   .suggestions div:last-child { border-bottom:none; }
   .suggestions div:hover, .suggestions div.active { background:var(--bg3); color:var(--gold); }
 
   .history { display:flex; flex-direction:column; gap:5px; width:100%; margin-top:.4rem; }
-  .history .h-item {
-    display:flex; align-items:center; gap:.5rem; padding:.45rem .7rem;
-    background:var(--bg2); border:1px solid var(--border); border-radius:6px; font-size:12.5px;
-  }
+  .history .h-item { display:flex; align-items:center; gap:.5rem; padding:.45rem .7rem; background:var(--bg2); border:1px solid var(--border); border-radius:6px; font-size:12.5px; }
   .h-item.wrong { border-color:color-mix(in srgb, var(--bad) 40%, var(--border)); }
 
   .msg-banner {
@@ -113,7 +105,6 @@
   .result-modal.open { display:flex; }
   .result-box { background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:1.8rem; max-width:360px; width:100%; text-align:center; }
   .result-title { font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.35rem; letter-spacing:.06em; margin-bottom:.9rem; }
-  .result-title.win { color:var(--good); }
   .result-title.over { color:var(--bad); }
   .result-stats { display:flex; justify-content:center; gap:1.6rem; margin-bottom:1.1rem; }
   .stat-num { font-family:'Rajdhani',sans-serif; font-size:1.5rem; font-weight:700; color:var(--text); }
@@ -132,7 +123,7 @@
 <div class="subtitle">Devine le jeu avant qu'il soit trop tard — 5 essais par image, 3 vies</div>
 <div class="lives" id="lives"></div>
 
-<div id="loading">Chargement du pool de jeux…</div>
+<div id="loading">Recherche d'une image…</div>
 
 <div id="game">
   <div class="canvas-wrap"><canvas id="canvas"></canvas></div>
@@ -172,9 +163,9 @@
 (function () {
   const MAX_LIVES = 3;
   const MAX_ATTEMPTS = 5;
-  // Paliers de pixelisation : taille de bloc en % de la largeur de l'image,
-  // du plus flou (essai 1) au plus net (dernier essai avant la révélation).
-  const PIXEL_STEPS = [42, 28, 18, 10, 5];
+  const GRID_COLS = 10;
+  // Fraction cumulée de cases révélées après 0,1,2,3,4,5 essais ratés.
+  const REVEAL_SCHEDULE = [0.06, 0.18, 0.34, 0.52, 0.72, 1];
 
   function normalize(str) {
     return String(str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -198,17 +189,20 @@
     return levenshtein(guess, target) <= threshold;
   }
 
-  let pool = [];
-  let queue = [];
-  let current = null;
+  let current = null;     // { name, image }
+  let img = null;
+  let cols = GRID_COLS, rows = 6;
+  let cellColors = [];    // moyenne couleur par case
+  let revealed = [];      // bool par case
   let attempt = 0;
   let lives = MAX_LIVES;
   let streak = 0;
   let finished = false;
-  let img = null;
 
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+  canvas.addEventListener('dragstart', e => e.preventDefault());
 
   function showBanner(text, ms = 1600) {
     const b = document.getElementById('banner');
@@ -238,49 +232,119 @@
     }
   }
 
-  function drawPixelated(blockPct) {
-    const w = canvas.width = canvas.clientWidth * (window.devicePixelRatio || 1);
-    const h = canvas.height = canvas.clientHeight * (window.devicePixelRatio || 1);
-    const blocks = Math.max(3, Math.round(100 / blockPct));
-    const tmp = document.createElement('canvas');
-    tmp.width = blocks; tmp.height = Math.round(blocks * (h / w));
-    const tctx = tmp.getContext('2d');
-    tctx.drawImage(img, 0, 0, tmp.width, tmp.height);
-    ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, w, h);
-    ctx.drawImage(tmp, 0, 0, tmp.width, tmp.height, 0, 0, w, h);
-  }
-
   function loadImage(src) {
     return new Promise((resolve, reject) => {
       const im = new Image();
-      im.crossOrigin = 'anonymous';
       im.onload = () => resolve(im);
       im.onerror = reject;
       im.src = src;
     });
   }
 
+  // Calcule la couleur moyenne de chaque case de la grille à partir d'un
+  // rendu basse résolution de l'image (rapide, précis pour une moyenne).
+  function computeCellColors() {
+    const sampleW = 180;
+    const sampleH = Math.max(1, Math.round(sampleW * img.height / img.width));
+    const off = document.createElement('canvas');
+    off.width = sampleW; off.height = sampleH;
+    const octx = off.getContext('2d');
+    octx.drawImage(img, 0, 0, sampleW, sampleH);
+    const data = octx.getImageData(0, 0, sampleW, sampleH).data;
+
+    const colors = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x0 = Math.floor(c / cols * sampleW), x1 = Math.floor((c + 1) / cols * sampleW);
+        const y0 = Math.floor(r / rows * sampleH), y1 = Math.floor((r + 1) / rows * sampleH);
+        let sr = 0, sg = 0, sb = 0, n = 0;
+        for (let y = y0; y < y1; y++) {
+          for (let x = x0; x < x1; x++) {
+            const idx = (y * sampleW + x) * 4;
+            sr += data[idx]; sg += data[idx + 1]; sb += data[idx + 2]; n++;
+          }
+        }
+        n = Math.max(1, n);
+        colors.push(`rgb(${Math.round(sr/n)},${Math.round(sg/n)},${Math.round(sb/n)})`);
+      }
+    }
+    return colors;
+  }
+
+  function resizeCanvasToDisplay() {
+    const wrap = document.querySelector('.canvas-wrap');
+    wrap.style.aspectRatio = `${img.width} / ${img.height}`;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(wrap.clientWidth * dpr);
+    canvas.height = Math.round(wrap.clientHeight * dpr);
+  }
+
+  function draw() {
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    const cellW = w / cols, cellH = h / rows;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const i = r * cols + c;
+        const dx = c * cellW, dy = r * cellH;
+        if (revealed[i]) {
+          const sx = c / cols * img.width, sy = r / rows * img.height;
+          const sw = img.width / cols, sh = img.height / rows;
+          ctx.drawImage(img, sx, sy, sw, sh, dx, dy, cellW + 1, cellH + 1);
+        } else {
+          ctx.fillStyle = cellColors[i];
+          ctx.fillRect(dx, dy, cellW + 1, cellH + 1);
+        }
+      }
+    }
+  }
+
+  function revealToFraction(fraction) {
+    const total = cols * rows;
+    const targetCount = Math.round(total * fraction);
+    const hiddenIdx = [];
+    for (let i = 0; i < total; i++) if (!revealed[i]) hiddenIdx.push(i);
+    let currentCount = total - hiddenIdx.length;
+    for (let i = hiddenIdx.length - 1; i > 0 && currentCount < targetCount; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [hiddenIdx[i], hiddenIdx[j]] = [hiddenIdx[j], hiddenIdx[i]];
+    }
+    let toReveal = targetCount - currentCount;
+    for (let k = 0; k < hiddenIdx.length && toReveal > 0; k++) {
+      revealed[hiddenIdx[k]] = true;
+      toReveal--;
+    }
+    draw();
+  }
+
   async function nextImage() {
-    if (queue.length === 0) queue = shuffledCopy(pool);
-    current = queue.pop();
     attempt = 0;
     document.getElementById('history').innerHTML = '';
     document.getElementById('guessInput').value = '';
-    try {
-      img = await loadImage(current.src);
-    } catch (e) {
-      // image cassée : on saute directement au jeu suivant
-      return nextImage();
-    }
-    renderDots();
-    drawPixelated(PIXEL_STEPS[0]);
-  }
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('loading').textContent = 'Recherche d\'une image…';
+    document.getElementById('game').style.display = 'none';
 
-  function shuffledCopy(arr) {
-    const a = arr.slice();
-    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
-    return a;
+    try {
+      const res = await fetch('/api/pixels', { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+      current = data;
+      img = await loadImage(data.image);
+    } catch (e) {
+      document.getElementById('loading').textContent = "Impossible de charger une image (" + e.message + "). Réessaie dans un instant.";
+      return;
+    }
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('game').style.display = 'flex';
+
+    rows = Math.max(5, Math.min(14, Math.round(GRID_COLS * img.height / img.width)));
+    resizeCanvasToDisplay();
+    cellColors = computeCellColors();
+    revealed = new Array(cols * rows).fill(false);
+    revealToFraction(REVEAL_SCHEDULE[0]);
+    renderDots();
   }
 
   function addHistory(text, wrong) {
@@ -294,24 +358,26 @@
   function loseLife() {
     lives--;
     renderLives();
+    revealToFraction(1);
     addHistory(`❌ Réponse : ${current.name}`, true);
     if (lives <= 0) {
-      gameOver(false);
+      gameOver();
     } else {
       showBanner('Perdu une vie — jeu suivant');
-      setTimeout(nextImage, 900);
+      setTimeout(nextImage, 1100);
     }
   }
 
   function winRound() {
     streak++;
-    addHistory(`✅ ${current.name} — trouvé en ${attempt}/${MAX_ATTEMPTS}`, false);
+    revealToFraction(1);
+    addHistory(`✅ ${current.name} — trouvé en ${attempt + 1}/${MAX_ATTEMPTS}`, false);
     showBanner('Bien joué ! 🎉');
-    setTimeout(nextImage, 900);
+    setTimeout(nextImage, 1100);
   }
 
   function handleGuess(guessText) {
-    if (finished || !guessText.trim()) return;
+    if (finished || !guessText.trim() || !current) return;
     if (isCorrectGuess(guessText, current.name)) {
       winRound();
     } else {
@@ -320,7 +386,7 @@
       if (attempt >= MAX_ATTEMPTS) {
         loseLife();
       } else {
-        drawPixelated(PIXEL_STEPS[Math.min(attempt, PIXEL_STEPS.length - 1)]);
+        revealToFraction(REVEAL_SCHEDULE[attempt]);
         addHistory(`✖ ${guessText}`, true);
         showBanner('Pas ça…', 1000);
       }
@@ -336,7 +402,7 @@
     loseLife();
   }
 
-  function gameOver(userQuit) {
+  function gameOver() {
     finished = true;
     const statsKey = 'pixels_stats';
     let s = {};
@@ -349,23 +415,6 @@
     document.getElementById('statScore').textContent = streak;
     document.getElementById('statBest').textContent = s.best;
     document.getElementById('resultModal').classList.add('open');
-
-    // Meilleur score partagé (optionnel) avec les potes
-    try {
-      const pseudo = localStorage.getItem('phx_pseudo');
-      if (pseudo) {
-        RemoteStore.init(['pixels_leaderboard']).then(() => {
-          const board = RemoteStore.get('pixels_leaderboard', []) || [];
-          const existing = board.find(e => e.pseudo === pseudo);
-          if (!existing || streak > existing.streak) {
-            const updated = board.filter(e => e.pseudo !== pseudo);
-            updated.push({ pseudo, streak, date: new Date().toISOString().slice(0,10) });
-            updated.sort((a,b) => b.streak - a.streak);
-            RemoteStore.set('pixels_leaderboard', updated.slice(0, 20));
-          }
-        });
-      }
-    } catch (e) {}
   }
 
   function resetGame() {
@@ -375,26 +424,31 @@
     nextImage();
   }
 
-  // ── Autocomplétion ──
+  // ── Autocomplétion (réutilise l'API existante du site) ──
   let activeSuggestions = [];
   let activeIndex = -1;
+  let suggestTimer = null;
   function showSuggestions(query) {
-    const box = document.getElementById('suggestions');
+    clearTimeout(suggestTimer);
     if (!query.trim()) { hideSuggestions(); return; }
-    const q = normalize(query);
-    activeSuggestions = pool
-      .filter(g => normalize(g.name).includes(q))
-      .slice(0, 8);
-    activeIndex = -1;
-    if (!activeSuggestions.length) { hideSuggestions(); return; }
-    box.innerHTML = '';
-    activeSuggestions.forEach((g, i) => {
-      const div = document.createElement('div');
-      div.textContent = g.name;
-      div.addEventListener('click', () => { handleGuess(g.name); });
-      box.appendChild(div);
-    });
-    box.classList.add('open');
+    suggestTimer = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/search-games?q=' + encodeURIComponent(query));
+        const data = await res.json();
+        activeSuggestions = (data.suggestions || []).slice(0, 8);
+        activeIndex = -1;
+        const box = document.getElementById('suggestions');
+        if (!activeSuggestions.length) { hideSuggestions(); return; }
+        box.innerHTML = '';
+        activeSuggestions.forEach(g => {
+          const div = document.createElement('div');
+          div.textContent = g.year ? `${g.name} (${g.year})` : g.name;
+          div.addEventListener('click', () => handleGuess(g.name));
+          box.appendChild(div);
+        });
+        box.classList.add('open');
+      } catch (e) { /* pas grave, l'autocomplétion est un bonus */ }
+    }, 220);
   }
   function hideSuggestions() {
     document.getElementById('suggestions').classList.remove('open');
@@ -426,21 +480,10 @@
   document.getElementById('retryBtn').addEventListener('click', resetGame);
   document.getElementById('closeResultBtn').addEventListener('click', () => document.getElementById('resultModal').classList.remove('open'));
 
-  window.addEventListener('resize', () => { if (current && !finished) drawPixelated(PIXEL_STEPS[Math.min(attempt, PIXEL_STEPS.length - 1)]); });
+  window.addEventListener('resize', () => { if (img && !finished) { resizeCanvasToDisplay(); draw(); } });
 
-  async function init() {
-    RemoteStore.init([]);
-    const res = await fetch('bracket_games.json');
-    const games = await res.json();
-    pool = games.filter(g => g.name && g.src);
-    if (!pool.length) { document.getElementById('loading').textContent = 'Pool de jeux vide.'; return; }
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('game').style.display = 'flex';
-    renderLives();
-    resetGame();
-  }
-
-  init();
+  renderLives();
+  resetGame();
 })();
 </script>
 </body>
