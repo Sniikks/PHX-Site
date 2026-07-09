@@ -103,6 +103,7 @@ export default async function handler(req, res) {
         challenger: { name: publicData.challenger.name, displayValue: displayValue(category, challengerValue) }
       };
       if (correct) publicData.streak++;
+      else publicData.gameOver = true; // mauvaise réponse : partie terminée tout de suite, pas besoin de "Manche suivante"
 
       await savePublic(publicData);
       return res.status(200).json(publicData);

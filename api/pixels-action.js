@@ -105,9 +105,12 @@ export default async function handler(req, res) {
             }
             if (isCorrectGuess(text, secretName)) {
                 publicData.streak++;
+                // Tous les 10 niveaux réussis d'affilée : +1 vie, sauf si déjà au max.
+                const lifeGained = publicData.streak % 10 === 0 && publicData.lives < MAX_LIVES;
+                if (lifeGained) publicData.lives++;
                 publicData.guesses.push({ text: `✓ Trouvé en ${publicData.attempt + 1}/${MAX_ATTEMPTS}`, wrong: false });
                 publicData.roundOver = true;
-                publicData.reveal = { name: secretName, verdict: 'Trouvé ! 🎉', win: true };
+                publicData.reveal = { name: secretName, verdict: lifeGained ? 'Trouvé ! 🎉 +1 vie ❤️' : 'Trouvé ! 🎉', win: true };
                 await savePublicOnly(publicData);
                 return res.status(200).json(publicData);
             }
