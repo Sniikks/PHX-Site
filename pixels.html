@@ -407,14 +407,14 @@
     if (!res.ok) throw new Error(data.error || 'Erreur serveur');
     img = await loadImageEl(data.image);
 
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('game').style.display = 'block';
+
     rows = Math.max(5, Math.min(14, Math.round(GRID_COLS * img.height / img.width)));
     cols = GRID_COLS;
     resizeCanvasToDisplay();
     cellColors = computeCellColors();
     revealed = new Array(cols * rows).fill(false);
-
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('game').style.display = 'block';
   }
 
   // Applique un nouvel état public (venant du chargement initial, d'une
