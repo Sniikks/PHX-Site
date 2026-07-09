@@ -125,8 +125,13 @@ export default async function handler(req, res) {
         }
 
         if (action === 'skip') {
-            publicData.attempt = MAX_ATTEMPTS;
-            return await resolveLoss(publicData, secretName, res);
+            publicData.attempt++;
+            if (publicData.attempt >= MAX_ATTEMPTS) {
+                return await resolveLoss(publicData, secretName, res);
+            }
+            publicData.guesses.push({ text: '» Passé', wrong: true });
+            await savePublicOnly(publicData);
+            return res.status(200).json(publicData);
         }
 
         return res.status(400).json({ error: 'Action invalide.' });
