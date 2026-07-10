@@ -15,7 +15,7 @@
     { href: '369_liste_de_jeux.html',     label: '✋🏿 Jeux de 369' },
     { href: 'bracket-jeux.html',          label: '🏆 Bracket' },
     { href: 'zoomjeu.html',               label: '🔍 ZoomJeu' },
-    { href: 'mot-cache.html',             label: '🔤 Mot Caché' },
+    { href: 'mot-cache.html',             label: '🎮 Jeu Caché' },
     { href: 'mot-francais.html',          label: '🇫🇷 Mot Français' },
     { href: 'pixels.html',                label: '🧩 Pixels' }
   ];
@@ -48,7 +48,7 @@
         display: block;
         padding: .55rem .75rem;
         border-radius: 2px;
-        font-family: 'Exo 2', sans-serif;
+        font-family: 'Exo 2', "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
         font-size: .85rem;
         color: var(--text, #f0f1f5);
         text-decoration: none;
