@@ -357,6 +357,11 @@ async function pickDailyGame(usedIds, usedNames) {
                 continue;
             }
             if (!details) continue;
+            // Le pool IGDB exige déjà une date connue (filtre first_release_date
+            // != null dans la requête). Le pool Steam, lui, ne le garantissait
+            // pas : un jeu sans date de sortie renseignée sur Steam pouvait être
+            // choisi comme jeu du jour — on l'exclut ici pour les deux sources.
+            if (!details.released) continue;
 
             const finalName = details.name || candidate.name;
             if (hasNonLatinScript(finalName)) continue;

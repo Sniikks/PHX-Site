@@ -110,13 +110,14 @@ async function igdbQueryWithRetry(endpoint, body, attempts = 2) {
 // Valide un candidat sur IGDB : rejette DLC/extension/réédition, renvoie la jaquette.
 async function validateOnIgdb(name) {
     const cleanName = name.replace(/["\\]/g, '');
-    const body = `search "${cleanName}"; fields name, category, cover.image_id; where version_parent = null; limit 5;`;
+    const body = `search "${cleanName}"; fields name, category, cover.image_id, first_release_date; where version_parent = null; limit 5;`;
     let results;
     try { results = await igdbQueryWithRetry('games', body); } catch (e) { return null; }
     if (!Array.isArray(results) || !results.length) return null;
 
     const normalized = cleanName.trim().toLowerCase();
-    const candidates = results.filter(r => !isUnwantedIgdb(r) && r.cover?.image_id);
+    // Même exigence que Pixels/ZoomJeu : pas de date connue = pas retenu.
+    const candidates = results.filter(r => !isUnwantedIgdb(r) && r.cover?.image_id && r.first_release_date);
     const best = candidates.find(r => (r.name || '').trim().toLowerCase() === normalized) || candidates[0];
     if (!best) return null;
     return { name: best.name, cover: `https://images.igdb.com/igdb/image/upload/t_cover_big/${best.cover.image_id}.jpg` };

@@ -165,7 +165,7 @@ async function handleAutocomplete(req, res, debug) {
             // légitimes (pas encore notés sur IGDB, ex. "Mechwarrior 5: Clans - Wolves
             // of Tukayyid") — plus de faux positifs que de vrai nettoyage.
             const rows = await igdbQuery('games',
-                `fields name,first_release_date; ` +
+                `fields name,first_release_date,total_rating_count; ` +
                 `where name ~ *"${clean}"* & version_parent = null & first_release_date < ${nowUnix}; ` +
                 `sort total_rating_count desc; limit 50;`,
                 2500
@@ -197,28 +197,34 @@ async function handleAutocomplete(req, res, debug) {
 
     const [igdbResults, steamItems] = await Promise.all([igdbPromise, steamPromise]);
 
-    // Année IGDB par nom normalisé, pour que les résultats Steam sans
-    // correspondance IGDB directe (rare) héritent quand même d'une année
-    // sans appel réseau supplémentaire.
+    // Année + popularité (total_rating_count) IGDB par nom normalisé : sert à
+    // (1) donner une année aux résultats Steam sans correspondance IGDB directe,
+    // (2) décider si un jeu SANS date connue est "vraiment connu" (voir plus bas).
     const igdbYearByName = new Map();
+    const igdbPopularityByName = new Map();
     igdbResults.forEach(g => {
+        const key = normalizeName(g.name);
         const y = yearFromUnixSeconds(g.first_release_date);
-        if (y) igdbYearByName.set(normalizeName(g.name), y);
+        if (y) igdbYearByName.set(key, y);
+        igdbPopularityByName.set(key, g.total_rating_count || 0);
     });
 
     // Fusion + déduplication + filets anti-DLC (nom).
     const seen = new Set();
     const results = [];
-    const push = (name, year) => {
+    const push = (name, year, popularity) => {
         if (isDlcName(name)) return;
         const key = normalizeName(name);
         if (!key || seen.has(key)) return;
         seen.add(key);
-        results.push({ name, year: year || null });
+        results.push({ name, year: year || null, popularity: popularity || 0 });
     };
 
-    igdbResults.forEach(g => push(g.name, yearFromUnixSeconds(g.first_release_date)));
-    steamItems.forEach(i => push(i.name, igdbYearByName.get(normalizeName(i.name)) || null));
+    igdbResults.forEach(g => push(g.name, yearFromUnixSeconds(g.first_release_date), g.total_rating_count));
+    steamItems.forEach(i => {
+        const key = normalizeName(i.name);
+        push(i.name, igdbYearByName.get(key) || null, igdbPopularityByName.get(key) || 0);
+    });
 
     // Filet de secours borné : pour les résultats encore sans année après IGDB
     // (base pas complète à 100 %), on tente Steam en dernier recours — mais
@@ -247,9 +253,17 @@ async function handleAutocomplete(req, res, debug) {
     }
     // On écarte ici les jeux détectés "pas encore sortis" au passage (IGDB les a
     // déjà filtrés à la source ; ceux-ci ne viennent que du filet de secours Steam).
-    const filteredResults = comingSoonNames.size
+    const withoutComingSoon = comingSoonNames.size
         ? results.filter(r => !comingSoonNames.has(normalizeName(r.name)))
         : results;
+
+    // Un jeu SANS date de sortie connue (ni sur IGDB, ni via le filet de secours
+    // Steam ci-dessus) est le plus souvent une entrée obscure/mal référencée
+    // (asset flip, outil, faux jeu...) plutôt qu'un vrai jeu à proposer — on
+    // l'exclut de l'autocomplétion, SAUF s'il est "vraiment connu" (beaucoup de
+    // notes/avis sur IGDB malgré la date manquante, cas rare mais réel).
+    const KNOWN_WITHOUT_DATE_THRESHOLD = 15;
+    const filteredResults = withoutComingSoon.filter(r => r.year || r.popularity >= KNOWN_WITHOUT_DATE_THRESHOLD);
 
     // Pertinence du nom par rapport à la saisie — CRITÈRE PRINCIPAL DE TRI,
     // avant l'année. Sans ça, une recherche "raft" faisait remonter

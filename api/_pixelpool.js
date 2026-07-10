@@ -68,13 +68,16 @@ async function igdbQueryWithRetry(endpoint, body, attempts = 2) {
 
 async function fetchIgdbCover(name) {
     const cleanName = name.replace(/["\\]/g, '');
-    const body = `search "${cleanName}"; fields name, category, cover.image_id; where version_parent = null; limit 5;`;
+    const body = `search "${cleanName}"; fields name, category, cover.image_id, first_release_date; where version_parent = null; limit 5;`;
     let results;
     try { results = await igdbQueryWithRetry('games', body); } catch (e) { return null; }
     if (!Array.isArray(results) || !results.length) return null;
 
     const normalized = cleanName.trim().toLowerCase();
-    const candidates = results.filter(r => !isUnwantedIgdb(r) && r.cover?.image_id);
+    // On exige une date de sortie connue (voir en tête de fichier) : un jeu
+    // sans date sur IGDB est presque toujours une entrée obscure/mal
+    // référencée, pas un vrai jeu à faire deviner.
+    const candidates = results.filter(r => !isUnwantedIgdb(r) && r.cover?.image_id && r.first_release_date);
     const best = candidates.find(r => (r.name || '').trim().toLowerCase() === normalized) || candidates[0];
     return best ? { name: best.name, coverId: best.cover.image_id } : null;
 }
