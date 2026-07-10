@@ -16,6 +16,7 @@
     { href: 'bracket-jeux.html',          label: '🏆 Bracket' },
     { href: 'zoomjeu.html',               label: '🔍 ZoomJeu' },
     { href: 'mot-cache.html',             label: '🔤 Mot Caché' },
+    { href: 'mot-francais.html',          label: '🇫🇷 Mot Français' },
     { href: 'pixels.html',                label: '🧩 Pixels' }
   ];
 
