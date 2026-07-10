@@ -571,30 +571,72 @@
   }
 
   // ── Autocomplétion (réutilise l'API existante du site) ──
+  // Même système que ZoomJeu : debounce court (90ms), cache local par saisie
+  // (retour instantané si on efface/retape), et annulation de la requête en
+  // vol dès qu'une frappe plus récente arrive — sans ça, une réponse lente
+  // sur une frappe antérieure pouvait arriver après et écraser la liste
+  // à jour, donnant une impression de blocage/retard aléatoire.
   let activeSuggestions = [];
   let activeIndex = -1;
   let suggestTimer = null;
+  let suggestAbortController = null;
+  let suggestRequestId = 0;
+  const suggestCache = new Map();
+  const SUGGEST_CACHE_MAX = 80;
+
   function showSuggestions(query) {
+    const q = query.trim();
     clearTimeout(suggestTimer);
-    if (!query.trim()) { hideSuggestions(); return; }
-    suggestTimer = setTimeout(async () => {
-      try {
-        const res = await fetch('/api/search-games?q=' + encodeURIComponent(query));
-        const data = await res.json();
-        activeSuggestions = (data.suggestions || []).slice(0, 8);
-        activeIndex = -1;
-        const box = document.getElementById('suggestions');
-        if (!activeSuggestions.length) { hideSuggestions(); return; }
-        box.innerHTML = '';
-        activeSuggestions.forEach(g => {
-          const div = document.createElement('div');
-          div.textContent = g.year ? `${g.name} (${g.year})` : g.name;
-          div.addEventListener('click', () => handleGuess(g.name));
-          box.appendChild(div);
-        });
-        box.classList.add('open');
-      } catch (e) { /* pas grave, l'autocomplétion est un bonus */ }
-    }, 220);
+    if (q.length < 2) {
+      hideSuggestions();
+      suggestRequestId++;
+      if (suggestAbortController) { suggestAbortController.abort(); suggestAbortController = null; }
+      return;
+    }
+    // Réponse instantanée si déjà en cache (pas de debounce à attendre).
+    const cached = suggestCache.get(q.toLowerCase());
+    if (cached) {
+      suggestRequestId++;
+      if (suggestAbortController) { suggestAbortController.abort(); suggestAbortController = null; }
+      renderSuggestionsList(cached);
+      return;
+    }
+    suggestTimer = setTimeout(() => fetchSuggestions(q), 90);
+  }
+  async function fetchSuggestions(q) {
+    if (suggestAbortController) suggestAbortController.abort();
+    const controller = new AbortController();
+    suggestAbortController = controller;
+    const reqId = ++suggestRequestId;
+    try {
+      const res = await fetch('/api/search-games?q=' + encodeURIComponent(q), { signal: controller.signal });
+      const data = await res.json();
+      const suggestions = (data.suggestions || []).slice(0, 8);
+      if (suggestCache.size >= SUGGEST_CACHE_MAX) suggestCache.delete(suggestCache.keys().next().value);
+      suggestCache.set(q.toLowerCase(), suggestions);
+      if (reqId !== suggestRequestId) return; // une saisie plus récente a déjà pris le relais
+      renderSuggestionsList(suggestions);
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+      if (reqId === suggestRequestId) hideSuggestions();
+    }
+  }
+  function renderSuggestionsList(suggestions) {
+    activeSuggestions = suggestions;
+    activeIndex = -1;
+    const box = document.getElementById('suggestions');
+    if (!activeSuggestions.length) { hideSuggestions(); return; }
+    box.innerHTML = '';
+    activeSuggestions.forEach(g => {
+      const div = document.createElement('div');
+      div.textContent = g.year ? `${g.name} (${g.year})` : g.name;
+      // On envoie directement le nom exact de la suggestion : ça garantit un
+      // essai qui correspond mot pour mot à la réponse (via le nom officiel),
+      // et valide la manche sans délai supplémentaire de saisie.
+      div.addEventListener('click', () => handleGuess(g.name));
+      box.appendChild(div);
+    });
+    box.classList.add('open');
   }
   function hideSuggestions() {
     document.getElementById('suggestions').classList.remove('open');

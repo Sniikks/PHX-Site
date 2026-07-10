@@ -9,6 +9,7 @@
 // ==========================================================
 
 import { igdbQuery, isIgdbConfigured } from './_igdb.js';
+import { isCorrectGuess as sharedIsCorrectGuess, normalize as sharedNormalize } from './_gamematch.js';
 
 const STEAMSPY_BASE = 'https://steamspy.com/api.php';
 const COVER_URL = id => `https://images.igdb.com/igdb/image/upload/t_cover_big_2x/${id}.jpg`;
@@ -53,7 +54,7 @@ async function fetchSteamSpyPool(excludeNamesLower) {
         .map(g => ({ name: g.name, owners: parseOwnersLowerBound(g.owners) }))
         .filter(g => g.owners !== null && g.owners >= MIN_OWNERS)
         .filter(g => !isUnwantedName(g.name))
-        .filter(g => !excludeNamesLower.has(g.name.trim().toLowerCase()));
+        .filter(g => !excludeNamesLower.has(sharedNormalize(g.name)));
 }
 
 async function igdbQueryWithRetry(endpoint, body, attempts = 2) {
@@ -81,13 +82,13 @@ async function fetchIgdbCover(name) {
 // excludeNames : tableau de noms déjà vus dans la partie en cours (anti-doublon).
 export async function pickGameWithCover(excludeNames = [], maxAttempts = 8) {
     if (!isIgdbConfigured()) return null;
-    const excludeLower = new Set(excludeNames.map(n => n.trim().toLowerCase()));
+    const excludeLower = new Set(excludeNames.map(n => sharedNormalize(n)));
     for (let i = 0; i < maxAttempts; i++) {
         const pool = await fetchSteamSpyPool(excludeLower);
         if (!pool.length) continue;
         const candidate = pool[Math.floor(Math.random() * pool.length)];
         const found = await fetchIgdbCover(candidate.name);
-        if (found && !excludeLower.has(found.name.trim().toLowerCase())) return found;
+        if (found && !excludeLower.has(sharedNormalize(found.name))) return found;
     }
     return null;
 }
@@ -100,25 +101,13 @@ export async function fetchImageAsDataUri(coverId) {
     return `data:${contentType};base64,${buf.toString('base64')}`;
 }
 
-// Comparaison floue essai <-> nom réel (mêmes règles que côté client).
-export function normalize(str) {
-    return String(str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-}
-function levenshtein(a, b) {
-    const m = a.length, n = b.length;
-    if (m === 0) return n; if (n === 0) return m;
-    const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
-    for (let j = 0; j <= n; j++) dp[0][j] = j;
-    for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++)
-        dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
-    return dp[m][n];
-}
-export function isCorrectGuess(guessRaw, name) {
-    const guess = normalize(guessRaw);
-    if (guess.length < 2) return false;
-    const target = normalize(String(name || '').replace(/\s*\(\d{4}\)\s*$/, ''));
-    if (guess === target) return true;
-    const maxLen = Math.max(guess.length, target.length);
-    const threshold = maxLen <= 8 ? 1 : (maxLen <= 14 ? 2 : 3);
-    return levenshtein(guess, target) <= threshold;
-}
+// Comparaison floue essai <-> nom réel — RÉUTILISE désormais la logique de
+// _gamematch.js (celle du ZoomJeu), au lieu d'une comparaison Levenshtein
+// brute sur la chaîne entière. Cette dernière était bien trop permissive sur
+// les titres longs (seuil de tolérance 3 caractères au-delà de 14 lettres) :
+// "Half-Life" gagnait contre "Half-Life 2", "Sid Meier's Civilization V"
+// gagnait contre "...Civilization VI" — un mot entier en moins ou en trop
+// passait sous le seuil. La logique partagée compare mot à mot avec une
+// tolérance de faute de frappe PAR MOT, ce qui évite ce problème.
+export const normalize = sharedNormalize;
+export const isCorrectGuess = sharedIsCorrectGuess;

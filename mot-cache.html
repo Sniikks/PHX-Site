@@ -281,6 +281,12 @@
   .history-reveal img { width:44px; height:44px; object-fit:cover; border-radius:6px; border:1px solid var(--border); }
   .history-reveal .history-name { color:var(--text); font-weight:700; font-size:.85rem; }
 
+  .hint-banner {
+    width:100%; max-width:480px; background:var(--bg3); border:1px solid var(--gold-dim); border-radius:8px;
+    padding:.55rem .9rem; margin:.9rem 0; font-size:.8rem; color:var(--text); text-align:center;
+  }
+  .hint-banner strong { color:var(--gold); letter-spacing:.05em; }
+
   @media (max-width:420px) { .cell { width:38px; height:38px; font-size:1.1rem; } .key { height:44px; } }
   @media (max-width:640px) { .date-nav .date-label { min-width:120px; font-size:.72rem; } }
 </style>
@@ -310,6 +316,7 @@
 
   <div id="game">
     <div class="grid" id="grid"></div>
+    <div id="hintBanner" class="hint-banner" style="display:none;"></div>
     <div class="keyboard" id="keyboard"></div>
   </div>
 </div>
@@ -562,18 +569,44 @@
     const finished = session.solved || session.failed;
     lockInputs(finished || !isLive());
     document.getElementById('historyBanner').style.display = 'none';
+    renderHintBanner(session, finished);
 
     if (isLive()) {
-      // En direct : la modale de résultat s'ouvre normalement (y compris si un
-      // pote vient de finir la partie du jour avant que tu ne recharges).
-      if (finished && session.reveal) showResult(session.reveal, session.solved);
-      else document.getElementById('resultModal').classList.remove('open');
+      // En direct : la modale de résultat ne s'ouvre qu'une fois par puzzle
+      // (voir hasSeenResult/markSeenResult) — y compris si un pote vient de
+      // finir la partie du jour avant que tu ne recharges, tu la vois une
+      // fois. Ensuite (fermeture ou nouvelle visite), c'est le bandeau
+      // récapitulatif qui prend le relais, comme pour un jour passé.
+      if (finished && session.reveal) {
+        if (!hasSeenResult(puzzle.puzzleId)) {
+          showResult(session.reveal, session.solved);
+          markSeenResult(puzzle.puzzleId);
+        } else {
+          document.getElementById('resultModal').classList.remove('open');
+          showHistoryBanner(session);
+        }
+      } else {
+        document.getElementById('resultModal').classList.remove('open');
+        document.getElementById('historyBanner').style.display = 'none';
+      }
     } else {
       // En consultation d'un jour passé : pas de popup intrusive, juste un
       // bandeau discret sous la grille.
       document.getElementById('resultModal').classList.remove('open');
       showHistoryBanner(session);
     }
+  }
+
+  // Affiche l'indice (une lettre) une fois débloqué côté serveur, à partir du
+  // 3ème essai raté — uniquement en cours de partie du jour, pas sur une
+  // partie déjà finie ni en consultation d'un jour passé.
+  function renderHintBanner(session, finished) {
+    const el = document.getElementById('hintBanner');
+    if (!el) return;
+    if (!isLive() || finished || !session.hint) { el.style.display = 'none'; return; }
+    const pos = session.hint.index + 1;
+    el.innerHTML = `💡 Indice : la lettre n°${pos} est <strong>${escapeHtml(session.hint.letter)}</strong>`;
+    el.style.display = 'block';
   }
 
   function showHistoryBanner(session) {
@@ -593,6 +626,20 @@
     el.style.display = 'block';
   }
 
+  // La popup de résultat ne doit s'afficher qu'UNE SEULE FOIS par puzzle,
+  // au moment où la partie vient de se terminer (que ce soit ton essai ou
+  // celui d'un autre joueur, vu en direct). Avant : elle se rouvrait à
+  // chaque chargement de page tant que le puzzle du jour restait "trouvé/
+  // perdu" — ce mémo (localStorage, par navigateur) évite ça et bascule
+  // sur le bandeau récapitulatif (même affichage que pour un jour passé).
+  const MC_SEEN_PREFIX = 'motcache_seen_';
+  function hasSeenResult(puzzleId) {
+    try { return localStorage.getItem(MC_SEEN_PREFIX + puzzleId) === '1'; } catch (e) { return false; }
+  }
+  function markSeenResult(puzzleId) {
+    try { localStorage.setItem(MC_SEEN_PREFIX + puzzleId, '1'); } catch (e) { /* tant pis, pas bloquant */ }
+  }
+
   function showResult(reveal, didWin) {
     document.getElementById('resultTitle').textContent = didWin ? '🎉 Gagné !' : '💀 Perdu';
     document.getElementById('resultTitle').className = 'result-title ' + (didWin ? 'win' : 'lose');
@@ -604,6 +651,11 @@
 
   document.getElementById('closeResultBtn').addEventListener('click', () => {
     document.getElementById('resultModal').classList.remove('open');
+    // Dès la fermeture, on bascule sur le bandeau récapitulatif (comme un
+    // jour passé consulté depuis les archives) plutôt que de laisser un
+    // simple vide — c'est l'état dans lequel la partie reste ensuite,
+    // y compris si on revient sur la page plus tard.
+    if (puzzle && puzzle.session) showHistoryBanner(puzzle.session);
   });
 
   document.addEventListener('keydown', e => {
@@ -696,6 +748,7 @@
     document.getElementById('loading').textContent = 'Chargement…';
     document.getElementById('game').style.display = 'none';
     document.getElementById('historyBanner').style.display = 'none';
+    document.getElementById('hintBanner').style.display = 'none';
     if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
 
     try {

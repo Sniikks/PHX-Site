@@ -85,6 +85,25 @@ export default async function handler(req, res) {
         if (session.solved || session.failed) {
             session.reveal = { name: secretRow.data.name, cover: secretRow.data.cover, word: answer };
         }
+
+        // ── Indice à partir du 3ème essai raté ──
+        // Une seule lettre révélée, choisie au hasard parmi celles que PERSONNE
+        // n'a encore trouvée en "correct" (bonne lettre, bonne place) sur
+        // l'ensemble des essais de la session partagée. Calculé une fois puis
+        // conservé tel quel (pas remplacé à chaque nouvel essai raté), pour que
+        // l'indice reste stable pour tout le monde.
+        const HINT_AFTER_FAILS = 3;
+        if (!session.solved && !session.failed && !session.hint && session.guesses.length >= HINT_AFTER_FAILS) {
+            const foundCorrect = new Set();
+            session.guesses.forEach(gu => gu.result.forEach((r, i) => { if (r === 'correct') foundCorrect.add(i); }));
+            const unknownIndexes = [];
+            for (let i = 0; i < answer.length; i++) if (!foundCorrect.has(i)) unknownIndexes.push(i);
+            if (unknownIndexes.length) {
+                const idx = unknownIndexes[Math.floor(Math.random() * unknownIndexes.length)];
+                session.hint = { index: idx, letter: answer[idx] };
+            }
+        }
+
         publicData.session = session;
 
         await supabase.from('app_data').upsert({ id: puzzleKey(dateStr), data: publicData, updated_at: new Date().toISOString() });

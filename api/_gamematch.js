@@ -37,8 +37,19 @@ export function levenshtein(a, b) {
 export function getVariants(name) {
     const cleanName = name.replace(/\s*\(\d{4}\)\s*$/, '');
     const base = normalize(cleanName);
-    const parts = cleanName.split(/[:\-]/).map(p => normalize(p)).filter(p => p.length >= 3);
-    return [...new Set([base, ...parts])];
+    // Seul le SOUS-TITRE (après le dernier ":" ou "-") est repris comme réponse
+    // valide à lui seul, ex. "Alyx" pour "Half-Life: Alyx" — il identifie
+    // l'épisode précis. Le préfixe avant (le nom de la licence, ex. "Call of
+    // Duty", "Civilization") est ambigu à lui seul sur plusieurs épisodes et
+    // NE DOIT PAS suffire à gagner (c'était la cause du bug où deviner juste
+    // le nom de la licence validait n'importe quel épisode).
+    const variants = [base];
+    const parts = cleanName.split(/[:\-]/);
+    if (parts.length > 1) {
+        const subtitle = normalize(parts[parts.length - 1]);
+        if (subtitle.length >= 3) variants.push(subtitle);
+    }
+    return [...new Set(variants)];
 }
 
 export function tokensMatch(a, b) {
@@ -50,17 +61,30 @@ export function tokensMatch(a, b) {
     return levenshtein(a, b) <= threshold;
 }
 
-export function tokenWindowMatch(guessTokens, targetTokens) {
-    const gLen = guessTokens.length;
-    if (gLen === 0 || gLen > targetTokens.length) return false;
-    for (let start = 0; start + gLen <= targetTokens.length; start++) {
-        let ok = true;
-        for (let k = 0; k < gLen; k++) {
-            if (!tokensMatch(guessTokens[k], targetTokens[start + k])) { ok = false; break; }
-        }
-        if (ok) return true;
+// Un article en tête ("the", "a", "an") est souvent omis par les joueurs sans
+// que ça change le jeu visé ("Legend of Zelda" pour "The Legend of Zelda") :
+// on l'ignore uniquement en tête de liste, pas ailleurs dans le titre.
+const LEADING_ARTICLES = new Set(['the', 'a', 'an']);
+function stripLeadingArticle(tokens) {
+    return tokens.length > 1 && LEADING_ARTICLES.has(tokens[0]) ? tokens.slice(1) : tokens;
+}
+
+// Comparaison stricte : le nombre de mots doit correspondre (à l'article près),
+// chaque mot est comparé un à un avec tolérance de faute de frappe.
+// AVANT (tokenWindowMatch) : une simple sous-séquence contiguë suffisait, donc
+// deviner juste "Civilization" ou "Call of Duty" validait N'IMPORTE QUEL épisode
+// de la licence — c'est ce qui causait le bug "Civilization V" accepté pour
+// "Civilization VI" (et plus généralement, tout titre incomplet accepté comme
+// bonne réponse). Un essai qui ne cite pas le numéro/sous-titre ne doit plus
+// suffire à gagner : il doit rester "proche" (voir isCloseGuess) mais pas correct.
+export function tokensFullMatch(guessTokens, targetTokens) {
+    const g = stripLeadingArticle(guessTokens);
+    const t = stripLeadingArticle(targetTokens);
+    if (g.length !== t.length) return false;
+    for (let i = 0; i < g.length; i++) {
+        if (!tokensMatch(g[i], t[i])) return false;
     }
-    return false;
+    return true;
 }
 
 export function isCorrectGuess(guessRaw, gameName) {
@@ -70,7 +94,7 @@ export function isCorrectGuess(guessRaw, gameName) {
     for (const variant of getVariants(gameName)) {
         if (guess === variant) return true;
         const variantTokens = variant.split(' ').filter(Boolean);
-        if (tokenWindowMatch(guessTokens, variantTokens)) return true;
+        if (tokensFullMatch(guessTokens, variantTokens)) return true;
     }
     return false;
 }
