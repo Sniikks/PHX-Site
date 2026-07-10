@@ -597,15 +597,20 @@
     }
   }
 
-  // Affiche l'indice (une lettre) une fois débloqué côté serveur, à partir du
-  // 3ème essai raté — uniquement en cours de partie du jour, pas sur une
-  // partie déjà finie ni en consultation d'un jour passé.
+  // Affiche les indices débloqués côté serveur : une lettre au hasard dès le
+  // 3ème essai, puis la 1ère lettre pas encore connue dès le 5ème essai —
+  // uniquement en cours de partie du jour, pas sur une partie déjà finie ni
+  // en consultation d'un jour passé.
   function renderHintBanner(session, finished) {
     const el = document.getElementById('hintBanner');
     if (!el) return;
-    if (!isLive() || finished || !session.hint) { el.style.display = 'none'; return; }
-    const pos = session.hint.index + 1;
-    el.innerHTML = `💡 Indice : la lettre n°${pos} est <strong>${escapeHtml(session.hint.letter)}</strong>`;
+    const hints = session.hints || [];
+    if (!isLive() || finished || !hints.length) { el.style.display = 'none'; return; }
+    const lines = hints
+      .slice()
+      .sort((a, b) => a.stage - b.stage)
+      .map(h => `💡 Lettre n°${h.index + 1} : <strong>${escapeHtml(h.letter)}</strong>`);
+    el.innerHTML = lines.join('<br>');
     el.style.display = 'block';
   }
 

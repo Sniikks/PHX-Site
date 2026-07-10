@@ -86,21 +86,39 @@ export default async function handler(req, res) {
             session.reveal = { name: secretRow.data.name, cover: secretRow.data.cover, word: answer };
         }
 
-        // ── Indice à partir du 3ème essai raté ──
-        // Une seule lettre révélée, choisie au hasard parmi celles que PERSONNE
-        // n'a encore trouvée en "correct" (bonne lettre, bonne place) sur
-        // l'ensemble des essais de la session partagée. Calculé une fois puis
-        // conservé tel quel (pas remplacé à chaque nouvel essai raté), pour que
-        // l'indice reste stable pour tout le monde.
-        const HINT_AFTER_FAILS = 3;
-        if (!session.solved && !session.failed && !session.hint && session.guesses.length >= HINT_AFTER_FAILS) {
-            const foundCorrect = new Set();
-            session.guesses.forEach(gu => gu.result.forEach((r, i) => { if (r === 'correct') foundCorrect.add(i); }));
-            const unknownIndexes = [];
-            for (let i = 0; i < answer.length; i++) if (!foundCorrect.has(i)) unknownIndexes.push(i);
-            if (unknownIndexes.length) {
-                const idx = unknownIndexes[Math.floor(Math.random() * unknownIndexes.length)];
-                session.hint = { index: idx, letter: answer[idx] };
+        // ── Indices, en deux paliers ──
+        // Palier 1 : au commencement du 3e essai (donc dès 2 essais ratés), une
+        // lettre au hasard parmi celles que PERSONNE n'a encore trouvée en
+        // "correct" (ni par un essai, ni par un indice précédent).
+        // Palier 2 : au commencement du 5e essai (donc dès 4 essais ratés), la
+        // PREMIÈRE lettre du mot pas encore connue — si la 1ère est déjà connue
+        // (essai ou palier 1), on prend la 2e, sinon la 3e, etc.
+        // Chaque palier est calculé une seule fois puis conservé tel quel, pour
+        // que les indices restent stables et identiques pour tout le monde
+        // (session partagée).
+        const HINT_STAGE1_AFTER_FAILS = 2;
+        const HINT_STAGE2_AFTER_FAILS = 4;
+        if (!session.solved && !session.failed) {
+            session.hints = session.hints || [];
+
+            const knownIndexes = new Set();
+            session.guesses.forEach(gu => gu.result.forEach((r, i) => { if (r === 'correct') knownIndexes.add(i); }));
+            session.hints.forEach(h => knownIndexes.add(h.index));
+
+            if (session.guesses.length >= HINT_STAGE1_AFTER_FAILS && !session.hints.some(h => h.stage === 1)) {
+                const unknownIndexes = [];
+                for (let i = 0; i < answer.length; i++) if (!knownIndexes.has(i)) unknownIndexes.push(i);
+                if (unknownIndexes.length) {
+                    const idx = unknownIndexes[Math.floor(Math.random() * unknownIndexes.length)];
+                    session.hints.push({ stage: 1, index: idx, letter: answer[idx] });
+                    knownIndexes.add(idx);
+                }
+            }
+
+            if (session.guesses.length >= HINT_STAGE2_AFTER_FAILS && !session.hints.some(h => h.stage === 2)) {
+                let idx = -1;
+                for (let i = 0; i < answer.length; i++) { if (!knownIndexes.has(i)) { idx = i; break; } }
+                if (idx !== -1) session.hints.push({ stage: 2, index: idx, letter: answer[idx] });
             }
         }
 
