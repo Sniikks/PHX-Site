@@ -22,11 +22,7 @@
 // ==========================================================
 
 import { createClient } from '@supabase/supabase-js';
-import { readFileSync } from 'fs';
-
-// Lecture directe du fichier JSON (plutôt qu'un import JSON, pour éviter
-// toute dépendance à la version de Node/du bundler côté Vercel).
-const MOTS_POOL = JSON.parse(readFileSync(new URL('./_mots-francais.json', import.meta.url)));
+import MOTS_POOL from './_mots-francais.json';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;

@@ -16,9 +16,7 @@
 // ==========================================================
 
 import { createClient } from '@supabase/supabase-js';
-import { readFileSync } from 'fs';
-
-const MOTS_POOL = JSON.parse(readFileSync(new URL('./_mots-francais.json', import.meta.url)));
+import MOTS_POOL from './_mots-francais.json';
 const VALID_WORDS = new Set(MOTS_POOL.map(w => w.word));
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
