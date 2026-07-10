@@ -146,9 +146,14 @@ async function resolveLoss(publicData, secretName, res) {
     publicData.lives--;
     publicData.guesses.push({ text: `✕ Réponse : ${secretName}`, wrong: true });
     publicData.roundOver = true;
+    // Plus aucune vie : la partie s'arrête ici. C'est ce flag que le
+    // front-end lit pour afficher la popup "💀 Partie terminée" (avec
+    // Série/Record + bouton Rejouer). Sans lui, on pouvait continuer à
+    // jouer à 0 vie et le reset (3 vies, streak à 0) n'était jamais déclenché.
+    publicData.gameOver = publicData.lives <= 0;
     publicData.reveal = {
         name: secretName,
-        verdict: publicData.lives <= 0 ? 'Perdu — bien joué quand même' : 'Perdu cette image',
+        verdict: publicData.gameOver ? 'Perdu — bien joué quand même' : 'Perdu cette image',
         win: false
     };
     await savePublicOnly(publicData);
