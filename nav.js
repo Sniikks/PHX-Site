@@ -10,7 +10,7 @@
 (function () {
   const PAGES = [
     { href: 'index.html',                 label: '🏠 Accueil' },
-    { href: 'proposition.html',           label: '🎮 Proposition de Jeux' },
+    { href: 'proposition.html',           label: '💻 Proposition de Jeux' },
     { href: 'Sniikks_liste_de_jeux.html', label: '✋ Jeux de Sniikks' },
     { href: '369_liste_de_jeux.html',     label: '✋🏿 Jeux de 369' },
     { href: 'bracket-jeux.html',          label: '🏆 Bracket' },
