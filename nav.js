@@ -13,10 +13,8 @@
     { href: 'proposition.html',           label: '🎮 Proposition de Jeux' },
     { href: 'Sniikks_liste_de_jeux.html', label: '✋ Jeux de Sniikks' },
     { href: '369_liste_de_jeux.html',     label: '✋🏿 Jeux de 369' },
-    { href: 'tierlistjeux.html',          label: '📊 Tier list jeux' },
     { href: 'bracket-jeux.html',          label: '🏆 Bracket' },
     { href: 'zoomjeu.html',               label: '🔍 ZoomJeu' },
-    { href: 'plus-ou-moins.html',         label: '⭐ Plus ou Moins' },
     { href: 'mot-cache.html',             label: '🔤 Mot Caché' },
     { href: 'pixels.html',                label: '🧩 Pixels' }
   ];
