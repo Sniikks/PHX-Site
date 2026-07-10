@@ -251,9 +251,33 @@ async function handleAutocomplete(req, res, debug) {
         ? results.filter(r => !comingSoonNames.has(normalizeName(r.name)))
         : results;
 
-    // Tri par date de sortie croissante ; les jeux sans date connue passent après,
-    // triés alphabétiquement entre eux pour rester stables/prévisibles.
+    // Pertinence du nom par rapport à la saisie — CRITÈRE PRINCIPAL DE TRI,
+    // avant l'année. Sans ça, une recherche "raft" faisait remonter
+    // "Warcraft"/"StarCraft" (qui CONTIENNENT "raft" au milieu d'un mot,
+    // via le filtre "contient" d'IGDB) devant le vrai jeu "Raft" — plus
+    // anciens, ils passaient devant lui dans le tri par année, et avec la
+    // limite de résultats, "Raft" pouvait carrément disparaître de la liste.
+    // Paliers, du plus pertinent au moins pertinent :
+    //  0 = nom strictement identique à la saisie
+    //  1 = le nom commence par la saisie ("Raft" pour "raft", "Raft Wars" aussi)
+    //  2 = la saisie correspond à un mot entier dans le nom ("Beyond the Raft")
+    //  3 = la saisie n'est qu'une sous-chaîne à l'intérieur d'un mot (Warcraft)
+    const normQuery = normalizeName(q);
+    function relevanceTier(name) {
+        const n = normalizeName(name);
+        if (!normQuery) return 3;
+        if (n === normQuery) return 0;
+        if (n.startsWith(normQuery)) return 1;
+        if (new RegExp(`\\b${normQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(n)) return 2;
+        return 3;
+    }
+
+    // Tri : pertinence du nom d'abord, puis date de sortie croissante à
+    // pertinence égale ; les jeux sans date connue passent après, triés
+    // alphabétiquement entre eux pour rester stables/prévisibles.
     filteredResults.sort((a, b) => {
+        const ra = relevanceTier(a.name), rb = relevanceTier(b.name);
+        if (ra !== rb) return ra - rb;
         if (a.year && b.year) return a.year - b.year;
         if (a.year && !b.year) return -1;
         if (!a.year && b.year) return 1;
