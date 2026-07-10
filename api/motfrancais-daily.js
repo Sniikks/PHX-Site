@@ -15,10 +15,10 @@
 //
 // Source du mot : contrairement à Mot Caché (SteamSpy + IGDB en
 // direct), ici pas d'appel réseau externe : un pool STATIQUE d'environ
-// 16 700 mots français courants (5 à 9 lettres, sans pluriel ni mot
-// composé), déjà filtré à l'avance (voir _mots-francais.json). On y
-// pioche un mot au hasard, jamais réutilisé (mots déjà tombés gardés
-// dans 'motfrancais_used').
+// 30 600 mots français (5 à 9 lettres, sans pluriel ni mot composé),
+// déjà filtré à l'avance (voir _mots-francais.json). On y pioche un mot
+// au hasard, jamais réutilisé (mots déjà tombés gardés dans
+// 'motfrancais_used').
 // ==========================================================
 
 import { createClient } from '@supabase/supabase-js';
