@@ -710,7 +710,7 @@ function extractSteamAppId(url){
 }
 function isDirectImageUrl(url){
   if(!url) return false;
-  return /\.(jpg|jpeg|png|webp)/i.test(url) && !url.includes('store.steampowered.com');
+  return !extractSteamAppId(url);
 }
 function buildSteamUrl(appId){
   return `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`;
@@ -720,9 +720,9 @@ function steamFallback(appId){
 }
 function getImgSrc(g){
   if(!g.steamId) return '';
-  if(isDirectImageUrl(g.steamId)) return g.steamId;
   const appId=extractSteamAppId(g.steamId);
-  return appId?buildSteamUrl(appId):'';
+  if(appId) return buildSteamUrl(appId);
+  return g.steamId;
 }
 function getFallbackSrc(g){
   const appId=extractSteamAppId(g.steamId);
