@@ -11,7 +11,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Exo+2:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="theme.css">
 <style>
 
   :root {
@@ -26,6 +25,7 @@
     --note-5:#6699e8; --note-34:#a78bfa; --note-12:#5fbf86;
     --radius-sm:2px; --radius:3px; --radius-lg:6px;
   }
+  * { box-sizing:border-box; margin:0; padding:0; }
   html { scroll-behavior:smooth; scrollbar-color:var(--border) transparent; overflow-x:clip; }
   *:focus-visible { outline:2px solid var(--gold); outline-offset:2px; border-radius:3px; }
   ::-webkit-scrollbar { width:10px; height:10px; }
@@ -45,6 +45,8 @@
   .app-header.scrolled { box-shadow:0 8px 22px rgba(0,0,0,.5); }
   .page-header { position:relative; display:flex; align-items:center; justify-content:center; padding:16px 32px; max-width:1320px; margin:0 auto; border-bottom:1px solid var(--border-soft); padding-left:max(32px, env(safe-area-inset-left)); padding-right:max(32px, env(safe-area-inset-right)); }
   .header-io { position:absolute; right:max(32px, env(safe-area-inset-right)); top:50%; transform:translateY(-50%); display:flex; gap:8px; }
+  .menu-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);border-radius:var(--radius);color:#e5e5e5;font-family:'Exo 2',sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.02em;text-decoration:none;cursor:pointer;transition:all .15s ease;white-space:nowrap;}
+  .menu-btn:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.24);color:#fff;}
   .text-action-btn { background:transparent; border:1px solid var(--border); color:var(--text-dim); font-family:inherit; font-size:12px; cursor:pointer; transition:all .15s; padding:7px 13px; border-radius:var(--radius); }
   .text-action-btn:hover { color:var(--text); background:var(--bg3); border-color:var(--gold-dim); }
   .brand { display:flex; align-items:center; gap:10px; }
@@ -287,7 +289,7 @@
   .platform-emoji { vertical-align:middle; }
 
   /* ══════════════ RESPONSIVE ══════════════ */
-  @media (max-width:760px), (max-height:500px) {
+  @media (max-width:760px) {
     .page-header {
       padding:10px 12px; flex-direction:row; flex-wrap:nowrap; align-items:center;
       justify-content:space-between; gap:8px; border-bottom:none;
