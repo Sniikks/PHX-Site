@@ -42,6 +42,9 @@
         display: none;
         flex-direction: column;
         gap: 2px;
+        max-height: 70vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
       }
       .phx-nav-panel.open { display: flex; }
       .phx-nav-panel a {
@@ -94,8 +97,12 @@
       const panelWidth = Math.max(220, panel.offsetWidth);
       // Sous le bouton, aligné à gauche, sans déborder de l'écran
       let left = Math.min(r.left, window.innerWidth - panelWidth - 8);
-      panel.style.top = (r.bottom + 8) + 'px';
+      const top = r.bottom + 8;
+      panel.style.top = top + 'px';
       panel.style.left = Math.max(8, left) + 'px';
+      // Hauteur dispo jusqu'en bas d'écran : le panneau défile (overflow-y: auto,
+      // voir injectStyles) au lieu d'être coupé, utile en paysage sur mobile.
+      panel.style.maxHeight = Math.max(120, window.innerHeight - top - 8) + 'px';
     }
 
     function open() {
