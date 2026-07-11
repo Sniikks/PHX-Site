@@ -38,6 +38,10 @@
   font-weight: 600;
   letter-spacing: .02em;
   text-decoration: none;
+  text-shadow: none; /* certaines pages ont un halo de texte (cyber-theme.css)
+                         sur leur conteneur de titre ; comme le text-shadow se
+                         transmet aux enfants, ça peut faire "briller" le texte
+                         du bouton s'il est imbriqué dedans dans le HTML. */
   white-space: nowrap;
   cursor: pointer;
   transition: all .15s ease;
