@@ -82,3 +82,46 @@ begin
   exception when duplicate_object then null;
   end;
 end $$;
+
+-- ==========================================================
+-- MIGRATION SÉCURITÉ — écriture réservée aux sessions connectées
+-- (même anonymement) sur app_data
+-- ==========================================================
+-- AVANT d'exécuter ce bloc :
+--   1. Dans le dashboard Supabase : Authentication > Sign In / Providers
+--      > active "Allow anonymous sign-ins".
+--   2. Déploie d'abord la version du site qui appelle
+--      supabaseClient.auth.signInAnonymously() (voir config.js) et
+--      vérifie que le site fonctionne toujours normalement (le point
+--      "● Connecté" doit s'afficher).
+--   3. Seulement APRÈS, exécute le bloc ci-dessous.
+-- Sinon, les écritures (scores, parties en cours...) cesseront de
+-- fonctionner tant que le site ne sait pas s'authentifier.
+--
+-- Avant : n'importe qui connaissant l'URL + la clé anon pouvait
+-- écrire n'importe quoi dans app_data depuis la console du navigateur.
+-- Après : il faut au minimum une session (même anonyme) pour écrire.
+-- La lecture reste publique (les jeux restent jouables sans "compte").
+
+drop policy if exists "Public write access" on app_data;
+drop policy if exists "Public update access" on app_data;
+
+create policy "Authenticated write access"
+  on app_data for insert
+  with check (auth.role() = 'authenticated');
+
+create policy "Authenticated update access"
+  on app_data for update
+  using (auth.role() = 'authenticated');
+
+-- La politique de lecture ("Public read access") ne change pas :
+-- tout le monde peut toujours lire les scores/parties en cours.
+
+-- ==========================================================
+-- NOTE — tables jeux_a_faire / proposition (page "Proposition de Jeux")
+-- ==========================================================
+-- Ces deux tables ne sont pas définies dans ce fichier (créées à part)
+-- et proposition.html les modifie en appels REST directs, y compris
+-- des DELETE. Elles n'ont pas été auditées/durcies ici — si tu veux
+-- qu'on fasse la même chose pour elles, dis-le et on regarde leurs
+-- policies actuelles avant de les resserrer.

@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Exo+2:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
 <style>
   :root {
     --bg:#0d0e14; --bg2:#12141d; --bg3:#181a25;
@@ -17,7 +18,6 @@
     --border:#2a2d3a;
     --good:#5fbf86; --bad:#e2685f; --warn:#e0b84a;
   }
-  * { box-sizing:border-box; margin:0; padding:0; }
   html, body { min-height:100%; }
   body {
     background:
@@ -32,18 +32,8 @@
     padding-right:max(1.2rem, env(safe-area-inset-right));
   }
 
-  .menu-btn {
-    align-self:flex-start;
-    display:inline-flex; align-items:center; gap:6px;
-    padding:9px 16px;
-    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:3px;
-    color:#e5e5e5;
-    font-family:'Exo 2',sans-serif; font-size:12.5px; font-weight:600; letter-spacing:.02em;
-    text-decoration:none; white-space:nowrap;
-    margin-bottom:1rem;
-    cursor:pointer; transition:all .15s ease;
-  }
-  .menu-btn:hover { background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.24); color:#fff; }
+  /* .menu-btn : styles partagés dans theme.css, ici juste le positionnement propre à cette page */
+  .menu-btn { align-self:flex-start; margin-bottom:1rem; }
 
   .title { font-family:'Rajdhani',sans-serif; font-size:clamp(1.3rem,4vw,1.9rem); font-weight:700; letter-spacing:.1em; color:var(--gold); text-transform:uppercase; }
   .subtitle { color:var(--text2); font-size:12.5px; margin-top:.35rem; margin-bottom:1.2rem; letter-spacing:.03em; text-align:center; }

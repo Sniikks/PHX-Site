@@ -1,0 +1,49 @@
+/* ==========================================================
+   theme.css — règles partagées entre toutes les pages du site
+   ==========================================================
+   Ce fichier ne contient QUE ce qui est strictement identique
+   d'une page à l'autre (reset, bouton de menu, accessibilité
+   clavier). Les variables de couleur (--bg, --gold, etc.) et
+   la mise en page restent définies dans le <style> de chaque
+   page, car chaque section du site a sa propre identité
+   visuelle (cyan, violet, orange...). Comme ce fichier utilise
+   var(--gold) etc. sans les définir lui-même, il récupère
+   automatiquement les couleurs de la page qui l'utilise.
+   ========================================================== */
+
+/* Reset universel */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Accessibilité clavier : contour visible sur tous les éléments
+   focusables, sur toutes les pages (reprend ce que nav.js injecte
+   déjà pour son propre menu, mais applique la même règle partout,
+   même sur les pages qui n'avaient rien de prévu pour ça). */
+:focus-visible {
+  outline: 2px solid var(--gold, #00f0ff);
+  outline-offset: 2px;
+}
+
+/* Bouton "☰ Menu" en haut de chaque page — identique sur tout le site */
+.menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 3px;
+  color: #e5e5e5;
+  font-family: 'Exo 2', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.menu-btn:hover {
+  background: rgba(255, 255, 255, .09);
+  border-color: rgba(255, 255, 255, .24);
+  color: #fff;
+}
