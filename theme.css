@@ -38,6 +38,9 @@
   font-weight: 600;
   letter-spacing: .02em;
   text-decoration: none;
+  line-height: normal; /* Sniikks fixe line-height:1.5 sur le <body> ; sans
+                           cette ligne, le bouton hérite cette valeur et
+                           devient plus haut que sur les autres pages. */
   text-shadow: none; /* certaines pages ont un halo de texte (cyber-theme.css)
                          sur leur conteneur de titre ; comme le text-shadow se
                          transmet aux enfants, ça peut faire "briller" le texte
