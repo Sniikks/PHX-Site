@@ -120,8 +120,67 @@ create policy "Authenticated update access"
 -- ==========================================================
 -- NOTE — tables jeux_a_faire / proposition (page "Proposition de Jeux")
 -- ==========================================================
--- Ces deux tables ne sont pas définies dans ce fichier (créées à part)
--- et proposition.html les modifie en appels REST directs, y compris
--- des DELETE. Elles n'ont pas été auditées/durcies ici — si tu veux
--- qu'on fasse la même chose pour elles, dis-le et on regarde leurs
--- policies actuelles avant de les resserrer.
+-- Ces deux tables ne sont pas créées dans ce fichier (créées à part
+-- dans le dashboard), et proposition.html les modifie en appels REST
+-- directs, DELETE inclus (fonction "supprimer" de la page).
+
+-- ==========================================================
+-- MIGRATION — nettoyage des policies "public_all" / "public access"
+-- ==========================================================
+-- En créant les tables à la main dans le dashboard, Supabase (ou une
+-- habitude reprise d'une table à l'autre) a laissé une policy "ALL"
+-- ouverte à tout le monde sur app_data, jeux_a_faire et proposition,
+-- en plus des policies plus précises ci-dessus. Comme les policies
+-- RLS s'additionnent en "OU", cette policy "ALL" suffisait à elle
+-- seule à rendre les autres inutiles (accès complet, y compris
+-- DELETE, pour n'importe qui). On la supprime et on la remplace par
+-- les mêmes règles que app_data : lecture publique, écriture/
+-- modification/suppression réservées à une session (même anonyme).
+--
+-- ⚠️ Avant d'exécuter ce bloc, vérifie que le nouveau config.js
+-- (avec supabaseClient.auth.signInAnonymously()) est bien déployé et
+-- actif sur proposition.html, sinon le bouton "supprimer" de cette
+-- page cessera de fonctionner tant que ce n'est pas le cas.
+
+-- app_data : supprime le résidu "ALL" (les policies précises existent déjà plus haut)
+drop policy if exists "public access" on app_data;
+
+-- jeux_a_faire
+alter table jeux_a_faire enable row level security;
+drop policy if exists "public_all" on jeux_a_faire;
+
+create policy "Public read access"
+  on jeux_a_faire for select
+  using (true);
+
+create policy "Authenticated write access"
+  on jeux_a_faire for insert
+  with check (auth.role() = 'authenticated');
+
+create policy "Authenticated update access"
+  on jeux_a_faire for update
+  using (auth.role() = 'authenticated');
+
+create policy "Authenticated delete access"
+  on jeux_a_faire for delete
+  using (auth.role() = 'authenticated');
+
+-- proposition
+alter table proposition enable row level security;
+drop policy if exists "public_all" on proposition;
+
+create policy "Public read access"
+  on proposition for select
+  using (true);
+
+create policy "Authenticated write access"
+  on proposition for insert
+  with check (auth.role() = 'authenticated');
+
+create policy "Authenticated update access"
+  on proposition for update
+  using (auth.role() = 'authenticated');
+
+create policy "Authenticated delete access"
+  on proposition for delete
+  using (auth.role() = 'authenticated');

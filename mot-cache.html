@@ -65,7 +65,7 @@
   .keyboard { display:flex; flex-direction:column; gap:7px; width:100%; max-width:460px; }
   .kb-row { display:flex; gap:5px; justify-content:center; }
   .key {
-    flex:1; max-width:38px; height:48px;
+    flex:1; min-width:0; max-width:38px; height:48px;
     display:flex; align-items:center; justify-content:center;
     background:var(--bg3); border:none; border-radius:6px;
     color:var(--text); font-family:'Exo 2',sans-serif; font-weight:700; font-size:.82rem;
@@ -277,7 +277,18 @@
   }
   .hint-banner strong { color:var(--gold); letter-spacing:.05em; }
 
-  @media (max-width:420px) { .cell { width:38px; height:38px; font-size:1.1rem; } .key { height:44px; } }
+  @media (max-width:420px) {
+    .cell { width:38px; height:38px; font-size:1.1rem; }
+    .keyboard { gap:6px; }
+    .kb-row { gap:4px; }
+    .key { height:44px; font-size:.72rem; }
+    .key.wide { max-width:52px; font-size:.6rem; }
+  }
+  @media (max-width:360px) {
+    .kb-row { gap:3px; }
+    .key { height:42px; font-size:.66rem; }
+    .key.wide { max-width:44px; font-size:.54rem; }
+  }
   @media (max-width:640px) { .date-nav .date-label { min-width:120px; font-size:.72rem; } }
 </style>
 <link rel="stylesheet" href="cyber-theme.css">
