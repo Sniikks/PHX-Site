@@ -200,11 +200,12 @@
   <script src="config.js"></script>
   <script src="db.js"></script>
   <script>
-    // Simple vérification de connexion Supabase sur la page de menu
-    RemoteStore.setStatusElement(document.getElementById('dbStatus'));
-    RemoteStore.init([]).then(() => {
-      // init([]) fait quand même l'appel réseau grâce au select ci-dessous
-    });
+    // Deux bouts de code écrivaient dans #dbStatus en même temps (RemoteStore.init
+    // ET le ping direct ci-dessous) → une course où le premier à finir écrase le
+    // texte de l'autre, d'où le "● Connecté" générique qui s'affichait parfois au
+    // lieu de "● Connecté à Supabase". On ne garde qu'une seule source : le ping
+    // direct, qui donne le message le plus précis.
+    RemoteStore.init([]);
     // Ping direct pour un statut fiable même sans clé à précharger
     supabaseClient.from('app_data').select('id').limit(1).then(({ error }) => {
       const el = document.getElementById('dbStatus');
