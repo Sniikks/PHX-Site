@@ -922,11 +922,16 @@ async function syncNewGameToPersonalLists(jeu,lien){
   }catch(e){}
 
   // Sniikks — clé backlog_jeux_v4, schéma {name, status, img, ...}
+  // "img" doit être une URL d'image directe (header.jpg), pas le lien de la
+  // boutique Steam — sinon la carte n'a pas d'image (contrairement à la liste
+  // 369 qui stocke l'ID et reconstruit l'image elle-même au rendu).
   try{
     const listSniikks=await sbGetAppData('backlog_jeux_v4');
     const alreadySniikks=listSniikks.some(g=>(g.name||'').trim().toLowerCase()===name.toLowerCase());
     if(!alreadySniikks){
-      listSniikks.push({id:genPersonalId(),name,annee:null,platform:'steam',support:'',status:'afaire',note:null,img:lien||'',noteperso:''});
+      const appId=steamAppId(lien);
+      const imgUrl=appId?`https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`:(lien||'');
+      listSniikks.push({id:genPersonalId(),name,annee:null,platform:'steam',support:'',status:'afaire',note:null,img:imgUrl,noteperso:''});
       await sbUpsertAppData('backlog_jeux_v4',listSniikks);
     }else{
       showToast(`"${name}" est déjà dans la liste Sniikks, il n'a pas été ajouté automatiquement (pas grave, juste pour prévenir).`,false,6000);
