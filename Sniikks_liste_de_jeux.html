@@ -962,11 +962,12 @@ function openModal(game){
   const existingImg=game?.img||'';
   if(existingImg){
     document.getElementById('f-img').value=existingImg;
-    resolvedImgSrc=existingImg;
-    const prev=document.getElementById('imgPreview');
-    prev.src=existingImg;
-    document.getElementById('imgPreviewWrap').style.display='block';
-    document.getElementById('imgHint').style.display='none';
+    // Repasse par la même résolution que lors de la saisie (onImgInput) au
+    // lieu d'échouer silencieusement afficher la valeur brute telle quelle.
+    // Utile pour les anciennes entrées qui ont un lien de boutique Steam
+    // stocké dans "img" au lieu d'une URL d'image directe : l'aperçu se
+    // corrige à l'ouverture, et se persiste correctement à la sauvegarde.
+    onImgInput();
   }
   updateSliderUI();
   document.getElementById('overlay').classList.add('open');
