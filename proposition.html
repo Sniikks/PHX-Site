@@ -482,13 +482,25 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
 // Clé et URL centralisées dans config.js, plus de doublon en dur ici.
 const SUPA_URL=SUPABASE_URL;
 const SUPA_KEY=SUPABASE_ANON_KEY;
-const H={'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Prefer':'return=representation'};
+// H n'est plus un objet statique : les policies RLS exigent le rôle
+// "authenticated" (session anonyme ouverte dans config.js via
+// signInAnonymously()), donc Authorization doit porter le token de CETTE
+// session — pas la clé publique brute, sinon Postgres voit un simple "anon"
+// et refuse l'écriture (401 / 42501).
+async function getH(){
+  let token=SUPA_KEY;
+  try{
+    const{data:{session}}=await supabaseClient.auth.getSession();
+    if(session?.access_token)token=session.access_token;
+  }catch(e){}
+  return{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Prefer':'return=representation'};
+}
 
 // ── API ──────────────────────────────────────────────────────────────────────
-async function sbGet(t){try{const r=await fetch(`${SUPA_URL}/rest/v1/${t}?order=inserted_at.asc,id.asc`,{headers:H});return await r.json();}catch(e){return[];}}
-async function sbInsert(t,o){try{const r=await fetch(`${SUPA_URL}/rest/v1/${t}`,{method:'POST',headers:H,body:JSON.stringify({...o,inserted_at:new Date().toISOString()})});return await r.json();}catch(e){return null;}}
-async function sbUpdate(t,id,o){try{const{inserted_at,...d}=o;await fetch(`${SUPA_URL}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:H,body:JSON.stringify(d)});}catch(e){}}
-async function sbDelete(t,id){try{await fetch(`${SUPA_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:H});}catch(e){}}
+async function sbGet(t){try{const r=await fetch(`${SUPA_URL}/rest/v1/${t}?order=inserted_at.asc,id.asc`,{headers:await getH()});return await r.json();}catch(e){return[];}}
+async function sbInsert(t,o){try{const r=await fetch(`${SUPA_URL}/rest/v1/${t}`,{method:'POST',headers:await getH(),body:JSON.stringify({...o,inserted_at:new Date().toISOString()})});return await r.json();}catch(e){return null;}}
+async function sbUpdate(t,id,o){try{const{inserted_at,...d}=o;await fetch(`${SUPA_URL}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:await getH(),body:JSON.stringify(d)});}catch(e){}}
+async function sbDelete(t,id){try{await fetch(`${SUPA_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:await getH()});}catch(e){}}
 
 // ── REALTIME ─────────────────────────────────────────────────────────────────
 // Utilise le client supabase-js (canaux postgres_changes), qui gère lui-même
@@ -878,7 +890,7 @@ function genPersonalId(){return Math.random().toString(36).substr(2,8);}
 
 async function sbGetAppData(key){
   try{
-    const r=await fetch(`${SUPA_URL}/rest/v1/app_data?id=eq.${encodeURIComponent(key)}&select=data`,{headers:H});
+    const r=await fetch(`${SUPA_URL}/rest/v1/app_data?id=eq.${encodeURIComponent(key)}&select=data`,{headers:await getH()});
     const rows=await r.json();
     return(Array.isArray(rows)&&rows[0]&&Array.isArray(rows[0].data))?rows[0].data:[];
   }catch(e){return[];}
@@ -887,7 +899,7 @@ async function sbUpsertAppData(key,dataArr){
   try{
     await fetch(`${SUPA_URL}/rest/v1/app_data?on_conflict=id`,{
       method:'POST',
-      headers:{...H,'Prefer':'resolution=merge-duplicates,return=minimal'},
+      headers:{...(await getH()),'Prefer':'resolution=merge-duplicates,return=minimal'},
       body:JSON.stringify({id:key,data:dataArr,updated_at:new Date().toISOString()})
     });
   }catch(e){}
