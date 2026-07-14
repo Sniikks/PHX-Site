@@ -376,9 +376,12 @@
     .add-btn-main { padding:5px 10px; font-size:10.5px; }
 
     /* En paysage il y a de la largeur disponible : la barre de recherche
-       n'a pas besoin de prendre 100% et de squatter sa propre ligne. */
+       n'a pas besoin de prendre 100% et de squatter sa propre ligne.
+       On l'aligne à droite, sous le bouton "+ Ajouter". */
+    .toolbar-row.split:has(.search-wrap) { justify-content:space-between; }
     .search-wrap { width:auto; flex-shrink:0; }
-    .search-box { width:200px; padding:5px 28px 5px 28px; font-size:12px; }
+    .search-box { width:190px; padding:5px 26px 5px 26px; font-size:11px; }
+    .search-icon { left:9px; font-size:12px; }
 
     .main-content { padding:10px 12px 60px; }
     .year-heading { padding-bottom:5px; margin-bottom:8px; }
