@@ -14,6 +14,15 @@
 /* Reset universel */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Couleur d'accent native (checkboxes, radios, range, progress...) —
+   reprend la couleur d'accent de chaque page via var(--gold), avec
+   un fallback si la page n'a pas défini cette variable. */
+:root { accent-color: var(--gold, #00f0ff); }
+
+/* Empêche le scroll d'une modale de "déborder" sur la page derrière
+   une fois arrivé en haut/bas de son contenu. */
+.modal { overscroll-behavior: contain; }
+
 /* Accessibilité clavier : contour visible sur tous les éléments
    focusables, sur toutes les pages (reprend ce que nav.js injecte
    déjà pour son propre menu, mais applique la même règle partout,

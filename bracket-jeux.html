@@ -242,12 +242,14 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
   padding:.3rem .9rem;
   background:var(--bg);border-bottom:1px solid var(--border);
   overflow-x:auto;flex-shrink:0;min-height:32px;
+  scroll-snap-type:x mandatory;
 }
 .history-strip:empty::after{content:'Aucun choix effectué';color:var(--border2);font-size:10px;}
 .h-chip{
   display:flex;align-items:center;gap:4px;
   background:var(--bg2);border:1px solid var(--border);
   padding:2px 6px;font-size:9px;white-space:nowrap;flex-shrink:0;
+  scroll-snap-align:center;
 }
 .h-chip .hw{color:var(--win);}
 .h-chip .hl{color:var(--lose);text-decoration:line-through;}
@@ -280,8 +282,8 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
 .contestant.draft-card:hover{border-color:var(--draft);box-shadow:0 0 28px var(--draft-glow),0 6px 24px rgba(0,0,0,.4);}
 .contestant.draft-card.flash-win{border-color:var(--draft)!important;box-shadow:0 0 36px var(--draft-glow)!important;}
 
-.c-img-wrap{width:100%;padding-top:46.7%;position:relative;background:var(--bg3);overflow:hidden;flex-shrink:0;}
-.c-img-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s;}
+.c-img-wrap{width:100%;aspect-ratio:100/46.7;background:var(--bg3);overflow:hidden;flex-shrink:0;}
+.c-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s;}
 .contestant:hover .c-img-wrap img{transform:scale(1.04);}
 .c-noimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:3rem;}
 .c-body{padding:.8rem 1rem .7rem;}

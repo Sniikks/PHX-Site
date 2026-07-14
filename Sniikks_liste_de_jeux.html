@@ -72,7 +72,7 @@
   .search-clear.show { display:block; }
 
   .status-pills { display:flex; align-items:center; justify-content:center; gap:4px; flex-wrap:wrap; }
-  .status-pill { background:transparent; border:1px solid var(--border); color:var(--text-dim); padding:7px 13px; font-family:'Exo 2',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; border-radius:var(--radius); white-space:nowrap; transition:all .15s; }
+  .status-pill { background:transparent; border:1px solid var(--border); color:var(--text-dim); padding:7px 13px; font-family:'Exo 2',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; border-radius:var(--radius); white-space:nowrap; transition:all .15s; scroll-snap-align:center; }
   .status-pill:hover { color:var(--text); background:var(--bg3); }
   .status-pill.active { color:#0d0e14; background:var(--gold); border-color:var(--gold); }
   .status-pill .sp-count { font-size:10.5px; opacity:.75; margin-left:3px; }
@@ -90,12 +90,13 @@
     display:flex; align-items:center; gap:4px; flex-wrap:nowrap; min-width:0;
     max-width:460px; overflow-x:auto; padding-bottom:8px; -webkit-overflow-scrolling:touch;
     scrollbar-width:thin; scrollbar-color:var(--gold-dim) transparent;
+    scroll-snap-type:x mandatory;
   }
   .year-filters::-webkit-scrollbar { height:4px; }
   .year-filters::-webkit-scrollbar-track { background:transparent; }
   .year-filters::-webkit-scrollbar-thumb { background:var(--gold-dim); border-radius:2px; }
   .yf-label { display:none; }
-  .year-pill { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:var(--radius); color:var(--text-dim); cursor:pointer; font-size:12px; font-weight:600; border:1px solid transparent; transition:all .15s; background:transparent; font-family:inherit; flex-shrink:0; }
+  .year-pill { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:var(--radius); color:var(--text-dim); cursor:pointer; font-size:12px; font-weight:600; border:1px solid transparent; transition:all .15s; background:transparent; font-family:inherit; flex-shrink:0; scroll-snap-align:center; }
   .year-pill:hover { color:var(--text); background:var(--bg3); transform:none; }
   .year-pill.active { color:var(--gold); background:var(--gold-soft); border-color:var(--gold-ring); }
   .year-pill .yp-count { color:var(--text-faint); font-size:10.5px; }
@@ -104,12 +105,12 @@
   .year-pill.tous-pill.active { background:var(--gold-soft); border-color:var(--gold-ring); color:var(--gold); }
 
   .platform-row { display:flex; align-items:center; gap:4px; flex-wrap:wrap; justify-content:center; }
-  .filter-btn { background:transparent; border:1px solid var(--border); color:var(--text-dim); font-family:inherit; font-size:11.5px; padding:6px 13px; cursor:pointer; transition:all .15s; letter-spacing:.02em; white-space:nowrap; border-radius:var(--radius); }
+  .filter-btn { background:transparent; border:1px solid var(--border); color:var(--text-dim); font-family:inherit; font-size:11.5px; padding:6px 13px; cursor:pointer; transition:all .15s; letter-spacing:.02em; white-space:nowrap; border-radius:var(--radius); scroll-snap-align:center; }
   .filter-btn:hover { border-color:var(--gold-dim); color:var(--text); transform:none; }
   .filter-btn.active { background:var(--gold); border-color:var(--gold); color:#0d0e14; }
 
   /* ══════════════ MAIN ══════════════ */
-  .main-content { max-width:1320px; margin:0 auto; padding:28px 32px 80px; padding-left:max(32px, env(safe-area-inset-left)); padding-right:max(32px, env(safe-area-inset-right)); padding-bottom:max(80px, env(safe-area-inset-bottom)); }
+  .main-content { max-width:1320px; margin:0 auto; padding:28px 32px 80px; padding-left:max(32px, env(safe-area-inset-left)); padding-right:max(32px, env(safe-area-inset-right)); padding-bottom:max(80px, env(safe-area-inset-bottom)); container-type:inline-size; }
 
   .year-section { margin-bottom:36px; }
   .year-heading { display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; padding-bottom:12px; margin-bottom:20px; border-bottom:1px solid var(--border-soft); border-radius:0; transition:none; }
@@ -309,6 +310,7 @@
       justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap;
       width:100%; max-width:100%; padding-bottom:6px;
       scrollbar-width:thin; scrollbar-color:var(--gold-dim) transparent;
+      scroll-snap-type:x mandatory;
     }
     .status-pills::-webkit-scrollbar { height:4px; }
     .status-pills::-webkit-scrollbar-track { background:transparent; }
@@ -323,6 +325,7 @@
       justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap;
       width:100%; max-width:100%; padding-bottom:6px;
       scrollbar-width:thin; scrollbar-color:var(--gold-dim) transparent;
+      scroll-snap-type:x mandatory;
     }
     .platform-row::-webkit-scrollbar { height:4px; }
     .platform-row::-webkit-scrollbar-track { background:transparent; }
@@ -333,10 +336,14 @@
     .search-box { padding:7px 30px 7px 30px; font-size:12.5px; }
 
     .main-content { padding:16px 12px 60px; }
-    .card-grid { grid-template-columns:repeat(auto-fill,minmax(102px,1fr)); gap:9px; }
-    .main-content.compact .card-grid { grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); gap:6px; }
     .year-heading { padding-bottom:8px; margin-bottom:14px; }
     .yh-year { font-size:15px; }
+  }
+  /* .card-grid s'adapte à la largeur de .main-content (son conteneur),
+     pas à celle de l'écran. */
+  @container (max-width:760px) {
+    .card-grid { grid-template-columns:repeat(auto-fill,minmax(102px,1fr)); gap:9px; }
+    .main-content.compact .card-grid { grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); gap:6px; }
   }
   @media (max-width:420px) {
     .brand h1 { display:none; }

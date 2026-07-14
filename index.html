@@ -32,6 +32,7 @@
     padding-left:max(1.2rem, env(safe-area-inset-left));
     padding-right:max(1.2rem, env(safe-area-inset-right));
     padding-bottom:max(2rem, env(safe-area-inset-bottom));
+    container-type:inline-size;
   }
   .title {
     font-family:'Rajdhani',sans-serif;
@@ -112,16 +113,14 @@
   }
 
   @media (min-width:641px) and (max-width:1024px) {
-    .grid-nonjeux { grid-template-columns:repeat(3, 1fr); max-width:640px; width:100%; }
-    .grid-jeux { grid-template-columns:repeat(3, 1fr); max-width:640px; width:100%; }
+    .grid-nonjeux { max-width:640px; width:100%; }
+    .grid-jeux { max-width:640px; width:100%; }
   }
 
   @media (max-width:640px) {
     body { padding:1.4rem .9rem; }
     .subtitle { margin-bottom:1.6rem; }
     .grid-nonjeux, .grid-jeux {
-      grid-template-columns:repeat(2, 1fr);
-      gap:.7rem;
       max-width:480px;
       width:100%;
     }
@@ -130,6 +129,19 @@
     .tile-icon svg { width:38px; height:38px; }
     .tile-label { font-size:.72rem; }
     .tile-soon { bottom:.5rem; font-size:8px; }
+  }
+
+  /* .grid-nonjeux / .grid-jeux s'adaptent à la largeur de leur conteneur
+     (le <body>), pas à celle de l'écran. */
+  @container (max-width:1024px) {
+    .grid-nonjeux { grid-template-columns:repeat(3, 1fr); }
+    .grid-jeux { grid-template-columns:repeat(3, 1fr); }
+  }
+  @container (max-width:640px) {
+    .grid-nonjeux, .grid-jeux {
+      grid-template-columns:repeat(2, 1fr);
+      gap:.7rem;
+    }
   }
 
   footer {

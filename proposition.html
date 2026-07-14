@@ -66,7 +66,7 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
 /* ── TABS ── */
 .tab-panel{display:none;}
 .tab-panel.active{display:block;}
-.main-content{max-width:1400px;margin:0 auto;padding:20px 28px 60px;}
+.main-content{max-width:1400px;margin:0 auto;padding:20px 28px 60px;container-type:inline-size;}
 
 /* ── STATUS SECTIONS ── */
 .status-section{margin-bottom:1.4rem;}
@@ -233,9 +233,13 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
 @media(max-width:640px){
   .sh-inner{padding:0 14px;}
   .main-content{padding:16px 14px 60px;}
+}
+/* .card-grid s'adapte à la largeur de .main-content (son conteneur),
+   pas à celle de l'écran. */
+@container (max-width:640px){
   .card-grid{grid-template-columns:repeat(auto-fill,minmax(102px,1fr));gap:9px;}
 }
-@media(max-width:380px){
+@container (max-width:380px){
   .card-grid{grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:7px;}
 }
 @media(max-width:480px){
