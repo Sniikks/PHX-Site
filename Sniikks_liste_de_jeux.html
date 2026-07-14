@@ -41,8 +41,9 @@
   }
 
   /* ══════════════ HEADER ══════════════ */
-  .app-header { position:sticky; top:0; z-index:55; background:rgba(10,10,12,.88); backdrop-filter:blur(16px) saturate(140%); -webkit-backdrop-filter:blur(16px) saturate(140%); border-bottom:1px solid var(--border-soft); }
+  .app-header { position:sticky; top:0; z-index:55; background:rgba(10,10,12,.88); backdrop-filter:blur(16px) saturate(140%); -webkit-backdrop-filter:blur(16px) saturate(140%); border-bottom:1px solid var(--border-soft); transition:transform .25s ease; }
   .app-header.scrolled { box-shadow:0 8px 22px rgba(0,0,0,.5); }
+  .app-header.header-hidden { transform:translateY(-100%); }
   .page-header { position:relative; display:flex; align-items:center; justify-content:center; padding:16px 32px; max-width:1320px; margin:0 auto; border-bottom:1px solid var(--border-soft); padding-left:max(32px, env(safe-area-inset-left)); padding-right:max(32px, env(safe-area-inset-right)); }
   .header-io { position:absolute; right:max(32px, env(safe-area-inset-right)); top:50%; transform:translateY(-50%); display:flex; gap:8px; }
   .menu-btn{position:absolute;left:max(32px, env(safe-area-inset-left));top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);border-radius:var(--radius);color:#e5e5e5;font-family:'Exo 2',sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.02em;text-decoration:none;cursor:pointer;transition:all .15s ease;white-space:nowrap;}
@@ -105,6 +106,8 @@
   .year-pill.tous-pill.active { background:var(--gold-soft); border-color:var(--gold-ring); color:var(--gold); }
 
   .platform-row { display:flex; align-items:center; gap:4px; flex-wrap:wrap; justify-content:center; }
+
+  .filters-toggle-btn { display:none; }
   .filter-btn { background:transparent; border:1px solid var(--border); color:var(--text-dim); font-family:inherit; font-size:11.5px; padding:6px 13px; cursor:pointer; transition:all .15s; letter-spacing:.02em; white-space:nowrap; border-radius:var(--radius); scroll-snap-align:center; }
   .filter-btn:hover { border-color:var(--gold-dim); color:var(--text); transform:none; }
   .filter-btn.active { background:var(--gold); border-color:var(--gold); color:#0d0e14; }
@@ -342,6 +345,24 @@
     .main-content { padding:16px 12px 60px; }
     .year-heading { padding-bottom:8px; margin-bottom:14px; }
     .yh-year { font-size:15px; }
+
+    /* ── Filtres repliables (années + plateformes) ──
+       En dessous de 760px de large ou 430px de haut, ces deux rangées
+       sont cachées par défaut et regroupées derrière un bouton "Filtres"
+       pour libérer de la hauteur (utile aux forts niveaux de zoom). */
+    .filters-toggle-btn {
+      display:inline-flex; align-items:center; gap:5px; flex-shrink:0;
+      padding:6px 10px; font-family:'Exo 2',sans-serif; font-size:11.5px; font-weight:600;
+      border:1px solid var(--border); border-radius:var(--radius);
+      background:var(--bg2); color:var(--text-dim); cursor:pointer; white-space:nowrap;
+      transition:all .15s;
+    }
+    .filters-toggle-btn:hover { color:var(--text); background:var(--bg3); }
+    .filters-toggle-btn.active { color:#0d0e14; background:var(--gold); border-color:var(--gold); }
+
+    #statsYears, #platformRowWrap { display:none; width:100%; order:3; }
+    .app-header.filters-open #statsYears, .app-header.filters-open #platformRowWrap { display:flex; }
+    #statsYears { padding-top:4px; }
   }
   /* .card-grid s'adapte à la largeur de .main-content (son conteneur),
      pas à celle de l'écran. */
@@ -488,9 +509,10 @@
         <input type="file" id="importFile" accept=".json">
       </div>
       <div class="toolbar-row split">
-        <div class="stats-years">
+        <div class="stats-years" id="statsYears">
           <div class="year-filters" id="yearFilters"></div>
         </div>
+        <button type="button" class="filters-toggle-btn" id="filtersToggleBtn" aria-expanded="false">☰ Filtres</button>
         <div class="search-wrap">
           <span class="search-icon">⌕</span>
           <input class="search-box" type="text" id="search" placeholder="Rechercher un jeu..." autocomplete="off">
@@ -498,7 +520,7 @@
         </div>
       </div>
     </div>
-    <div class="toolbar-row">
+    <div class="toolbar-row" id="platformRowWrap">
       <div class="platform-row">
         <button class="filter-btn active" data-platform="tous">Toutes</button>
         <button class="filter-btn" data-platform="steam">Steam</button>
@@ -1144,12 +1166,37 @@ function toggleYear(yrKey) {
 // ── HEADER FLOTTANT AU SCROLL ──
 (function(){
   const header=document.querySelector('.app-header');
+  // Le header se masque au scroll vers le bas (et réapparaît vers le haut)
+  // uniquement quand il est en mode compact : c'est là qu'il peut occuper
+  // toute la hauteur visible (petits écrans, forts niveaux de zoom).
+  const compactMQ = window.matchMedia('(max-width:760px), (max-height:430px)');
+  let lastY = window.scrollY;
   function onScroll(){
-    if(window.scrollY>10) header.classList.add('scrolled');
+    const y = window.scrollY;
+    if(y>10) header.classList.add('scrolled');
     else header.classList.remove('scrolled');
+
+    if(compactMQ.matches && y>lastY && y>80){
+      header.classList.add('header-hidden');
+    } else {
+      header.classList.remove('header-hidden');
+    }
+    lastY = y;
   }
   window.addEventListener('scroll',onScroll,{passive:true});
   onScroll();
+})();
+
+// ── FILTRES REPLIABLES (années + plateformes, mode compact) ──
+(function(){
+  const btn=document.getElementById('filtersToggleBtn');
+  const header=document.getElementById('appHeader');
+  if(!btn||!header) return;
+  btn.addEventListener('click',()=>{
+    const open=header.classList.toggle('filters-open');
+    btn.classList.toggle('active',open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
 })();
 
 // ── ÉVITER LE ROGNAGE DES CARTES EN BORD D'ÉCRAN (survol/tap) ──

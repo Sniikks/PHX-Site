@@ -61,7 +61,9 @@ body{
   background:rgba(10,10,12,.88);
   backdrop-filter:blur(16px) saturate(140%);
   border-bottom:1px solid var(--border-soft);
+  transition:transform .25s ease;
 }
+.topbar.header-hidden{transform:translateY(-100%);}
 .topbar-inner{max-width:1320px;margin:0 auto;padding:0 32px;}
 
 .brand-row{
@@ -159,6 +161,8 @@ body{
 }
 .btn-primary:hover{background:#c98aff;transform:translateY(-1px);}
 .btn-primary:active{transform:translateY(0);}
+
+.filters-toggle-btn{display:none;}
 
 .years-row{
   display:flex;align-items:center;justify-content:flex-start;gap:4px;flex-wrap:nowrap;
@@ -483,6 +487,24 @@ body.compact-view .card-name{
   .toolbar{justify-content:flex-start;}
   .filter-pills{overflow-x:auto;flex-wrap:nowrap;max-width:100%;padding-bottom:2px;scroll-snap-type:x mandatory;}
 }
+/* ── Filtre "Années" repliable ──
+   Sous 760px de large ou 430px de haut, la rangée des années est cachée
+   par défaut et regroupée derrière un bouton "Filtres" pour libérer de
+   la hauteur (utile aux forts niveaux de zoom). */
+@media (max-width:760px), (max-height:430px) {
+  .filters-toggle-btn{
+    display:inline-flex; align-items:center; gap:5px; flex-shrink:0;
+    padding:6px 10px; font-family:'Exo 2',sans-serif; font-size:11.5px; font-weight:600;
+    border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--surface-1); color:var(--text-dim); cursor:pointer; white-space:nowrap;
+    transition:all .15s;
+  }
+  .filters-toggle-btn:hover{color:var(--text);background:var(--surface-2);}
+  .filters-toggle-btn.active{color:#0d0e14;background:var(--gold);border-color:var(--gold);}
+
+  .years-row{display:none;width:100%;}
+  .topbar.filters-open .years-row{display:flex;}
+}
 /* .card-grid s'adapte à la largeur de son conteneur (.main), pas à celle
    de l'écran — utile si la grille se retrouve un jour dans un panneau
    plus étroit que la page entière. */
@@ -544,6 +566,7 @@ body.compact-view .card-name{
       <button class="icon-btn" id="btnExpandAll" title="Tout déplier">⊞</button>
       <button class="icon-btn" id="btnCompactToggle" title="Vue compacte">☰</button>
     </div>
+    <button type="button" class="filters-toggle-btn" id="filtersToggleBtn" aria-expanded="false">☰ Filtres</button>
     <button class="btn-primary" id="btnAdd"><span>+</span> Ajouter</button>
   </div>
 
@@ -1250,6 +1273,39 @@ function showToast(msg){
 }
 
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── HEADER FLOTTANT AU SCROLL ──
+(function(){
+  const header=document.querySelector('.topbar');
+  if(!header) return;
+  // Le header se masque au scroll vers le bas (et réapparaît vers le haut)
+  // uniquement en mode compact : c'est là qu'il peut occuper toute la
+  // hauteur visible (petits écrans, forts niveaux de zoom).
+  const compactMQ = window.matchMedia('(max-width:760px), (max-height:430px)');
+  let lastY = window.scrollY;
+  function onScroll(){
+    const y = window.scrollY;
+    if(compactMQ.matches && y>lastY && y>80){
+      header.classList.add('header-hidden');
+    } else {
+      header.classList.remove('header-hidden');
+    }
+    lastY = y;
+  }
+  window.addEventListener('scroll',onScroll,{passive:true});
+})();
+
+// ── FILTRE "ANNÉES" REPLIABLE (mode compact) ──
+(function(){
+  const btn=document.getElementById('filtersToggleBtn');
+  const header=document.querySelector('.topbar');
+  if(!btn||!header) return;
+  btn.addEventListener('click',()=>{
+    const open=header.classList.toggle('filters-open');
+    btn.classList.toggle('active',open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+})();
 
 loadGames().then(()=>{
   renderStats();
