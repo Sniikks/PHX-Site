@@ -1285,6 +1285,17 @@ function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace
   let lastY = window.scrollY;
   function onScroll(){
     const y = window.scrollY;
+
+    // Ne jamais masquer le header pendant que le panneau Filtres est ouvert :
+    // l'ouvrir change la hauteur du header et peut provoquer un léger
+    // réajustement du scroll, qu'on ne veut pas interpréter comme un
+    // scroll volontaire vers le bas.
+    if(header.classList.contains('filters-open')){
+      header.classList.remove('header-hidden');
+      lastY = y;
+      return;
+    }
+
     if(compactMQ.matches && y>lastY && y>80){
       header.classList.add('header-hidden');
     } else {
