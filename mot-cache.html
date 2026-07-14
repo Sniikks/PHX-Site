@@ -89,7 +89,7 @@
   }
   .msg-banner.show { opacity:1; top:22px; }
 
-  .result-modal { position:fixed; inset:0; background:rgba(0,0,0,.72); display:none; align-items:center; justify-content:center; z-index:900; padding:1.2rem; }
+  .result-modal { position:fixed; inset:0; background:rgba(0,0,0,.72); display:none; align-items:flex-start; justify-content:center; z-index:900; padding:2rem 1.2rem; overflow-y:auto; }
   .result-modal.open { display:flex; }
   .result-box { background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:1.8rem; max-width:360px; width:100%; text-align:center; }
   .result-box img { width:100%; border-radius:10px; margin-bottom:1rem; border:1px solid var(--border); }
@@ -137,8 +137,9 @@
 
   .modal-overlay {
     position:fixed; inset:0; background:rgba(0,0,0,.6);
-    display:none; align-items:center; justify-content:center;
-    z-index:1000; padding:1rem;
+    display:none; align-items:flex-start; justify-content:center;
+    z-index:1000; padding:2rem 1rem;
+    overflow-y:auto;
   }
   .modal-overlay.visible { display:flex; }
   .modal-box {
