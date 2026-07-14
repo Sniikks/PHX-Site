@@ -290,7 +290,11 @@
   .platform-emoji { vertical-align:middle; }
 
   /* ══════════════ RESPONSIVE ══════════════ */
-  @media (max-width:760px) {
+  /* Le bloc ci-dessous ciblait uniquement les écrans étroits (portrait).
+     On l'applique aussi aux écrans bas (téléphone en paysage) : sans ça,
+     le header garde sa mise en page "desktop" (plus haute) sur les
+     téléphones larges mais peu hauts. */
+  @media (max-width:760px), (max-height:430px) {
     .page-header {
       padding:10px 12px; flex-direction:row; flex-wrap:nowrap; align-items:center;
       justify-content:space-between; gap:8px; border-bottom:none;
@@ -351,6 +355,29 @@
     .text-action-btn::before { font-size:12px; }
     #exportBtn::before { content:'⇩'; }
     #importBtn::before { content:'⇧'; }
+  }
+  /* ── Téléphone en paysage (peu de hauteur) ──
+     Les 3 rangées d'outils empilées + le header prennent trop de place
+     verticale quand la hauteur de l'écran est réduite. On resserre les
+     espacements et on cache le titre pour gagner de la hauteur, sans
+     retirer aucune fonctionnalité. */
+  @media (max-height:430px) {
+    .page-header { padding:6px 10px; }
+    .brand h1 { display:none; }
+    .menu-btn { padding:5px 9px; font-size:10.5px; }
+    .text-action-btn { padding:5px 7px; font-size:0; }
+    .text-action-btn::before { font-size:12px; }
+    #exportBtn::before { content:'⇩'; }
+    #importBtn::before { content:'⇧'; }
+
+    .toolbar-row { padding:4px 0 3px; }
+    .status-pill, .year-pill, .filter-btn { padding:4px 8px; font-size:10.5px; }
+    .view-toggle button, .view-btn { width:24px; height:24px; font-size:11px; }
+    .add-btn-main { padding:5px 10px; font-size:10.5px; }
+    .search-box { padding:5px 30px 5px 30px; font-size:12px; }
+
+    .main-content { padding:10px 12px 60px; }
+    .year-heading { padding-bottom:5px; margin-bottom:8px; }
   }
   @media (max-width:480px) {
     .overlay, .info-overlay { align-items:flex-end; padding:0; }
