@@ -33,9 +33,12 @@
 body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-size:14px;min-height:100vh;}
 
 /* ── HEADER ── */
-.sticky-top{position:sticky;top:0;z-index:50;background:#0d0e14;backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
+.sticky-top{position:sticky;top:0;z-index:50;background:#0d0e14;backdrop-filter:blur(14px);border-bottom:1px solid var(--border);transition:transform .25s ease;max-height:100vh;max-height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.sticky-top.scrolled{box-shadow:0 8px 22px rgba(0,0,0,.5);}
+.sticky-top.header-hidden{transform:translateY(-100%);}
 .sh-inner{max-width:1400px;margin:0 auto;padding:0 28px;}
 .sh-title{display:flex;align-items:center;justify-content:space-between;padding:12px 0 10px;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap;}
+.sh-title-left{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
 .logo{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;letter-spacing:2px;color:var(--gold);white-space:nowrap;}
 .logo span{color:var(--text-dim);font-weight:400;}
 .tabs{display:flex;align-items:center;gap:2px;}
@@ -234,6 +237,36 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
   .sh-inner{padding:0 14px;}
   .main-content{padding:16px 14px 60px;}
 }
+/* ── En-tête compact (écran étroit OU bas, ex: fort zoom navigateur) ──
+   Sans ce bloc, à 400-500% de zoom le header (logo + onglets + actions +
+   ligne de filtres) peut dépasser la hauteur de la fenêtre et masquer
+   tout le reste de la page. On resserre la mise en page et on la passe
+   sur une seule ligne pour limiter sa hauteur, comme sur la page Sniikks. */
+@media (max-width:760px), (max-height:430px){
+  .sh-inner{padding:0 12px;}
+  .sh-title{padding:8px 0;flex-wrap:nowrap;gap:8px;}
+  .sh-title-left{flex-wrap:nowrap;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;min-width:0;}
+  .sh-title-left::-webkit-scrollbar{display:none;}
+  .logo{font-size:14px;}
+  .tabs{flex-shrink:0;}
+  .tab-btn{padding:6px 10px;font-size:11.5px;}
+  .header-actions{flex-shrink:0;gap:6px;}
+  .btn-io{padding:5px 9px;font-size:10.5px;}
+  .sh-row{padding:6px 0;gap:5px;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:var(--gold-dim) transparent;}
+  .sh-row::-webkit-scrollbar{height:4px;}
+  .sh-row::-webkit-scrollbar-track{background:transparent;}
+  .sh-row::-webkit-scrollbar-thumb{background:var(--gold-dim);border-radius:2px;}
+  .sh-search{width:150px;flex-shrink:0;}
+  .sh-search:focus{width:170px;}
+  .filter-btn, .btn-add-main{flex-shrink:0;}
+}
+/* ── Hauteur très réduite (paysage sur téléphone, ou zoom extrême) ──
+   On masque le nom du logo pour gagner encore un peu de hauteur/largeur,
+   sans retirer aucune fonctionnalité. */
+@media (max-height:430px){
+  .logo{display:none;}
+  .menu-btn{padding:5px 9px;font-size:11px;}
+}
 /* .card-grid s'adapte à la largeur de .main-content (son conteneur),
    pas à celle de l'écran. */
 @container (max-width:640px){
@@ -294,7 +327,7 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
 <div class="sticky-top">
 <div class="sh-inner">
   <div class="sh-title">
-    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div class="sh-title-left">
       <a href="index.html" class="menu-btn">☰ Menu</a>
       <div class="logo">// <span>GAME</span>TRACKER</div>
       <div class="tabs">
@@ -1208,6 +1241,29 @@ function setCSelectValue(hiddenId,value){
   });
 }
 initCSelects();
+
+// ── HEADER FLOTTANT AU SCROLL (fort zoom / petite hauteur) ──
+(function(){
+  const header=document.querySelector('.sticky-top');
+  if(!header)return;
+  const compactMQ=window.matchMedia('(max-width:760px), (max-height:430px)');
+  let lastY=window.scrollY;
+
+  function onScroll(){
+    const y=window.scrollY;
+    if(y>10) header.classList.add('scrolled');
+    else header.classList.remove('scrolled');
+
+    if(compactMQ.matches && y>lastY && y>80){
+      header.classList.add('header-hidden');
+    } else {
+      header.classList.remove('header-hidden');
+    }
+    lastY=y;
+  }
+  window.addEventListener('scroll',onScroll,{passive:true});
+  onScroll();
+})();
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 (async()=>{
