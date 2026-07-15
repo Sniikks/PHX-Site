@@ -86,9 +86,6 @@ body{
 .brand-text span{color:var(--text-dim);font-weight:500;}
 
 .global-stats{display:flex;align-items:center;gap:22px;}
-.global-stats-row{display:flex;justify-content:center;padding:10px 0;border-bottom:1px solid var(--border-soft);}
-.global-stats-row .global-stats{gap:28px;}
-.global-stats-row .gstat{align-items:center;}
 .gstat{display:flex;flex-direction:column;align-items:flex-end;gap:1px;}
 .gstat-val{font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:600;line-height:1;}
 .gstat-val.accent{color:var(--gold);}
@@ -487,7 +484,7 @@ body.compact-view .card-name{
 @media(max-width:760px){
   .topbar-inner{padding:0 18px;}
   .main{padding:20px 18px 70px;}
-  .global-stats-row{display:none;}
+  .global-stats{display:none;}
   .brand-row{padding:14px 0;}
   .toolbar{justify-content:flex-start;}
   .filter-pills{overflow-x:auto;flex-wrap:nowrap;max-width:100%;padding-bottom:2px;scroll-snap-type:x mandatory;}
@@ -547,11 +544,8 @@ body.compact-view .card-name{
     </div>
   </div>
 
-  <div class="global-stats-row">
-    <div class="global-stats" id="globalStats"></div>
-  </div>
-
   <div class="toolbar">
+    <div class="global-stats" id="globalStats"></div>
     <span class="search-wrap">
       <span class="search-icon">⌕</span>
       <input type="text" id="searchInput" class="search-input" placeholder="Rechercher un jeu..." autocomplete="off">
