@@ -926,9 +926,7 @@ function renderGlobalStats(){
   const avg=withNote.length?(withNote.reduce((s,g)=>s+g.note,0)/withNote.length).toFixed(1):'—';
   const fini=games.filter(g=>g.status==='Fini').length;
   document.getElementById('globalStats').innerHTML=`
-    <div class="gstat"><span class="gstat-val accent">${total}</span><span class="gstat-label">Jeux</span></div>
-    <div class="gstat"><span class="gstat-val">${fini}</span><span class="gstat-label">Terminés</span></div>
-    <div class="gstat"><span class="gstat-val">${avg}</span><span class="gstat-label">Note moy.</span></div>
+    <div class="gstat"><span class="gstat-val accent">${avg}</span><span class="gstat-label">Note moy.</span></div>
   `;
 }
 
