@@ -45,7 +45,11 @@
   .app-header.scrolled { box-shadow:0 8px 22px rgba(0,0,0,.5); }
   .app-header.header-hidden { transform:translateY(-100%); }
   .page-header { display:flex; align-items:center; flex-wrap:wrap; gap:28px; padding:16px 32px; max-width:1320px; margin:0 auto; border-bottom:1px solid var(--border-soft); padding-left:max(32px, env(safe-area-inset-left)); padding-right:max(32px, env(safe-area-inset-right)); }
-  .header-io { display:flex; gap:8px; margin-left:auto; }
+  .header-top-row { display:contents; }
+  .menu-btn { order:1; }
+  .status-pills { order:2; }
+  .row2-right { order:3; }
+  .header-io { display:flex; gap:8px; margin-left:auto; order:4; }
   .menu-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);border-radius:var(--radius);color:#e5e5e5;font-family:'Exo 2',sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.02em;text-decoration:none;cursor:pointer;transition:all .15s ease;white-space:nowrap;}
   .menu-btn:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.24);color:#fff;}
   .text-action-btn { background:transparent; border:1px solid var(--border); color:var(--text-dim); font-family:inherit; font-size:12px; cursor:pointer; transition:all .15s; padding:7px 13px; border-radius:var(--radius); }
@@ -296,19 +300,14 @@
      téléphones larges mais peu hauts. */
   @media (max-width:1400px), (max-height:430px) {
     .page-header {
-      display:grid;
-      grid-template-columns:auto 1fr auto;
-      grid-template-areas:
-        "menu . io"
-        "pills pills pills"
-        "actions actions actions";
-      align-items:center;
+      display:flex; flex-direction:column; align-items:stretch;
       padding:10px 12px; gap:8px; border-bottom:none;
     }
-    .menu-btn { grid-area:menu; padding:7px 12px; font-size:11.5px; }
-    .header-io { grid-area:io; margin-left:0; justify-self:end; width:auto; gap:5px; }
-    .status-pills { grid-area:pills; }
-    .row2-right { grid-area:actions; width:100%; }
+    .header-top-row { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; }
+    .menu-btn { padding:7px 12px; font-size:11.5px; flex-shrink:0; }
+    .header-io { width:auto; gap:5px; flex-shrink:0; }
+    .status-pills { width:100%; }
+    .row2-right { width:100%; }
     .text-action-btn { padding:6px 9px; font-size:10.5px; }
 
     .sticky-inner { padding:0 12px; }
@@ -469,7 +468,13 @@
 
 <div class="app-header" id="appHeader">
 <div class="page-header">
-  <a href="index.html" class="menu-btn">☰ Menu</a>
+  <div class="header-top-row">
+    <a href="index.html" class="menu-btn">☰ Menu</a>
+    <div class="header-io">
+      <button class="text-action-btn" id="exportBtn">Exporter</button>
+      <button class="text-action-btn" id="importBtn">Importer</button>
+    </div>
+  </div>
   <div class="status-pills">
     <button class="status-pill active" data-filter="tous">Tous <span class="sp-count" id="cnt-tous"></span></button>
     <button class="status-pill" data-filter="fini">Terminés <span class="sp-count" id="cnt-fini"></span></button>
@@ -491,10 +496,6 @@
 </button>
     </div>
     <button class="add-btn-main" id="addBtnTop">+ Ajouter</button>
-  </div>
-  <div class="header-io">
-    <button class="text-action-btn" id="exportBtn">Exporter</button>
-    <button class="text-action-btn" id="importBtn">Importer</button>
   </div>
   <input type="file" id="importFile" accept=".json">
 </div>
