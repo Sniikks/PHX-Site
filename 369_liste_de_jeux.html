@@ -166,9 +166,13 @@ body{
 
 .filters-toggle-btn{display:none;}
 
+.years-row-outer{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:6px 0 14px; flex-wrap:wrap;
+}
 .years-row{
   display:flex;align-items:center;justify-content:flex-start;gap:4px;flex-wrap:nowrap;
-  padding:6px 0 14px; max-width:460px; margin:0 auto; overflow-x:auto; -webkit-overflow-scrolling:touch;
+  flex:1;min-width:0; overflow-x:auto; -webkit-overflow-scrolling:touch;
   scrollbar-width:thin; scrollbar-color:var(--gold-dim) transparent;
   scroll-snap-type:x mandatory;
 }
@@ -484,7 +488,6 @@ body.compact-view .card-name{
 @media(max-width:760px){
   .topbar-inner{padding:0 18px;}
   .main{padding:20px 18px 70px;}
-  .global-stats{display:none;}
   .brand-row{padding:14px 0;}
   .toolbar{justify-content:flex-start;}
   .filter-pills{overflow-x:auto;flex-wrap:nowrap;max-width:100%;padding-bottom:2px;scroll-snap-type:x mandatory;}
@@ -504,8 +507,8 @@ body.compact-view .card-name{
   .filters-toggle-btn:hover{color:var(--text);background:var(--surface-2);}
   .filters-toggle-btn.active{color:#0d0e14;background:var(--gold);border-color:var(--gold);}
 
-  .years-row{display:none;width:100%;}
-  .topbar.filters-open .years-row{display:flex;}
+  .years-row-outer{display:none;width:100%;}
+  .topbar.filters-open .years-row-outer{display:flex;}
 }
 /* .card-grid s'adapte à la largeur de son conteneur (.main), pas à celle
    de l'écran — utile si la grille se retrouve un jour dans un panneau
@@ -545,7 +548,6 @@ body.compact-view .card-name{
   </div>
 
   <div class="toolbar">
-    <div class="global-stats" id="globalStats"></div>
     <span class="search-wrap">
       <span class="search-icon">⌕</span>
       <input type="text" id="searchInput" class="search-input" placeholder="Rechercher un jeu..." autocomplete="off">
@@ -570,7 +572,10 @@ body.compact-view .card-name{
     <button class="btn-primary" id="btnAdd"><span>+</span> Ajouter</button>
   </div>
 
-  <div class="years-row" id="statsYears"></div>
+  <div class="years-row-outer">
+    <div class="years-row" id="statsYears"></div>
+    <div class="global-stats" id="globalStats"></div>
+  </div>
 
 </div>
 </div>
