@@ -294,15 +294,15 @@
      On l'applique aussi aux écrans bas (téléphone en paysage) : sans ça,
      le header garde sa mise en page "desktop" (plus haute) sur les
      téléphones larges mais peu hauts. */
-  @media (max-width:760px), (max-height:430px) {
+  @media (max-width:1400px), (max-height:430px) {
     .page-header {
       padding:10px 12px; flex-wrap:wrap; align-items:center;
       justify-content:flex-start; gap:8px; border-bottom:none;
     }
     .menu-btn { padding:7px 12px; font-size:11.5px; flex-shrink:0; }
     .status-pills { flex-basis:100%; order:2; }
-    .row2-right { order:3; flex-basis:100%; }
-    .header-io { order:4; width:auto; gap:5px; flex-shrink:0; margin-left:auto; }
+    .header-io { order:3; width:auto; gap:5px; flex-shrink:0; margin-left:auto; }
+    .row2-right { order:4; flex-basis:100%; }
     .text-action-btn { padding:6px 9px; font-size:10.5px; }
 
     .sticky-inner { padding:0 12px; }
@@ -1155,7 +1155,7 @@ function toggleYear(yrKey) {
 (function(){
   const header=document.querySelector('.app-header');
   const btn=document.getElementById('filtersToggleBtn');
-  const compactMQ = window.matchMedia('(max-width:760px), (max-height:430px)');
+  const compactMQ = window.matchMedia('(max-width:1400px), (max-height:430px)');
   let lastY = window.scrollY;
 
   function onScroll(){
