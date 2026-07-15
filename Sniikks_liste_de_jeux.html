@@ -296,13 +296,19 @@
      téléphones larges mais peu hauts. */
   @media (max-width:1400px), (max-height:430px) {
     .page-header {
-      padding:10px 12px; flex-wrap:wrap; align-items:center;
-      justify-content:flex-start; gap:8px; border-bottom:none;
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      grid-template-areas:
+        "menu . io"
+        "pills pills pills"
+        "actions actions actions";
+      align-items:center;
+      padding:10px 12px; gap:8px; border-bottom:none;
     }
-    .menu-btn { padding:7px 12px; font-size:11.5px; flex-shrink:0; }
-    .status-pills { flex-basis:100%; order:2; }
-    .header-io { order:3; width:auto; gap:5px; flex-shrink:0; margin-left:auto; }
-    .row2-right { order:4; flex-basis:100%; }
+    .menu-btn { grid-area:menu; padding:7px 12px; font-size:11.5px; }
+    .header-io { grid-area:io; margin-left:0; justify-self:end; width:auto; gap:5px; }
+    .status-pills { grid-area:pills; }
+    .row2-right { grid-area:actions; width:100%; }
     .text-action-btn { padding:6px 9px; font-size:10.5px; }
 
     .sticky-inner { padding:0 12px; }
