@@ -1049,7 +1049,7 @@ function openInfo(id){
     ${g.notePerso?`<div class="info-row" style="flex-direction:column;gap:6px"><span class="info-label">Note perso</span><div class="note-perso-box">${esc(g.notePerso)}</div></div>`:''}
     <div class="info-actions">
       <button class="btn" onclick="closeInfo()">Fermer</button>
-      <button class="btn btn-danger-ghost" onclick="closeInfo();openConfirmDelete('${g.id}','${esc(g.title)}')">Supprimer</button>
+      <button class="btn btn-danger-ghost" onclick="closeInfo();openConfirmDelete('${g.id}')">Supprimer</button>
       <button class="btn btn-gold" onclick="closeInfo();openEdit('${g.id}')">Modifier</button>
     </div>`;
   document.getElementById('infoOverlay').classList.add('open');
@@ -1255,7 +1255,7 @@ function setCSelect(cselectId,hiddenId,labelId,value){
 }
 
 let pendingDeleteId=null;
-function openConfirmDelete(id,title){pendingDeleteId=id;document.getElementById('confirmDeleteName').textContent=title;document.getElementById('confirmDeleteOverlay').classList.add('open');}
+function openConfirmDelete(id){const g=games.find(x=>x.id===id);if(!g)return;pendingDeleteId=id;document.getElementById('confirmDeleteName').textContent=g.title;document.getElementById('confirmDeleteOverlay').classList.add('open');}
 document.getElementById('btnCancelDelete').addEventListener('click',()=>{pendingDeleteId=null;document.getElementById('confirmDeleteOverlay').classList.remove('open');});
 document.getElementById('btnConfirmDelete').addEventListener('click',()=>{
   if(!pendingDeleteId)return;
