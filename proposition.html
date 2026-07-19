@@ -36,7 +36,7 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
 .sticky-top{position:sticky;top:0;z-index:50;background:rgba(10,10,12,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);transition:transform .25s ease;max-height:100vh;max-height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .sticky-top.scrolled{box-shadow:0 8px 22px rgba(0,0,0,.5);}
 .sticky-top.header-hidden{transform:translateY(-100%);}
-.sh-inner{max-width:1400px;margin:0 auto;padding:0 28px;}
+.sh-inner{max-width:1320px;margin:0 auto;padding:0 32px;}
 .sh-title{display:flex;align-items:center;justify-content:space-between;padding:12px 0 10px;gap:12px;flex-wrap:wrap;}
 .sh-title-left{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
 .logo{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;letter-spacing:2px;color:var(--gold);white-space:nowrap;}
@@ -71,7 +71,7 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
 /* ── TABS ── */
 .tab-panel{display:none;}
 .tab-panel.active{display:block;}
-.main-content{max-width:1400px;margin:0 auto;padding:20px 28px 60px;container-type:inline-size;}
+.main-content{max-width:1320px;margin:0 auto;padding:20px 32px 60px;container-type:inline-size;}
 
 /* ── STATUS SECTIONS ── */
 .status-section{margin-bottom:1.4rem;}
@@ -349,8 +349,8 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
     </div>
     <div class="header-actions">
       <input type="file" id="file-import" accept=".json" onchange="importJSON(event)">
-      <button class="btn-io" id="importBtnProp" onclick="document.getElementById('file-import').click()">Import</button>
-      <button class="btn-io" id="exportBtnProp" onclick="exportJSON()">Export</button>
+      <button class="btn-io" id="exportBtnProp" onclick="exportJSON()">Exporter</button>
+      <button class="btn-io" id="importBtnProp" onclick="document.getElementById('file-import').click()">Importer</button>
     </div>
   </div>
   <div class="sh-row" id="filterRow1">
