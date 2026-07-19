@@ -55,18 +55,18 @@ create table if not exists sniikks_games (
   data jsonb not null,
   updated_at timestamptz default now()
 );
-create table if not exists s369_games (
+create table if not exists 369_games (
   id text primary key,
   data jsonb not null,
   updated_at timestamptz default now()
 );
 select _phx_apply_standard_policies('sniikks_games');
-select _phx_apply_standard_policies('s369_games');
+select _phx_apply_standard_policies('369_games');
 
 insert into sniikks_games (id, data, updated_at)
   select id, data, updated_at from app_data where id = 'backlog_jeux_v4'
   on conflict (id) do nothing;
-insert into s369_games (id, data, updated_at)
+insert into 369_games (id, data, updated_at)
   select id, data, updated_at from app_data where id = 'backlog_cards_v1'
   on conflict (id) do nothing;
 
@@ -211,7 +211,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['sniikks_games','s369_games','bracket_data',
+  foreach t in array array['sniikks_games','369_games','bracket_data',
                             'zoomjeu_public','motcache_public',
                             'motfrancais_public','pixels_public']
   loop
@@ -227,7 +227,7 @@ end $$;
 -- ==========================================================
 -- Lance ces requêtes et compare les comptes avec l'ancien app_data :
 --   select count(*) from sniikks_games;
---   select count(*) from s369_games;
+--   select count(*) from 369_games;
 --   select count(*) from bracket_data;
 --   select count(*) from zoomjeu_public;
 --   select count(*) from zoomjeu_secret;

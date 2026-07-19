@@ -922,7 +922,7 @@ async function loadTab2(){const d=await sbGet('proposition');if(Array.isArray(d)
 // ── SYNC VERS LES LISTES PERSO (369 & Sniikks) ────────────────────────────────
 // 369_liste_de_jeux.html et Sniikks_liste_de_jeux.html stockent toute leur liste
 // comme un seul blob JSON, chacune dans sa propre table dédiée
-// (s369_games / sniikks_games — plus de fourre-tout "app_data").
+// (369_games / sniikks_games — plus de fourre-tout "app_data").
 // Cette fonction y ajoute automatiquement le jeu, sans toucher aux 2 fichiers HTML.
 function genPersonalId(){return Math.random().toString(36).substr(2,8);}
 
@@ -947,13 +947,13 @@ async function syncNewGameToPersonalLists(jeu,lien){
   const name=(jeu||'').trim();
   if(!name)return;
 
-  // 369 — table s369_games (ex-clé backlog_cards_v1), schéma {title, status, steamId, ...}
+  // 369 — table 369_games (ex-clé backlog_cards_v1), schéma {title, status, steamId, ...}
   try{
-    const list369=await sbGetAppData('s369_games','backlog_cards_v1');
+    const list369=await sbGetAppData('369_games','backlog_cards_v1');
     const already369=list369.some(g=>(g.title||'').trim().toUpperCase()===name.toUpperCase());
     if(!already369){
       list369.push({id:genPersonalId(),title:name.toUpperCase(),status:'A faire',note:null,dateFin:null,steamId:lien||null,notePerso:null,platform:'PC',support:null,addedAt:Date.now()});
-      await sbUpsertAppData('s369_games','backlog_cards_v1',list369);
+      await sbUpsertAppData('369_games','backlog_cards_v1',list369);
     }else{
       showToast(`"${name}" est déjà dans la liste 369, il n'a pas été ajouté automatiquement (pas grave, juste pour prévenir).`,false,6000);
     }
