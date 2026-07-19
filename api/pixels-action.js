@@ -13,6 +13,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { pickGameWithCover, fetchImageAsDataUri, isCorrectGuess } from './_pixelpool.js';
+import { rememberKnownGame } from './_knowngames.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -26,18 +27,19 @@ const MAX_ATTEMPTS = 5;
 const LIFE_INTERVAL = 20; // +1 vie tous les X jeux trouvés d'affilée
 
 function newRoundId() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
+function yearFromUnix(ts) { return ts ? new Date(ts * 1000).getUTCFullYear() : null; }
 
 async function loadState() {
     const [{ data: pub }, { data: secret }] = await Promise.all([
         supabase.from('pixels_public').select('data').eq('id', GAME_KEY).maybeSingle(),
         supabase.from('pixels_secret').select('data').eq('id', SECRET_KEY).maybeSingle()
     ]);
-    return { publicData: pub?.data || null, secretName: secret?.data?.name || null };
+    return { publicData: pub?.data || null, secretName: secret?.data?.name || null, secretYear: yearFromUnix(secret?.data?.released) };
 }
 
-async function saveRound(publicData, name, coverId) {
+async function saveRound(publicData, name, coverId, released) {
     const image = await fetchImageAsDataUri(coverId);
-    await supabase.from('pixels_secret').upsert({ id: SECRET_KEY, data: { name }, updated_at: new Date().toISOString() });
+    await supabase.from('pixels_secret').upsert({ id: SECRET_KEY, data: { name, released: released || null }, updated_at: new Date().toISOString() });
     await supabase.from('pixels_public').upsert({ id: IMAGE_KEY, data: { roundId: publicData.roundId, image }, updated_at: new Date().toISOString() });
     await supabase.from('pixels_public').upsert({ id: GAME_KEY, data: publicData, updated_at: new Date().toISOString() });
 }
@@ -59,7 +61,7 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Action invalide.' });
         }
 
-        let { publicData, secretName } = await loadState();
+        let { publicData, secretName, secretYear } = await loadState();
         if (!publicData) {
             return res.status(404).json({ error: "Aucune partie en cours. Recharge la page." });
         }
@@ -70,7 +72,7 @@ export default async function handler(req, res) {
             if (!picked) return res.status(503).json({ error: "Impossible de démarrer une nouvelle partie, réessaie." });
             const round = { roundId: newRoundId(), attempt: 0, guesses: [], roundOver: false, gameOver: false, reveal: null, usedNames: [picked.name] };
             const newPublic = { ...round, lives: MAX_LIVES, streak: 0 };
-            await saveRound(newPublic, picked.name, picked.coverId);
+            await saveRound(newPublic, picked.name, picked.coverId, picked.released);
             return res.status(200).json(newPublic);
         }
 
@@ -90,7 +92,7 @@ export default async function handler(req, res) {
                 usedNames: [...(publicData.usedNames || []), picked.name]
             };
             const newPublic = { ...round, lives: publicData.lives, streak: publicData.streak };
-            await saveRound(newPublic, picked.name, picked.coverId);
+            await saveRound(newPublic, picked.name, picked.coverId, picked.released);
             return res.status(200).json(newPublic);
         }
 
@@ -113,12 +115,13 @@ export default async function handler(req, res) {
                 publicData.roundOver = true;
                 publicData.reveal = { name: secretName, verdict: lifeGained ? 'Trouvé ! 🎉 +1 vie ❤️' : 'Trouvé ! 🎉', win: true };
                 await savePublicOnly(publicData);
+                await rememberKnownGame(supabase, secretName, secretYear);
                 return res.status(200).json(publicData);
             }
 
             publicData.attempt++;
             if (publicData.attempt >= MAX_ATTEMPTS) {
-                return await resolveLoss(publicData, secretName, res);
+                return await resolveLoss(publicData, secretName, secretYear, res);
             }
             publicData.guesses.push({ text: `✕ ${text.trim()}`, wrong: true });
             await savePublicOnly(publicData);
@@ -128,7 +131,7 @@ export default async function handler(req, res) {
         if (action === 'skip') {
             publicData.attempt++;
             if (publicData.attempt >= MAX_ATTEMPTS) {
-                return await resolveLoss(publicData, secretName, res);
+                return await resolveLoss(publicData, secretName, secretYear, res);
             }
             publicData.guesses.push({ text: '» Passé', wrong: true });
             await savePublicOnly(publicData);
@@ -142,7 +145,7 @@ export default async function handler(req, res) {
     }
 }
 
-async function resolveLoss(publicData, secretName, res) {
+async function resolveLoss(publicData, secretName, secretYear, res) {
     publicData.lives--;
     publicData.guesses.push({ text: `✕ Réponse : ${secretName}`, wrong: true });
     publicData.roundOver = true;
@@ -157,5 +160,7 @@ async function resolveLoss(publicData, secretName, res) {
         win: false
     };
     await savePublicOnly(publicData);
+    // Trouvé ou pas, ce jeu est réel : on le mémorise pour l'autocomplétion.
+    await rememberKnownGame(supabase, secretName, secretYear);
     return res.status(200).json(publicData);
 }

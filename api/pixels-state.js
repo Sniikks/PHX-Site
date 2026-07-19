@@ -51,7 +51,7 @@ export default async function handler(req, res) {
         const round = freshRoundState(picked.name, picked.coverId, []);
         const publicData = { ...round, lives: MAX_LIVES, streak: 0 };
 
-        await supabase.from('pixels_secret').upsert({ id: SECRET_KEY, data: { name: picked.name }, updated_at: new Date().toISOString() });
+        await supabase.from('pixels_secret').upsert({ id: SECRET_KEY, data: { name: picked.name, released: picked.released || null }, updated_at: new Date().toISOString() });
         await supabase.from('pixels_public').upsert({ id: IMAGE_KEY, data: { roundId: round.roundId, image }, updated_at: new Date().toISOString() });
         await supabase.from('pixels_public').upsert({ id: GAME_KEY, data: publicData, updated_at: new Date().toISOString() });
 

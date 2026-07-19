@@ -79,7 +79,7 @@ async function fetchIgdbCover(name) {
     // référencée, pas un vrai jeu à faire deviner.
     const candidates = results.filter(r => !isUnwantedIgdb(r) && r.cover?.image_id && r.first_release_date);
     const best = candidates.find(r => (r.name || '').trim().toLowerCase() === normalized) || candidates[0];
-    return best ? { name: best.name, coverId: best.cover.image_id } : null;
+    return best ? { name: best.name, coverId: best.cover.image_id, released: best.first_release_date || null } : null;
 }
 
 // excludeNames : tableau de noms déjà vus dans la partie en cours (anti-doublon).

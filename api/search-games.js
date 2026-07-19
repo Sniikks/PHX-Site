@@ -227,7 +227,23 @@ async function handleAutocomplete(req, res, debug) {
         }
     })();
 
-    const [igdbResults, steamItems] = await Promise.all([igdbPromise, steamPromise]);
+    const knownGamesPromise = (async () => {
+        try {
+            // "Contient", insensible à la casse, comme IGDB — cohérent avec le
+            // reste de l'autocomplétion. Table minuscule (un jeu par puzzle
+            // conclu), donc pas besoin d'index spécial ni de limite agressive.
+            const { data, error } = await supabase
+                .from('known_games').select('name, year').ilike('name', `%${q}%`).limit(20);
+            if (error) throw error;
+            debugInfo.knownGamesCount = Array.isArray(data) ? data.length : 0;
+            return Array.isArray(data) ? data : [];
+        } catch (e) {
+            debugInfo.knownGamesError = e.message;
+            return [];
+        }
+    })();
+
+    const [igdbResults, steamItems, knownGames] = await Promise.all([igdbPromise, steamPromise, knownGamesPromise]);
 
     // Année + popularité (total_rating_count) IGDB par nom normalisé : sert à
     // (1) donner une année aux résultats Steam sans correspondance IGDB directe,
@@ -257,6 +273,12 @@ async function handleAutocomplete(req, res, debug) {
         const key = normalizeName(i.name);
         push(i.name, igdbYearByName.get(key) || null, igdbPopularityByName.get(key) || 0);
     });
+    // known_games : n'ajoute rien si IGDB/Steam ont déjà trouvé ce jeu (push()
+    // ignore les doublons) — ne comble que les trous. Popularité forcée très
+    // haute : ce sont d'anciennes réponses de puzzles, donc par définition des
+    // jeux réels et pertinents — ils ne doivent jamais être exclus par la
+    // troncature à cause d'un "score" de popularité inconnu (0 par défaut).
+    knownGames.forEach(g => push(g.name, g.year, 999999));
 
     // Filet de secours borné : pour les résultats encore sans année après IGDB
     // (base pas complète à 100 %), on tente Steam en dernier recours — mais

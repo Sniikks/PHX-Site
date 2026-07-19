@@ -23,6 +23,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { isCorrectGuess, isCloseGuess, nameHint, extractYear } from './_gamematch.js';
+import { rememberKnownGame } from './_knowngames.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 // La clé service_role est nécessaire pour lire les lignes secrètes une fois
@@ -147,6 +148,10 @@ export default async function handler(req, res) {
         // que tous les visiteurs (et les archives) puissent l'afficher.
         if (finished && !newData.revealed) {
             newData.revealed = { answer, released };
+            // Trouvé ou pas, ce jeu est réel (choisi via IGDB/Steam à la
+            // génération) : on le mémorise pour que l'autocomplétion le
+            // retrouve désormais, même si IGDB/Steam le boudent ce jour-là.
+            await rememberKnownGame(supabase, answer, extractYear(released));
         }
 
         await supabase.from('zoomjeu_public').upsert({ id: puzzleId, data: newData, updated_at: new Date().toISOString() });
