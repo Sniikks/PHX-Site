@@ -12,7 +12,7 @@
    piloté par bg-animate.js via les variables --phx-px/--phx-py posées sur
    <html> (transform, indépendant du background-position donc les deux se
    cumulent sans se marcher dessus). */
-body::before {
+html::before {
   content: '';
   position: fixed;
   inset: 0;
@@ -51,12 +51,12 @@ body::before {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  body::before { animation: none; transition: none; transform: none; }
+  html::before { animation: none; transition: none; transform: none; }
   .phx-particle { display: none; }
 }
 
 /* ---------- Scanlines CRT (au-dessus de tout, très subtil) ---------- */
-body::after {
+html::after {
   content: '';
   position: fixed;
   inset: 0;
@@ -207,5 +207,5 @@ a.home:hover {
 
 /* ---------- Réduction des animations si demandé ---------- */
 @media (prefers-reduced-motion: reduce) {
-  body::after { display: none; }
+  html::after { display: none; }
 }

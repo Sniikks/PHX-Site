@@ -79,7 +79,7 @@
       p.style.animationDelay = delay.toFixed(1) + 's';
       wrap.appendChild(p);
     }
-    document.body.appendChild(wrap);
+    document.documentElement.appendChild(wrap);
   }
 
   function init() {
