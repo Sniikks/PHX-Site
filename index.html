@@ -31,8 +31,8 @@
     padding-left:max(1.2rem, env(safe-area-inset-left));
     padding-right:max(1.2rem, env(safe-area-inset-right));
     padding-bottom:max(2rem, env(safe-area-inset-bottom));
-    container-type:inline-size;
   }
+  .tiles-wrap { width:100%; container-type:inline-size; display:flex; flex-direction:column; align-items:center; }
   .title {
     font-family:'Rajdhani',sans-serif;
     font-size:clamp(1.4rem,4vw,2.2rem);
@@ -183,6 +183,7 @@
   <div class="title">Pignoufs Hyper Xaotiques</div>
   <div class="subtitle">Choisis un onglet</div>
 
+  <div class="tiles-wrap">
   <div class="grid grid-nonjeux">
     <a class="tile" href="proposition.html" data-tile="proposition">
       <div class="tile-icon">💻</div>
@@ -232,6 +233,7 @@
       <div class="tile-label">Pixels</div>
       <div class="tile-banner" data-banner><div class="tile-banner-status" data-banner-status></div><div class="tile-banner-timer" data-banner-timer></div></div>
     </a>
+  </div>
   </div>
 
   <footer>PHX © 2026 <span id="dbStatus" style="margin-left:.6rem;"></span></footer>
