@@ -127,6 +127,8 @@
   }
   .tile-banner.visible { display:block; }
   .tile-banner.pending { color:var(--gold); background:rgba(0,240,255,.16); }
+  .tile-banner.solved { color:#5fbf86; background:rgba(95,191,134,.14); }
+  .tile-banner.lost { color:#e2685f; background:rgba(226,104,95,.14); }
   @media (max-width:640px) { .tile-banner { font-size:.58rem; padding:.24rem .3rem; } }
 
   @media (min-width:641px) and (max-width:1024px) {
@@ -278,19 +280,26 @@
     return `${String(h).padStart(2, '0')}h${String(m).padStart(2, '0')}m${String(s).padStart(2, '0')}s`;
   }
 
-  function showBanner(tileKey, text, pending) {
+  function showBanner(tileKey, text, variant) {
     const el = document.querySelector(`[data-tile="${tileKey}"] [data-banner]`);
     if (!el) return;
     el.textContent = text;
     el.classList.add('visible');
-    el.classList.toggle('pending', !!pending);
+    el.classList.remove('pending', 'solved', 'lost');
+    if (variant) el.classList.add(variant);
   }
 
   // Un compte à rebours "prochain défi dans …" par tuile, réutilisé pour
   // ZoomJeu / Jeu Caché / Mot Français : même mécanique (reset à minuit
-  // heure de Paris), seule la table change.
-  function startNextChallengeCountdown(tileKey) {
-    const tick = () => showBanner(tileKey, `Prochain défi dans ${formatCountdown(secondsUntilParisMidnight())}`, false);
+  // heure de Paris), seule la table change. `prefix` (optionnel) affiche un
+  // résultat du jour ("Trouvé..."/"Perdu...") avant le décompte lui-même —
+  // le compte à rebours reste utile même une fois le défi du jour joué,
+  // pour savoir quand revenir.
+  function startNextChallengeCountdown(tileKey, prefix, variant) {
+    const tick = () => {
+      const countdown = `Prochain défi dans ${formatCountdown(secondsUntilParisMidnight())}`;
+      showBanner(tileKey, prefix ? `${prefix} · ${countdown}` : countdown, variant);
+    };
     tick();
     setInterval(tick, 1000);
   }
@@ -304,28 +313,38 @@
       const { count, error } = await supabaseClient
         .from('proposition').select('id', { count: 'exact', head: true });
       if (error) throw error;
-      if (count > 0) showBanner('proposition', `🗳️ ${count} jeu${count > 1 ? 'x' : ''} en attente de vote`, true);
+      if (count > 0) showBanner('proposition', `🗳️ ${count} jeu${count > 1 ? 'x' : ''} en attente de vote`, 'pending');
     } catch (e) { /* pas grave, on laisse la tuile sans bandeau */ }
   }
 
-  // ── ZoomJeu / Jeu Caché / Mot Français : "trouvé en X essais" si déjà
-  // joué aujourd'hui, sinon compte à rebours avant le prochain. Les trois
-  // pages partagent la même mécanique (session.guesses + session.solved
-  // dans la ligne publique du jour), donc une seule fonction générique. ──
+  // ── ZoomJeu / Jeu Caché / Mot Français : résultat du jour (trouvé en X
+  // essais / perdu) + compte à rebours avant le prochain, dans tous les
+  // cas — y compris une fois le défi du jour déjà résolu. Les trois pages
+  // partagent une mécanique proche (session.guesses + solved/failed/gaveUp
+  // + une réponse révélée une fois terminé), avec de petites différences de
+  // forme d'une page à l'autre — on reste donc volontairement souple sur
+  // les noms de champs plutôt que d'en imposer un seul. ──
   async function loadDailyChallengeBanner(tileKey, table, idPrefix) {
     try {
       const today = parisDateString();
       const { data: row, error } = await supabaseClient
         .from(table).select('data').eq('id', idPrefix + today).maybeSingle();
       if (error) throw error;
-      const session = row && row.data && row.data.session;
-      if (session && session.solved && Array.isArray(session.guesses)) {
-        const n = session.guesses.length;
-        showBanner(tileKey, `✅ Trouvé aujourd'hui en ${n} essai${n > 1 ? 's' : ''}`, false);
-        return;
+      const d = row && row.data;
+      const session = d && d.session;
+      if (session) {
+        const finished = !!(session.solved || session.failed || session.gaveUp || d.revealed || session.reveal);
+        if (finished) {
+          if (session.solved) {
+            const n = Array.isArray(session.guesses) ? session.guesses.length : null;
+            startNextChallengeCountdown(tileKey, n ? `✅ Trouvé aujourd'hui en ${n} essai${n > 1 ? 's' : ''}` : `✅ Trouvé aujourd'hui`, 'solved');
+          } else {
+            startNextChallengeCountdown(tileKey, `❌ Perdu aujourd'hui`, 'lost');
+          }
+          return;
+        }
       }
-      // Pas encore résolu (ou pas encore joué, ou abandonné) : on passe au
-      // compte à rebours plutôt que d'afficher un état intermédiaire flou.
+      // Pas encore résolu (ou pas encore joué) : juste le compte à rebours.
       startNextChallengeCountdown(tileKey);
     } catch (e) {
       startNextChallengeCountdown(tileKey); // par défaut, le countdown reste utile même si la lecture a échoué
