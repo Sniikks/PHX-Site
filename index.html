@@ -112,6 +112,23 @@
     z-index:1;
   }
 
+  /* Bandeau dynamique (votes en attente, essais du jour, compte à rebours...) */
+  .tile-banner {
+    position:absolute; left:0; right:0; bottom:0;
+    padding:.32rem .4rem;
+    font-size:.62rem; line-height:1.25;
+    letter-spacing:.02em;
+    text-align:center;
+    color:var(--text);
+    background:rgba(0,240,255,.1);
+    border-top:1px solid var(--border);
+    z-index:1;
+    display:none; /* affiché en JS seulement quand il y a quelque chose à dire */
+  }
+  .tile-banner.visible { display:block; }
+  .tile-banner.pending { color:var(--gold); background:rgba(0,240,255,.16); }
+  @media (max-width:640px) { .tile-banner { font-size:.58rem; padding:.24rem .3rem; } }
+
   @media (min-width:641px) and (max-width:1024px) {
     .grid-nonjeux { max-width:640px; width:100%; }
     .grid-jeux { max-width:640px; width:100%; }
@@ -161,9 +178,10 @@
   <div class="subtitle">Choisis un onglet</div>
 
   <div class="grid grid-nonjeux">
-    <a class="tile" href="proposition.html">
+    <a class="tile" href="proposition.html" data-tile="proposition">
       <div class="tile-icon">💻</div>
       <div class="tile-label">Proposition<br>de Jeux</div>
+      <div class="tile-banner" data-banner></div>
     </a>
 
     <a class="tile" href="Sniikks_liste_de_jeux.html">
@@ -185,24 +203,28 @@
       <div class="tile-label">Bracket</div>
     </a>
 
-    <a class="tile" href="zoomjeu.html">
+    <a class="tile" href="zoomjeu.html" data-tile="zoomjeu">
       <div class="tile-icon">🔍</div>
       <div class="tile-label">ZoomJeu</div>
+      <div class="tile-banner" data-banner></div>
     </a>
 
-    <a class="tile" href="mot-cache.html">
+    <a class="tile" href="mot-cache.html" data-tile="motcache">
       <div class="tile-icon">🎮</div>
       <div class="tile-label">Jeu<br>Caché</div>
+      <div class="tile-banner" data-banner></div>
     </a>
 
-    <a class="tile" href="mot-francais.html">
+    <a class="tile" href="mot-francais.html" data-tile="motfrancais">
       <div class="tile-icon">📚</div>
       <div class="tile-label">Mot<br>Français</div>
+      <div class="tile-banner" data-banner></div>
     </a>
 
-    <a class="tile" href="pixels.html">
+    <a class="tile" href="pixels.html" data-tile="pixels">
       <div class="tile-icon">🧩</div>
       <div class="tile-label">Pixels</div>
+      <div class="tile-banner" data-banner></div>
     </a>
   </div>
 
@@ -224,6 +246,113 @@
       if (error) { el.textContent = '● Base de données non configurée'; el.classList.add('db-error'); }
       else { el.textContent = '● Connecté à Supabase'; el.classList.add('db-ok'); }
     });
+  </script>
+
+  <script>
+  // ==========================================================
+  // Bandeaux dynamiques des tuiles jeux — proposition en attente,
+  // essais du jour, et compte à rebours avant le prochain défi
+  // (celui-ci s'actualise chaque seconde, sans recharger la page).
+  // Best-effort partout : une erreur réseau/table absente ne doit
+  // jamais empêcher la page index de s'afficher normalement.
+  // ==========================================================
+
+  function parisDateString(offset = 0) {
+    const now = new Date(Date.now() + offset * 86400000);
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+    const get = t => parts.find(p => p.type === t).value;
+    return `${get('year')}-${get('month')}-${get('day')}`;
+  }
+  // Secondes restantes avant minuit à Paris (fuseau lu directement, donc
+  // sans souci de passage heure d'été/hiver).
+  function secondsUntilParisMidnight() {
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).formatToParts(new Date());
+    const get = t => parseInt(parts.find(p => p.type === t).value, 10);
+    const elapsed = get('hour') * 3600 + get('minute') * 60 + get('second');
+    return 86400 - elapsed;
+  }
+  function formatCountdown(totalSeconds) {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    return `${String(h).padStart(2, '0')}h${String(m).padStart(2, '0')}m${String(s).padStart(2, '0')}s`;
+  }
+
+  function showBanner(tileKey, text, pending) {
+    const el = document.querySelector(`[data-tile="${tileKey}"] [data-banner]`);
+    if (!el) return;
+    el.textContent = text;
+    el.classList.add('visible');
+    el.classList.toggle('pending', !!pending);
+  }
+
+  // Un compte à rebours "prochain défi dans …" par tuile, réutilisé pour
+  // ZoomJeu / Jeu Caché / Mot Français : même mécanique (reset à minuit
+  // heure de Paris), seule la table change.
+  function startNextChallengeCountdown(tileKey) {
+    const tick = () => showBanner(tileKey, `Prochain défi dans ${formatCountdown(secondsUntilParisMidnight())}`, false);
+    tick();
+    setInterval(tick, 1000);
+  }
+
+  // ── Proposition de Jeux : nombre de jeux encore en attente de vote ──
+  // Une fois qu'un jeu a 2 votes "Oui", il est automatiquement transféré
+  // hors de la table "proposition" (voir proposition.html) : tout ce qui
+  // reste dedans est donc, par construction, encore en attente.
+  async function loadPropositionBanner() {
+    try {
+      const { count, error } = await supabaseClient
+        .from('proposition').select('id', { count: 'exact', head: true });
+      if (error) throw error;
+      if (count > 0) showBanner('proposition', `🗳️ ${count} jeu${count > 1 ? 'x' : ''} en attente de vote`, true);
+    } catch (e) { /* pas grave, on laisse la tuile sans bandeau */ }
+  }
+
+  // ── ZoomJeu / Jeu Caché / Mot Français : "trouvé en X essais" si déjà
+  // joué aujourd'hui, sinon compte à rebours avant le prochain. Les trois
+  // pages partagent la même mécanique (session.guesses + session.solved
+  // dans la ligne publique du jour), donc une seule fonction générique. ──
+  async function loadDailyChallengeBanner(tileKey, table, idPrefix) {
+    try {
+      const today = parisDateString();
+      const { data: row, error } = await supabaseClient
+        .from(table).select('data').eq('id', idPrefix + today).maybeSingle();
+      if (error) throw error;
+      const session = row && row.data && row.data.session;
+      if (session && session.solved && Array.isArray(session.guesses)) {
+        const n = session.guesses.length;
+        showBanner(tileKey, `✅ Trouvé aujourd'hui en ${n} essai${n > 1 ? 's' : ''}`, false);
+        return;
+      }
+      // Pas encore résolu (ou pas encore joué, ou abandonné) : on passe au
+      // compte à rebours plutôt que d'afficher un état intermédiaire flou.
+      startNextChallengeCountdown(tileKey);
+    } catch (e) {
+      startNextChallengeCountdown(tileKey); // par défaut, le countdown reste utile même si la lecture a échoué
+    }
+  }
+
+  // ── Pixels : pas de reset quotidien (partie partagée continue) — on
+  // affiche plutôt les vies restantes et la série en cours, si une partie
+  // a déjà commencé. ──
+  async function loadPixelsBanner() {
+    try {
+      const { data: row, error } = await supabaseClient
+        .from('pixels_public').select('data').eq('id', 'pixels_game').maybeSingle();
+      if (error) throw error;
+      const g = row && row.data;
+      if (g && typeof g.lives === 'number') {
+        const hearts = '❤️'.repeat(Math.max(0, g.lives));
+        showBanner('pixels', `${hearts || '💀'} · série de ${g.streak || 0}`, false);
+      }
+    } catch (e) { /* pas grave, on laisse la tuile sans bandeau */ }
+  }
+
+  loadPropositionBanner();
+  loadDailyChallengeBanner('zoomjeu', 'zoomjeu_public', 'zoomjeu_');
+  loadDailyChallengeBanner('motcache', 'motcache_public', 'motcache_');
+  loadDailyChallengeBanner('motfrancais', 'motfrancais_public', 'motfrancais_');
+  loadPixelsBanner();
   </script>
 </body>
 </html>
