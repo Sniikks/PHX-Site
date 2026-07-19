@@ -40,10 +40,22 @@
   };
 
   const FLAG_KEY = 'phxPageTransition';
-  const CURTAIN_MS = 380;
-  const PIXEL_MS = 460;
+  // Rideau (trio) : ralenti + bordure lumineuse ajoutée (voir CSS) pour que
+  // le sens du glissement se voie clairement, au lieu d'un aller-retour
+  // trop rapide pour être perçu comme un "slide".
+  const CURTAIN_MS = 560;
+  // Dissolution pixels : chaque cellule a son propre délai (effet de vague
+  // en diagonale + léger décalage pseudo-aléatoire pour un rendu plus
+  // "numérique/glitch" qu'une vague parfaitement lisse), calculé pour que
+  // TOUTES les cellules aient fini d'apparaître avant de naviguer (sinon
+  // l'animation était coupée en plein milieu, donc peu lisible).
   const PIXEL_COLS = 14;
   const PIXEL_ROWS = 8;
+  const PIXEL_CELL_MS = 380;
+  const PIXEL_STEP_MS = 22;
+  const PIXEL_JITTER_MS = 32;
+  const PIXEL_MAX_DELAY = (PIXEL_ROWS - 1 + PIXEL_COLS - 1) * PIXEL_STEP_MS + PIXEL_JITTER_MS;
+  const PIXEL_MS = PIXEL_MAX_DELAY + PIXEL_CELL_MS; // durée totale de l'aller (couverture complète)
   const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
   function pageName(hrefOrPath) {
@@ -69,8 +81,19 @@
           linear-gradient(135deg, #0d0e14 0%, #12141d 55%, #0d0e14 100%);
         box-shadow: inset 0 0 90px color-mix(in srgb, var(--gold, #00f0ff) 22%, transparent);
         transform: translateX(100%);
-        transition: transform ${CURTAIN_MS}ms cubic-bezier(.77,0,.18,1);
+        transition: transform ${CURTAIN_MS}ms cubic-bezier(.65,0,.2,1);
       }
+      /* Bordures lumineuses sur les 2 bords : quel que soit le sens du
+         glissement, le bord "actif" (celui qui avance dans l'écran) est
+         ainsi toujours marqué clairement — c'est ce qui manquait pour bien
+         voir "qu'on glisse" et pas juste un flash. */
+      #phx-curtain::before, #phx-curtain::after {
+        content:''; position:absolute; top:0; bottom:0; width:4px;
+        background: var(--gold, #00f0ff);
+        box-shadow: 0 0 20px 4px color-mix(in srgb, var(--gold, #00f0ff) 75%, transparent);
+      }
+      #phx-curtain::before { left:0; }
+      #phx-curtain::after { right:0; }
       #phx-curtain.phx-active { display:block; }
       #phx-curtain.phx-instant { transition:none; }
       #phx-curtain.phx-start-right { transform: translateX(100%); }
@@ -88,7 +111,7 @@
       #phx-pixel-overlay.phx-active { display:grid; }
       .phx-pixel-cell {
         opacity:0; transform:scale(.45);
-        transition: opacity 240ms ease, transform 240ms ease;
+        transition: opacity ${PIXEL_CELL_MS}ms ease, transform ${PIXEL_CELL_MS}ms ease;
         transition-delay: var(--d, 0ms);
       }
       .phx-pixel-a { background:#0d0e14; }
@@ -123,7 +146,21 @@
       }
       .phx-trio-left { left:.6rem; }
       .phx-trio-right { right:.6rem; }
-      @media (max-width:480px) { .phx-trio-arrow { display:none; } }
+      /* Mobile/tablette : on ne les masque plus (elles plaisaient bien en
+         desktop) — on les rend juste compactes (pastille ronde, pas de
+         texte) pour ne pas manger de largeur sur petit écran. Restent
+         centrées verticalement sur le bord (donc à l'écart du conteneur de
+         toasts, positionné lui en bas à droite). */
+      @media (max-width:900px) {
+        .phx-trio-arrow {
+          padding:0; width:42px; height:42px;
+          border-radius:50%; justify-content:center;
+        }
+        .phx-trio-label { display:none; }
+        .phx-trio-chevron { font-size:1.3rem; }
+        .phx-trio-left { left:.5rem; }
+        .phx-trio-right { right:.5rem; }
+      }
     `;
     const style = document.createElement('style');
     style.textContent = css;
@@ -141,7 +178,8 @@
       for (let c = 0; c < PIXEL_COLS; c++) {
         const cell = document.createElement('div');
         cell.className = 'phx-pixel-cell ' + ((r + c) % 2 === 0 ? 'phx-pixel-a' : 'phx-pixel-b');
-        cell.style.setProperty('--d', ((r + c) * 16) + 'ms');
+        const jitter = ((r * 31 + c * 17) % 5) * (PIXEL_JITTER_MS / 4);
+        cell.style.setProperty('--d', ((r + c) * PIXEL_STEP_MS + jitter) + 'ms');
         pixelWrap.appendChild(cell);
       }
     }
