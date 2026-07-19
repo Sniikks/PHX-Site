@@ -136,18 +136,41 @@ async function fetchSteamSpyGames(url) {
     return games;
 }
 
+// SteamSpy n'expose pas d'endpoint "top 500" natif (seulement des tops figés
+// à 100 : top100forever / top100in2weeks). Pour s'en approcher, on agrège
+// plusieurs pages de "all" (~1000 jeux/page, non triées) et on garde les 500
+// jeux avec le plus de propriétaires. Mis en cache pour la durée de l'appel
+// serverless, pour ne pas re-télécharger 3 pages à chaque candidat testé.
+let steamTop500Cache = null;
+async function fetchSteamTop500() {
+    if (steamTop500Cache) return steamTop500Cache;
+    let all = [];
+    for (const page of [0, 1, 2]) {
+        try {
+            const res = await fetch(`${STEAMSPY_BASE}?request=all&page=${page}`);
+            if (!res.ok) continue;
+            const data = await res.json();
+            const games = Object.values(data || {})
+                .filter(g => g && g.appid && g.name && !hasNonLatinScript(g.name))
+                .map(g => ({ source: 'steam', id: g.appid, name: g.name, owners: parseOwnersLowerBound(g.owners) }));
+            all = all.concat(games);
+        } catch (e) { /* on continue avec les pages déjà récupérées */ }
+    }
+    all.sort((a, b) => (b.owners || 0) - (a.owners || 0));
+    steamTop500Cache = all.slice(0, 500);
+    return steamTop500Cache;
+}
+
 async function fetchSteamBigPool() {
     const sourceRoll = Math.random();
-    let url;
     if (sourceRoll < 0.5) {
-        url = `${STEAMSPY_BASE}?request=top100forever`;
+        return fetchSteamTop500();
     } else if (sourceRoll < 0.85) {
-        url = `${STEAMSPY_BASE}?request=top100in2weeks`;
+        return fetchSteamSpyGames(`${STEAMSPY_BASE}?request=top100in2weeks`);
     } else {
         const page = Math.floor(Math.random() * 5);
-        url = `${STEAMSPY_BASE}?request=all&page=${page}`;
+        return fetchSteamSpyGames(`${STEAMSPY_BASE}?request=all&page=${page}`);
     }
-    return fetchSteamSpyGames(url);
 }
 
 async function fetchSteamRandomPool() {
@@ -584,8 +607,31 @@ export default async function handler(req, res) {
         }
 
         const { data: usedRow } = await supabase.from('zoomjeu_public').select('data').eq('id', 'zoomjeu_used').maybeSingle();
-        const usedIds = new Set(usedRow?.data?.ids || []);
-        const usedNames = new Set(usedRow?.data?.names || []);
+        // ── Cooldown (un jeu ne doit pas retomber tout de suite) ──
+        // On garde un historique par jeu { lastUsed, images } au lieu d'une
+        // exclusion permanente : un jeu redevient éligible après COOLDOWN_DAYS,
+        // et son historique d'images sert à éviter de retomber sur la même
+        // photo que la dernière fois qu'il est sorti.
+        const COOLDOWN_DAYS = 120;
+        let usedEntries = usedRow?.data?.entries || null;
+        if (!usedEntries) {
+            // Migration depuis l'ancien format {ids, names} (sans dates ni
+            // images) : on démarre leur cooldown à partir d'aujourd'hui par
+            // sécurité, pour ne pas les faire retomber en masse au changement.
+            usedEntries = {};
+            for (const key of (usedRow?.data?.ids || [])) {
+                usedEntries[key] = { name: '', lastUsed: dateStr, images: [] };
+            }
+        }
+        const usedIds = new Set();
+        const usedNames = new Set();
+        for (const [key, entry] of Object.entries(usedEntries)) {
+            const daysSince = Math.abs((new Date(dateStr + 'T00:00:00Z') - new Date(entry.lastUsed + 'T00:00:00Z')) / 86400000);
+            if (daysSince < COOLDOWN_DAYS) {
+                usedIds.add(key);
+                if (entry.name) usedNames.add(entry.name);
+            }
+        }
 
         const game = await pickDailyGame(usedIds, usedNames);
         if (!game) {
@@ -609,7 +655,14 @@ export default async function handler(req, res) {
         if (screenshotPool.length === 0) {
             return res.status(500).json({ error: 'Jeu choisi sans screenshot exploitable.' });
         }
-        const chosenImage = screenshotPool[Math.floor(Math.random() * screenshotPool.length)];
+        // Si ce jeu est déjà repassé par le passé (hors cooldown), on évite de
+        // retomber sur une image déjà montrée — sauf si le pool est trop
+        // petit pour en avoir une nouvelle, auquel cas on retombe sur toutes.
+        const usedKey = `${game.source}:${game.id}`;
+        const priorImages = new Set(usedEntries[usedKey]?.images || []);
+        const freshImages = screenshotPool.filter(img => !priorImages.has(img));
+        const imagePool = freshImages.length > 0 ? freshImages : screenshotPool;
+        const chosenImage = imagePool[Math.floor(Math.random() * imagePool.length)];
 
         // Date de sortie : IGDB (first_release_date, la 1re sortie du jeu) en
         // priorité, sinon celle de la source d'origine (Steam...) comme repli.
@@ -652,11 +705,14 @@ export default async function handler(req, res) {
         };
         await supabase.from('zoomjeu_public').upsert({ id: puzzleId, data: puzzle, updated_at: new Date().toISOString() });
 
-        usedIds.add(`${game.source}:${game.id}`);
-        usedNames.add(normalize(game.name));
+        usedEntries[usedKey] = {
+            name: normalize(game.name),
+            lastUsed: dateStr,
+            images: [...new Set([...(usedEntries[usedKey]?.images || []), chosenImage])]
+        };
         await supabase.from('zoomjeu_public').upsert({
             id: 'zoomjeu_used',
-            data: { ids: [...usedIds], names: [...usedNames] },
+            data: { entries: usedEntries },
             updated_at: new Date().toISOString()
         });
 
