@@ -19,7 +19,7 @@
 <style>
 
 :root{
-  --bg:#0d0e14;--surface:#12141d;--surface2:#181a25;--border:#2a2d3a;
+  --bg:#0a0a0c;--surface:#111114;--surface2:#161619;--border:#2a2d3a;
   --gold:#00f0ff;--gold-light:#54d1db;--gold-dim:rgba(0,240,255,0.15);--gold-glow:rgba(0,240,255,0.10);
   --text:#e4e7f0;--text-dim:#8890a8;
   --green:#4caf78;--green-bg:rgba(76,175,120,0.12);
@@ -33,11 +33,11 @@
 body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-size:14px;min-height:100vh;}
 
 /* ── HEADER ── */
-.sticky-top{position:sticky;top:0;z-index:50;background:#0d0e14;backdrop-filter:blur(14px);border-bottom:1px solid var(--border);transition:transform .25s ease;max-height:100vh;max-height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.sticky-top{position:sticky;top:0;z-index:50;background:rgba(10,10,12,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);transition:transform .25s ease;max-height:100vh;max-height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .sticky-top.scrolled{box-shadow:0 8px 22px rgba(0,0,0,.5);}
 .sticky-top.header-hidden{transform:translateY(-100%);}
 .sh-inner{max-width:1400px;margin:0 auto;padding:0 28px;}
-.sh-title{display:flex;align-items:center;justify-content:space-between;padding:12px 0 10px;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap;}
+.sh-title{display:flex;align-items:center;justify-content:space-between;padding:12px 0 10px;gap:12px;flex-wrap:wrap;}
 .sh-title-left{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
 .logo{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;letter-spacing:2px;color:var(--gold);white-space:nowrap;}
 .logo span{color:var(--text-dim);font-weight:400;}
@@ -46,7 +46,7 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
 .tab-btn:hover{color:var(--text);}
 .tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
 .header-actions{display:flex;gap:8px;align-items:center;}
-.btn-io{background:transparent;border:1px solid var(--border);color:var(--text-dim);font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;border-radius:var(--radius);padding:9px 16px;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.btn-io{background:transparent;border:1px solid var(--border);color:var(--text-dim);font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;border-radius:var(--radius);padding:7px 13px;cursor:pointer;transition:all .2s;white-space:nowrap;}
 .btn-io:hover{border-color:var(--gold);color:var(--gold);}
 #file-import{display:none;}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;}
@@ -62,10 +62,10 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
 .sh-search{background:var(--surface);border:1px solid var(--border);color:#fff;padding:8px 14px 8px 32px;font-family:'Exo 2',sans-serif;font-size:13px;outline:none;border-radius:10px;width:200px;transition:all .2s;flex-shrink:0;}
 .sh-search:focus{border-color:rgba(0,240,255,0.4);width:240px;}
 .sh-search::placeholder{color:rgba(255,255,255,.3);}
-.filter-btn{background:transparent;border:1px solid var(--border);color:var(--text-dim);padding:7px 16px;font-family:'Rajdhani',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .2s;border-radius:8px;white-space:nowrap;letter-spacing:.5px;}
+.filter-btn{background:transparent;border:1px solid var(--border);color:var(--text-dim);padding:7px 13px;font-family:'Rajdhani',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .2s;border-radius:8px;white-space:nowrap;letter-spacing:.5px;}
 .filter-btn:hover{color:#fff;background:rgba(255,255,255,.06);}
 .filter-btn.active{color:#0e0f13;background:var(--gold);border-color:var(--gold);box-shadow:none;}
-.btn-add-main{background:var(--gold);border:none;color:#0e0f13;padding:9px 16px;font-family:'Rajdhani',sans-serif;font-size:12.5px;font-weight:700;cursor:pointer;border-radius:8px;white-space:nowrap;transition:all .2s;letter-spacing:1px;}
+.btn-add-main{background:var(--gold);border:none;color:#0e0f13;padding:8px 16px;font-family:'Rajdhani',sans-serif;font-size:12.5px;font-weight:700;cursor:pointer;border-radius:8px;white-space:nowrap;transition:all .2s;letter-spacing:1px;}
 .btn-add-main:hover{background:var(--gold-light);transform:translateY(-1px);}
 
 /* ── TABS ── */
@@ -331,7 +331,6 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
   <div class="sh-title">
     <div class="sh-title-left">
       <a href="index.html" class="menu-btn">☰ Menu</a>
-      <div class="logo">// <span>GAME</span>TRACKER</div>
       <div class="tabs">
         <button class="tab-btn" id="tabBtn1" onclick="switchTab('tab1',this)">Jeux à faire</button>
         <button class="tab-btn" id="tabBtn2" onclick="switchTab('tab2',this)">Proposition</button>
