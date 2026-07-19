@@ -318,19 +318,27 @@ async function handleAutocomplete(req, res, debug) {
         return 3;
     }
 
-    // Tri : pertinence du nom d'abord, puis date de sortie croissante à
-    // pertinence égale ; les jeux sans date connue passent après, triés
-    // alphabétiquement entre eux pour rester stables/prévisibles.
+    // Tri : pertinence du nom d'abord ; à pertinence égale, POPULARITÉ
+    // décroissante (et non l'année) — sinon un franchise avec beaucoup
+    // d'éditions/portages anciens (ex. Call of Duty : Finest Hour, Big Red
+    // One, Roads to Victory...) peut à lui seul remplir toute la limite de
+    // résultats et faire disparaître un épisode plus récent mais bien plus
+    // connu et recherché (ex. Modern Warfare 2, 2009) — vécu en vrai avec
+    // "call of duty" qui ne remontait pas MW2, noyé derrière des portages
+    // mobiles/PSP bien moins pertinents pour un joueur. L'année ne sert
+    // plus qu'en dernier recours (popularité égale, ou toutes deux nulles).
     filteredResults.sort((a, b) => {
         const ra = relevanceTier(a.name), rb = relevanceTier(b.name);
         if (ra !== rb) return ra - rb;
+        if (a.popularity !== b.popularity) return b.popularity - a.popularity;
         if (a.year && b.year) return a.year - b.year;
         if (a.year && !b.year) return -1;
         if (!a.year && b.year) return 1;
         return a.name.localeCompare(b.name);
     });
 
-    const merged = filteredResults.slice(0, 40);
+
+    const merged = filteredResults.slice(0, 60);
 
     // Écriture dans le cache DB (best-effort, ne bloque jamais la réponse
     // au joueur si Supabase est momentanément indisponible).
