@@ -79,7 +79,14 @@
       p.style.animationDelay = delay.toFixed(1) + 's';
       wrap.appendChild(p);
     }
-    document.documentElement.appendChild(wrap);
+    // Enfant de <body> (et non plus de <html>) : body a maintenant son
+    // propre contexte d'empilement (position:relative, voir cyber-theme.css),
+    // donc son fond passe garanti derrière ce wrapper — plus besoin de
+    // compter sur l'ordre de peinture au niveau racine, qui dépendait de
+    // ce que chaque page mettait (ou pas) comme fond opaque sur <body>.
+    // prepend plutôt qu'append : reste avant le vrai contenu dans le DOM,
+    // en plus d'être déjà derrière lui grâce au z-index.
+    document.body.prepend(wrap);
   }
 
   function init() {

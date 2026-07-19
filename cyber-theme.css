@@ -7,12 +7,20 @@
    ========================================================== */
 
 /* ---------- Grille cyberpunk en fond ---------- */
+/* Le body reçoit son propre contexte d'empilement (position:relative) : ainsi
+   son propre fond (même opaque) est TOUJOURS peint avant (donc derrière) le
+   pseudo-élément ci-dessous, quelle que soit la page — indépendant de tout
+   z-index concurrent ailleurs sur la page (règle CSS garantie, pas un hasard
+   d'ordre de peinture comme c'était le cas quand ce fond était posé sur
+   <html>, qui ne forme pas de contexte d'empilement propre). */
+body { position: relative; }
+
 /* Dérive lente continue (background-position, en boucle invisible car
    multiple de background-size) + parallaxe interactif au survol/scroll,
    piloté par bg-animate.js via les variables --phx-px/--phx-py posées sur
    <html> (transform, indépendant du background-position donc les deux se
    cumulent sans se marcher dessus). */
-html::before {
+body::before {
   content: '';
   position: fixed;
   inset: 0;
@@ -51,12 +59,12 @@ html::before {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html::before { animation: none; transition: none; transform: none; }
+  body::before { animation: none; transition: none; transform: none; }
   .phx-particle { display: none; }
 }
 
 /* ---------- Scanlines CRT (au-dessus de tout, très subtil) ---------- */
-html::after {
+body::after {
   content: '';
   position: fixed;
   inset: 0;
