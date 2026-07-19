@@ -116,19 +116,24 @@
   .tile-banner {
     position:absolute; left:0; right:0; bottom:0;
     padding:.32rem .4rem;
-    font-size:.62rem; line-height:1.25;
+    font-size:.62rem; line-height:1.3;
     letter-spacing:.02em;
     text-align:center;
-    color:var(--text);
     background:rgba(0,240,255,.1);
     border-top:1px solid var(--border);
     z-index:1;
     display:none; /* affiché en JS seulement quand il y a quelque chose à dire */
   }
   .tile-banner.visible { display:block; }
-  .tile-banner.pending { color:var(--gold); background:rgba(0,240,255,.16); }
-  .tile-banner.solved { color:#5fbf86; background:rgba(95,191,134,.14); }
-  .tile-banner.lost { color:#e2685f; background:rgba(226,104,95,.14); }
+  .tile-banner-status { color:var(--text); }
+  .tile-banner-timer { color:#fff; display:none; }
+  .tile-banner-timer.visible { display:block; }
+  .tile-banner.pending .tile-banner-status { color:var(--gold); }
+  .tile-banner.solved .tile-banner-status { color:#5fbf86; }
+  .tile-banner.lost .tile-banner-status { color:#e2685f; }
+  .tile-banner.pending { background:rgba(0,240,255,.16); }
+  .tile-banner.solved { background:rgba(95,191,134,.14); }
+  .tile-banner.lost { background:rgba(226,104,95,.14); }
   @media (max-width:640px) { .tile-banner { font-size:.58rem; padding:.24rem .3rem; } }
 
   @media (min-width:641px) and (max-width:1024px) {
@@ -183,7 +188,7 @@
     <a class="tile" href="proposition.html" data-tile="proposition">
       <div class="tile-icon">💻</div>
       <div class="tile-label">Proposition<br>de Jeux</div>
-      <div class="tile-banner" data-banner></div>
+      <div class="tile-banner" data-banner><div class="tile-banner-status" data-banner-status></div><div class="tile-banner-timer" data-banner-timer></div></div>
     </a>
 
     <a class="tile" href="Sniikks_liste_de_jeux.html">
@@ -208,25 +213,25 @@
     <a class="tile" href="zoomjeu.html" data-tile="zoomjeu">
       <div class="tile-icon">🔍</div>
       <div class="tile-label">ZoomJeu</div>
-      <div class="tile-banner" data-banner></div>
+      <div class="tile-banner" data-banner><div class="tile-banner-status" data-banner-status></div><div class="tile-banner-timer" data-banner-timer></div></div>
     </a>
 
     <a class="tile" href="mot-cache.html" data-tile="motcache">
       <div class="tile-icon">🎮</div>
       <div class="tile-label">Jeu<br>Caché</div>
-      <div class="tile-banner" data-banner></div>
+      <div class="tile-banner" data-banner><div class="tile-banner-status" data-banner-status></div><div class="tile-banner-timer" data-banner-timer></div></div>
     </a>
 
     <a class="tile" href="mot-francais.html" data-tile="motfrancais">
       <div class="tile-icon">📚</div>
       <div class="tile-label">Mot<br>Français</div>
-      <div class="tile-banner" data-banner></div>
+      <div class="tile-banner" data-banner><div class="tile-banner-status" data-banner-status></div><div class="tile-banner-timer" data-banner-timer></div></div>
     </a>
 
     <a class="tile" href="pixels.html" data-tile="pixels">
       <div class="tile-icon">🧩</div>
       <div class="tile-label">Pixels</div>
-      <div class="tile-banner" data-banner></div>
+      <div class="tile-banner" data-banner><div class="tile-banner-status" data-banner-status></div><div class="tile-banner-timer" data-banner-timer></div></div>
     </a>
   </div>
 
@@ -280,10 +285,16 @@
     return `${String(h).padStart(2, '0')}h${String(m).padStart(2, '0')}m${String(s).padStart(2, '0')}s`;
   }
 
-  function showBanner(tileKey, text, variant) {
+  function showBanner(tileKey, statusText, variant, timerText) {
     const el = document.querySelector(`[data-tile="${tileKey}"] [data-banner]`);
     if (!el) return;
-    el.textContent = text;
+    const statusEl = el.querySelector('[data-banner-status]');
+    const timerEl = el.querySelector('[data-banner-timer]');
+    if (statusEl) statusEl.textContent = statusText || '';
+    if (timerEl) {
+      timerEl.textContent = timerText || '';
+      timerEl.classList.toggle('visible', !!timerText);
+    }
     el.classList.add('visible');
     el.classList.remove('pending', 'solved', 'lost');
     if (variant) el.classList.add(variant);
@@ -291,15 +302,12 @@
 
   // Un compte à rebours "prochain défi dans …" par tuile, réutilisé pour
   // ZoomJeu / Jeu Caché / Mot Français : même mécanique (reset à minuit
-  // heure de Paris), seule la table change. `prefix` (optionnel) affiche un
-  // résultat du jour ("Trouvé..."/"Perdu...") avant le décompte lui-même —
-  // le compte à rebours reste utile même une fois le défi du jour joué,
-  // pour savoir quand revenir.
-  function startNextChallengeCountdown(tileKey, prefix, variant) {
-    const tick = () => {
-      const countdown = `Prochain défi dans ${formatCountdown(secondsUntilParisMidnight())}`;
-      showBanner(tileKey, prefix ? `${prefix} · ${countdown}` : countdown, variant);
-    };
+  // heure de Paris), seule la table change. `status` (optionnel) est la
+  // 1ʳᵉ ligne ("Trouvé..."/"Perdu..."), toujours en couleur ; le compte à
+  // rebours reste en 2e ligne, en blanc, dans tous les cas — y compris une
+  // fois le défi du jour déjà joué, pour savoir quand revenir.
+  function startNextChallengeCountdown(tileKey, status, variant) {
+    const tick = () => showBanner(tileKey, status, variant, formatCountdown(secondsUntilParisMidnight()));
     tick();
     setInterval(tick, 1000);
   }
@@ -362,7 +370,7 @@
       const g = row && row.data;
       if (g && typeof g.lives === 'number') {
         const hearts = '❤️'.repeat(Math.max(0, g.lives));
-        showBanner('pixels', `${hearts || '💀'} · série de ${g.streak || 0}`, false);
+        showBanner('pixels', `${hearts || '💀'} · série de ${g.streak || 0}`);
       }
     } catch (e) { /* pas grave, on laisse la tuile sans bandeau */ }
   }
@@ -373,5 +381,6 @@
   loadDailyChallengeBanner('motfrancais', 'motfrancais_public', 'motfrancais_');
   loadPixelsBanner();
   </script>
+  <script src="page-transitions.js" defer></script>
 </body>
 </html>
