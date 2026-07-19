@@ -29,21 +29,21 @@ function newRoundId() { return Math.random().toString(36).slice(2) + Date.now().
 
 async function loadState() {
     const [{ data: pub }, { data: secret }] = await Promise.all([
-        supabase.from('app_data').select('data').eq('id', GAME_KEY).maybeSingle(),
-        supabase.from('app_data').select('data').eq('id', SECRET_KEY).maybeSingle()
+        supabase.from('pixels_public').select('data').eq('id', GAME_KEY).maybeSingle(),
+        supabase.from('pixels_secret').select('data').eq('id', SECRET_KEY).maybeSingle()
     ]);
     return { publicData: pub?.data || null, secretName: secret?.data?.name || null };
 }
 
 async function saveRound(publicData, name, coverId) {
     const image = await fetchImageAsDataUri(coverId);
-    await supabase.from('app_data').upsert({ id: SECRET_KEY, data: { name }, updated_at: new Date().toISOString() });
-    await supabase.from('app_data').upsert({ id: IMAGE_KEY, data: { roundId: publicData.roundId, image }, updated_at: new Date().toISOString() });
-    await supabase.from('app_data').upsert({ id: GAME_KEY, data: publicData, updated_at: new Date().toISOString() });
+    await supabase.from('pixels_secret').upsert({ id: SECRET_KEY, data: { name }, updated_at: new Date().toISOString() });
+    await supabase.from('pixels_public').upsert({ id: IMAGE_KEY, data: { roundId: publicData.roundId, image }, updated_at: new Date().toISOString() });
+    await supabase.from('pixels_public').upsert({ id: GAME_KEY, data: publicData, updated_at: new Date().toISOString() });
 }
 
 async function savePublicOnly(publicData) {
-    await supabase.from('app_data').upsert({ id: GAME_KEY, data: publicData, updated_at: new Date().toISOString() });
+    await supabase.from('pixels_public').upsert({ id: GAME_KEY, data: publicData, updated_at: new Date().toISOString() });
 }
 
 export default async function handler(req, res) {

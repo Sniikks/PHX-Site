@@ -39,14 +39,14 @@ export default async function handler(req, res) {
 
     try {
         const { data: secretRow } = await supabase
-            .from('app_data').select('data').eq('id', 'zoomjeu_secret_' + d).maybeSingle();
+            .from('zoomjeu_secret').select('data').eq('id', 'zoomjeu_secret_' + d).maybeSingle();
 
         let imageUrl = secretRow?.data?.image || null;
 
         // Repli anciens puzzles : l'image était déjà publique, on la ressert telle quelle.
         if (!imageUrl) {
             const { data: pubRow } = await supabase
-                .from('app_data').select('data').eq('id', 'zoomjeu_' + d).maybeSingle();
+                .from('zoomjeu_public').select('data').eq('id', 'zoomjeu_' + d).maybeSingle();
             const img = pubRow?.data?.image;
             if (img && /^https?:\/\//i.test(img)) imageUrl = img;
         }

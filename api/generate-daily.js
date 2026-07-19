@@ -1,7 +1,7 @@
 // ==========================================================
 // /api/generate-daily.js — Vercel Serverless Function
 // Génère automatiquement le puzzle "ZoomJeu" du jour et le stocke
-// dans Supabase (table app_data).
+// dans Supabase (tables zoomjeu_public / zoomjeu_secret).
 //
 // DEUX lignes par jour depuis la v2 :
 //  - "zoomjeu_YYYY-MM-DD"        : ligne PUBLIQUE lue par le navigateur
@@ -573,7 +573,7 @@ export default async function handler(req, res) {
         const dateStr = isValidDate ? explicitDate : getParisDateString(dayOffset);
         const puzzleId = `zoomjeu_${dateStr}`;
 
-        const { data: existing } = await supabase.from('app_data').select('data').eq('id', puzzleId).maybeSingle();
+        const { data: existing } = await supabase.from('zoomjeu_public').select('data').eq('id', puzzleId).maybeSingle();
         // On considère qu'un puzzle valide existe déjà seulement s'il a un jeu et une image.
         // v1 : la réponse était dans la ligne publique (data.answer). v2 : elle est dans la
         // ligne secrète, la ligne publique porte data.v = 2.
@@ -583,7 +583,7 @@ export default async function handler(req, res) {
             return res.status(200).json({ ok: true, skipped: true, message: 'Puzzle déjà généré pour ' + dateStr });
         }
 
-        const { data: usedRow } = await supabase.from('app_data').select('data').eq('id', 'zoomjeu_used').maybeSingle();
+        const { data: usedRow } = await supabase.from('zoomjeu_public').select('data').eq('id', 'zoomjeu_used').maybeSingle();
         const usedIds = new Set(usedRow?.data?.ids || []);
         const usedNames = new Set(usedRow?.data?.names || []);
 
@@ -637,7 +637,7 @@ export default async function handler(req, res) {
             source: game.source,
             refId: game.id
         };
-        await supabase.from('app_data').upsert({ id: 'zoomjeu_secret_' + dateStr, data: secret, updated_at: new Date().toISOString() });
+        await supabase.from('zoomjeu_secret').upsert({ id: 'zoomjeu_secret_' + dateStr, data: secret, updated_at: new Date().toISOString() });
 
         // ── Ligne PUBLIQUE (lue par le navigateur) : PAS de réponse, image
         // proxifiée (&v= change à chaque génération pour invalider le CDN). ──
@@ -650,11 +650,11 @@ export default async function handler(req, res) {
             hints,
             session: { guesses: [], solved: false, gaveUp: false }
         };
-        await supabase.from('app_data').upsert({ id: puzzleId, data: puzzle, updated_at: new Date().toISOString() });
+        await supabase.from('zoomjeu_public').upsert({ id: puzzleId, data: puzzle, updated_at: new Date().toISOString() });
 
         usedIds.add(`${game.source}:${game.id}`);
         usedNames.add(normalize(game.name));
-        await supabase.from('app_data').upsert({
+        await supabase.from('zoomjeu_public').upsert({
             id: 'zoomjeu_used',
             data: { ids: [...usedIds], names: [...usedNames] },
             updated_at: new Date().toISOString()

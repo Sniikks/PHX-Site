@@ -75,8 +75,8 @@ export default async function handler(req, res) {
     try {
         const puzzleId = 'zoomjeu_' + date;
         const [{ data: pubRow }, { data: secretRow }] = await Promise.all([
-            supabase.from('app_data').select('data').eq('id', puzzleId).maybeSingle(),
-            supabase.from('app_data').select('data').eq('id', 'zoomjeu_secret_' + date).maybeSingle()
+            supabase.from('zoomjeu_public').select('data').eq('id', puzzleId).maybeSingle(),
+            supabase.from('zoomjeu_secret').select('data').eq('id', 'zoomjeu_secret_' + date).maybeSingle()
         ]);
 
         const pub = pubRow?.data;
@@ -149,7 +149,7 @@ export default async function handler(req, res) {
             newData.revealed = { answer, released };
         }
 
-        await supabase.from('app_data').upsert({ id: puzzleId, data: newData, updated_at: new Date().toISOString() });
+        await supabase.from('zoomjeu_public').upsert({ id: puzzleId, data: newData, updated_at: new Date().toISOString() });
 
         return res.status(200).json({ ok: true, session, revealed: newData.revealed || null, guess: lastGuess });
     } catch (e) {

@@ -466,7 +466,7 @@
   <script>
   // ==========================================================
   // ZoomJeu — logique client (v2)
-  // Ligne publique Supabase par jour (app_data.id = "zoomjeu_YYYY-MM-DD") :
+  // Ligne publique Supabase par jour (table zoomjeu_public, id = "zoomjeu_YYYY-MM-DD") :
   // infos du puzzle (image proxifiée, indices) + session partagée
   // (data.session = { guesses, solved, gaveUp }) — SANS la réponse.
   // La réponse vit dans "zoomjeu_secret_YYYY-MM-DD" (illisible avec la clé
@@ -725,7 +725,7 @@
         renderGame();
       }
 
-      const { data: row, error } = await supabaseClient.from('app_data').select('data').eq('id', 'zoomjeu_' + viewingDate).maybeSingle();
+      const { data: row, error } = await supabaseClient.from('zoomjeu_public').select('data').eq('id', 'zoomjeu_' + viewingDate).maybeSingle();
       setDbStatus(error);
       if (error) throw error;
 
@@ -757,7 +757,7 @@
   function subscribeRealtime() {
     realtimeChannel = supabaseClient
       .channel('zoomjeu_' + viewingDate)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_data', filter: `id=eq.zoomjeu_${viewingDate}` }, payload => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'zoomjeu_public', filter: `id=eq.zoomjeu_${viewingDate}` }, payload => {
         if (isValidPuzzle(payload.new?.data)) {
           puzzle = payload.new.data;
           state = puzzle.session || { guesses: [], solved: false, gaveUp: false };
@@ -1136,7 +1136,7 @@
     try {
       // 'zoomjeu_2%' = uniquement les lignes datées (exclut zoomjeu_used ;
       // les lignes secrètes sont de toute façon illisibles avec la clé anon).
-      const { data: rows, error } = await supabaseClient.from('app_data').select('id,data').ilike('id', 'zoomjeu_2%');
+      const { data: rows, error } = await supabaseClient.from('zoomjeu_public').select('id,data').ilike('id', 'zoomjeu_2%');
       if (error) throw error;
 
       const games = (rows || [])
@@ -1209,7 +1209,7 @@
 
     try {
       const prefix = monthPrefix(archiveYear, archiveMonth);
-      const { data: rows, error } = await supabaseClient.from('app_data').select('id,data').ilike('id', prefix + '%');
+      const { data: rows, error } = await supabaseClient.from('zoomjeu_public').select('id,data').ilike('id', prefix + '%');
       setDbStatus(error);
       if (error) throw error;
 

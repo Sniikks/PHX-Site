@@ -1,4 +1,13 @@
 -- ==========================================================
+-- ⚠️ HISTORIQUE — ce fichier documente l'ancien schéma "app_data"
+-- (table fourre-tout unique). Depuis la migration "une table par page",
+-- voir supabase-migration-v2.sql — c'est ce fichier-là qu'il faut exécuter
+-- sur une base neuve ou pour migrer une base existante. Ce fichier-ci est
+-- gardé pour l'historique des décisions (policies, RLS...) mais ne doit
+-- plus être exécuté tel quel sur une base qui a déjà migré.
+-- ==========================================================
+
+-- ==========================================================
 -- SCHÉMA SUPABASE — Backlog Jeux
 -- À exécuter dans Supabase : SQL Editor > New query > Run
 -- ==========================================================

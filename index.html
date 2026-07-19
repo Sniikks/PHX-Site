@@ -219,7 +219,7 @@
     // direct, qui donne le message le plus précis.
     RemoteStore.init([]);
     // Ping direct pour un statut fiable même sans clé à précharger
-    supabaseClient.from('app_data').select('id').limit(1).then(({ error }) => {
+    supabaseClient.from('sniikks_games').select('id').limit(1).then(({ error }) => {
       const el = document.getElementById('dbStatus');
       if (error) { el.textContent = '● Base de données non configurée'; el.classList.add('db-error'); }
       else { el.textContent = '● Connecté à Supabase'; el.classList.add('db-ok'); }

@@ -921,20 +921,21 @@ async function loadTab2(){const d=await sbGet('proposition');if(Array.isArray(d)
 
 // ── SYNC VERS LES LISTES PERSO (369 & Sniikks) ────────────────────────────────
 // 369_liste_de_jeux.html et Sniikks_liste_de_jeux.html stockent toute leur liste
-// comme un seul blob JSON dans la table "app_data" (clé backlog_cards_v1 / backlog_jeux_v4).
+// comme un seul blob JSON, chacune dans sa propre table dédiée
+// (s369_games / sniikks_games — plus de fourre-tout "app_data").
 // Cette fonction y ajoute automatiquement le jeu, sans toucher aux 2 fichiers HTML.
 function genPersonalId(){return Math.random().toString(36).substr(2,8);}
 
-async function sbGetAppData(key){
+async function sbGetAppData(table,key){
   try{
-    const r=await fetch(`${SUPA_URL}/rest/v1/app_data?id=eq.${encodeURIComponent(key)}&select=data`,{headers:await getH()});
+    const r=await fetch(`${SUPA_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(key)}&select=data`,{headers:await getH()});
     const rows=await r.json();
     return(Array.isArray(rows)&&rows[0]&&Array.isArray(rows[0].data))?rows[0].data:[];
   }catch(e){return[];}
 }
-async function sbUpsertAppData(key,dataArr){
+async function sbUpsertAppData(table,key,dataArr){
   try{
-    await fetch(`${SUPA_URL}/rest/v1/app_data?on_conflict=id`,{
+    await fetch(`${SUPA_URL}/rest/v1/${table}?on_conflict=id`,{
       method:'POST',
       headers:{...(await getH()),'Prefer':'resolution=merge-duplicates,return=minimal'},
       body:JSON.stringify({id:key,data:dataArr,updated_at:new Date().toISOString()})
@@ -946,13 +947,13 @@ async function syncNewGameToPersonalLists(jeu,lien){
   const name=(jeu||'').trim();
   if(!name)return;
 
-  // 369 — clé backlog_cards_v1, schéma {title, status, steamId, ...}
+  // 369 — table s369_games (ex-clé backlog_cards_v1), schéma {title, status, steamId, ...}
   try{
-    const list369=await sbGetAppData('backlog_cards_v1');
+    const list369=await sbGetAppData('s369_games','backlog_cards_v1');
     const already369=list369.some(g=>(g.title||'').trim().toUpperCase()===name.toUpperCase());
     if(!already369){
       list369.push({id:genPersonalId(),title:name.toUpperCase(),status:'A faire',note:null,dateFin:null,steamId:lien||null,notePerso:null,platform:'PC',support:null,addedAt:Date.now()});
-      await sbUpsertAppData('backlog_cards_v1',list369);
+      await sbUpsertAppData('s369_games','backlog_cards_v1',list369);
     }else{
       showToast(`"${name}" est déjà dans la liste 369, il n'a pas été ajouté automatiquement (pas grave, juste pour prévenir).`,false,6000);
     }
@@ -963,13 +964,13 @@ async function syncNewGameToPersonalLists(jeu,lien){
   // boutique Steam — sinon la carte n'a pas d'image (contrairement à la liste
   // 369 qui stocke l'ID et reconstruit l'image elle-même au rendu).
   try{
-    const listSniikks=await sbGetAppData('backlog_jeux_v4');
+    const listSniikks=await sbGetAppData('sniikks_games','backlog_jeux_v4');
     const alreadySniikks=listSniikks.some(g=>(g.name||'').trim().toLowerCase()===name.toLowerCase());
     if(!alreadySniikks){
       const appId=steamAppId(lien);
       const imgUrl=appId?`https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`:(lien||'');
       listSniikks.push({id:genPersonalId(),name,annee:null,platform:'steam',support:'',status:'afaire',note:null,img:imgUrl,noteperso:''});
-      await sbUpsertAppData('backlog_jeux_v4',listSniikks);
+      await sbUpsertAppData('sniikks_games','backlog_jeux_v4',listSniikks);
     }else{
       showToast(`"${name}" est déjà dans la liste Sniikks, il n'a pas été ajouté automatiquement (pas grave, juste pour prévenir).`,false,6000);
     }

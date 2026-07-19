@@ -41,8 +41,8 @@ export default async function handler(req, res) {
 
         const dateStr = getParisDateString();
         const [{ data: pubRow }, { data: secretRow }] = await Promise.all([
-            supabase.from('app_data').select('data').eq('id', puzzleKey(dateStr)).maybeSingle(),
-            supabase.from('app_data').select('data').eq('id', secretKey(dateStr)).maybeSingle()
+            supabase.from('motcache_public').select('data').eq('id', puzzleKey(dateStr)).maybeSingle(),
+            supabase.from('motcache_secret').select('data').eq('id', secretKey(dateStr)).maybeSingle()
         ]);
 
         if (!pubRow?.data || !secretRow?.data?.word) {
@@ -124,7 +124,7 @@ export default async function handler(req, res) {
 
         publicData.session = session;
 
-        await supabase.from('app_data').upsert({ id: puzzleKey(dateStr), data: publicData, updated_at: new Date().toISOString() });
+        await supabase.from('motcache_public').upsert({ id: puzzleKey(dateStr), data: publicData, updated_at: new Date().toISOString() });
 
         return res.status(200).json({ session });
     } catch (e) {

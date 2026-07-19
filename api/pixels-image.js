@@ -16,7 +16,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     try {
-        const { data } = await supabase.from('app_data').select('data').eq('id', 'pixels_game_image').maybeSingle();
+        const { data } = await supabase.from('pixels_public').select('data').eq('id', 'pixels_game_image').maybeSingle();
         if (!data?.data?.image) return res.status(404).json({ error: "Aucune image disponible." });
         return res.status(200).json(data.data);
     } catch (e) {

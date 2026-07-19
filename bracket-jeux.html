@@ -865,12 +865,13 @@ function parseGames(text, sourceName, fromSave){
 //  SAUVEGARDES JSON (localStorage)
 // ══════════════════════════════════════════
 const SAVED_KEY = 'bracketJeux_savedImports';
+const BRACKET_TABLE = 'bracket_data'; // table dédiée (remplace les 4 clés bracketJeux_* dans app_data)
 const DEFAULT_SEED_KEY = 'bracketJeux_defaultSeeded';
 const DEFAULT_GAMES_KEY = 'bracketJeux_defaultGames';
 let selectModeOn = false;
 let selectedSaveIds = new Set();
 
-// Liste de jeux par défaut : stockée dans Supabase (clé DEFAULT_GAMES_KEY, table app_data)
+// Liste de jeux par défaut : stockée dans Supabase (clé DEFAULT_GAMES_KEY, table bracket_data)
 // au lieu d'être embarquée dans le HTML. Elle est injectée une seule fois
 // (pour tout le monde, via Supabase) comme sauvegarde normale, modifiable/supprimable ensuite.
 function getDefaultGamesData(){
@@ -890,13 +891,13 @@ function ensureDefaultSeed(){
     data: defaultGames
   });
   setSavedList(saves);
-  RemoteStore.set(DEFAULT_SEED_KEY, true);
+  RemoteStore.set(DEFAULT_SEED_KEY, true, BRACKET_TABLE);
 }
 
 function getSavedList(){
   return RemoteStore.get(SAVED_KEY, []);
 }
-function setSavedList(arr){ RemoteStore.set(SAVED_KEY, arr); }
+function setSavedList(arr){ RemoteStore.set(SAVED_KEY, arr, BRACKET_TABLE); }
 
 function saveImportToStorage(rawName, gamesList){
   const saves = getSavedList();
@@ -1228,7 +1229,7 @@ let blPreviewBlacklist = null;
 function getBlacklists(){
   return RemoteStore.get(BLACKLIST_KEY, []);
 }
-function setBlacklists(arr){ RemoteStore.set(BLACKLIST_KEY, arr); }
+function setBlacklists(arr){ RemoteStore.set(BLACKLIST_KEY, arr, BRACKET_TABLE); }
 
 function openBlacklistModal(){
   blModalView = 'list';
@@ -2212,15 +2213,15 @@ function toast(msg){
 //  INITIALISATION SUPABASE
 // ══════════════════════════════════════════
 RemoteStore.setStatusElement(document.getElementById('dbStatus'));
-RemoteStore.init([SAVED_KEY, BLACKLIST_KEY, DEFAULT_SEED_KEY, DEFAULT_GAMES_KEY]).then(()=>{
+RemoteStore.init([SAVED_KEY, BLACKLIST_KEY, DEFAULT_SEED_KEY, DEFAULT_GAMES_KEY], BRACKET_TABLE).then(()=>{
   ensureDefaultSeed();
   renderSavedList();
 
   // ── Synchro temps réel ──
   // Garde le cache à jour si l'autre ajoute/modifie une liste sauvegardée ou
   // une blacklist : les sélecteurs liront toujours des données fraîches.
-  RemoteStore.subscribe(SAVED_KEY, ()=>{ renderSavedList(); });
-  RemoteStore.subscribe(BLACKLIST_KEY);
+  RemoteStore.subscribe(SAVED_KEY, ()=>{ renderSavedList(); }, BRACKET_TABLE);
+  RemoteStore.subscribe(BLACKLIST_KEY, undefined, BRACKET_TABLE);
 });
 
 </script>

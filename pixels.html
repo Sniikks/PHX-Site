@@ -664,7 +664,7 @@
   function subscribeRealtime() {
     realtimeChannel = supabaseClient
       .channel('pixels_game')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_data', filter: 'id=eq.pixels_game' }, payload => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pixels_public', filter: 'id=eq.pixels_game' }, payload => {
         if (payload.new?.data?.roundId) applyState(payload.new.data);
       })
       .subscribe();

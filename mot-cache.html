@@ -711,7 +711,7 @@
     if (!isLive()) return; // pas besoin de temps réel en consultation d'un jour passé
     realtimeChannel = supabaseClient
       .channel('motcache_' + date)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_data', filter: `id=eq.motcache_${date}` }, payload => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'motcache_public', filter: `id=eq.motcache_${date}` }, payload => {
         if (payload.new?.data?.wordLength) applyPuzzle(payload.new.data);
       })
       .subscribe();
@@ -773,7 +773,7 @@
       } else {
         // Jour passé : lecture directe de la ligne publique (déjà générée ce
         // jour-là, ou inexistante si le site n'existait pas encore).
-        const { data: row, error } = await supabaseClient.from('app_data').select('data').eq('id', 'motcache_' + viewingDate).maybeSingle();
+        const { data: row, error } = await supabaseClient.from('motcache_public').select('data').eq('id', 'motcache_' + viewingDate).maybeSingle();
         if (error) throw error;
         if (!row?.data?.wordLength) {
           document.getElementById('loading').textContent = 'Aucun mot pour cette date.';
@@ -907,7 +907,7 @@
     try {
       // 'motcache_2%' = uniquement les lignes datées (exclut motcache_used et
       // les lignes secrètes motcache_secret_*, qui commencent différemment).
-      const { data: rows, error } = await supabaseClient.from('app_data').select('id,data').ilike('id', 'motcache_2%');
+      const { data: rows, error } = await supabaseClient.from('motcache_public').select('id,data').ilike('id', 'motcache_2%');
       if (error) throw error;
 
       const days = (rows || [])
@@ -978,7 +978,7 @@
 
     try {
       const prefix = monthPrefix(archiveYear, archiveMonth);
-      const { data: rows, error } = await supabaseClient.from('app_data').select('id,data').ilike('id', prefix + '%');
+      const { data: rows, error } = await supabaseClient.from('motcache_public').select('id,data').ilike('id', prefix + '%');
       if (error) throw error;
 
       const puzzleByDate = {};

@@ -52,6 +52,18 @@
 // ==========================================================
 
 import { igdbQuery, isIgdbConfigured } from './_igdb.js';
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Durée de vie du cache DB avant de retenter IGDB/Steam pour cette même
+// saisie (au-delà, la saisie est "rafraîchie" une fois puis re-cachée pour
+// 24h de plus). 24h = compromis entre fraîcheur (un jeu qui sort aujourd'hui
+// doit finir par apparaître) et vitesse (l'immense majorité des saisies ne
+// changent pas de réponse d'un jour à l'autre).
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 const BROWSER_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
@@ -143,6 +155,26 @@ async function handleAutocomplete(req, res, debug) {
     if (q.length < 2) return res.status(200).json({ suggestions: [] });
 
     const debugInfo = {};
+    const cacheId = q.toLowerCase();
+
+    // ── Option A : cache écrit au fil de l'eau (table games_cache) ──
+    // La toute première fois que quelqu'un tape cette saisie (tous joueurs/
+    // jours confondus), on interroge IGDB/Steam normalement. Toutes les
+    // fois suivantes, tant que le cache n'a pas expiré (24h), la réponse
+    // vient directement de Supabase — plus aucun aller-retour IGDB/Steam,
+    // donc plus aucune latence externe. Le "catalogue" grossit tout seul
+    // avec l'usage réel, sans script de seed à maintenir.
+    try {
+        const { data: cached } = await supabase
+            .from('games_cache').select('data, updated_at').eq('id', cacheId).maybeSingle();
+        if (cached && (Date.now() - new Date(cached.updated_at).getTime()) < CACHE_TTL_MS) {
+            debugInfo.cacheHit = true;
+            res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=86400');
+            return res.status(200).json(debug ? { suggestions: cached.data, debug: debugInfo } : { suggestions: cached.data });
+        }
+    } catch (e) {
+        debugInfo.cacheReadError = e.message; // le cache est un bonus, jamais bloquant
+    }
 
     // IGDB et Steam en parallèle : le temps de réponse = le plus lent des deux,
     // au lieu de la somme des deux. Ni l'un ni l'autre ne fait plus d'appel
@@ -300,10 +332,19 @@ async function handleAutocomplete(req, res, debug) {
 
     const merged = filteredResults.slice(0, 40);
 
+    // Écriture dans le cache DB (best-effort, ne bloque jamais la réponse
+    // au joueur si Supabase est momentanément indisponible).
+    try {
+        await supabase.from('games_cache').upsert({ id: cacheId, data: merged, updated_at: new Date().toISOString() });
+    } catch (e) {
+        debugInfo.cacheWriteError = e.message;
+    }
+
     // Cache CDN Vercel : la même saisie ("borderlands") faite par n'importe qui
-    // dans les 5 minutes est servie instantanément depuis le cache, sans toucher
-    // IGDB/Steam. Gros gain ressenti sur les préfixes courants.
-    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=3600');
+    // dans les 24h est servie instantanément depuis le cache, sans même toucher
+    // Supabase. Allongé de 5 min à 24h (aligné sur le TTL du cache DB) : les
+    // suggestions ne changent quasiment jamais d'un jour à l'autre.
+    res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=86400');
     return res.status(200).json(debug ? { suggestions: merged, debug: debugInfo } : { suggestions: merged });
 }
 

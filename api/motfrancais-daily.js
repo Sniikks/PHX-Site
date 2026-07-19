@@ -2,7 +2,7 @@
 // /api/motfrancais-daily.js — Vercel Serverless Function
 // Génère (une seule fois par jour, paresseusement : au 1er visiteur)
 // le mot français du jour de "Mot Français" et le stocke dans
-// Supabase (app_data).
+// Supabase (tables motfrancais_public / motfrancais_secret).
 //
 // Même principe que ZoomJeu / Mot Caché : la ligne publique porte
 // AUSSI la "session" partagée (essais déjà tentés, résolu/échoué) —
@@ -63,14 +63,14 @@ export default async function handler(req, res) {
     try {
         const dateStr = getParisDateString();
 
-        const { data: existing } = await supabase.from('app_data').select('data').eq('id', puzzleKey(dateStr)).maybeSingle();
+        const { data: existing } = await supabase.from('motfrancais_public').select('data').eq('id', puzzleKey(dateStr)).maybeSingle();
         if (existing?.data?.wordLength && !force) {
             const publicData = existing.data;
             publicData.session = publicData.session || { guesses: [], solved: false, failed: false };
             return res.status(200).json(publicData);
         }
 
-        const { data: usedRow } = await supabase.from('app_data').select('data').eq('id', 'motfrancais_used').maybeSingle();
+        const { data: usedRow } = await supabase.from('motfrancais_public').select('data').eq('id', 'motfrancais_used').maybeSingle();
         const usedWords = new Set(usedRow?.data?.words || []);
 
         const picked = pickWord(usedWords);
@@ -81,7 +81,7 @@ export default async function handler(req, res) {
         const puzzleId = dateStr + '_' + Math.random().toString(36).slice(2, 8);
 
         const secret = { word: picked.word, name: picked.display, puzzleId };
-        await supabase.from('app_data').upsert({ id: secretKey(dateStr), data: secret, updated_at: new Date().toISOString() });
+        await supabase.from('motfrancais_secret').upsert({ id: secretKey(dateStr), data: secret, updated_at: new Date().toISOString() });
 
         const publicData = {
             date: dateStr,
@@ -90,10 +90,10 @@ export default async function handler(req, res) {
             maxTries: MAX_TRIES,
             session: { guesses: [], solved: false, failed: false }
         };
-        await supabase.from('app_data').upsert({ id: puzzleKey(dateStr), data: publicData, updated_at: new Date().toISOString() });
+        await supabase.from('motfrancais_public').upsert({ id: puzzleKey(dateStr), data: publicData, updated_at: new Date().toISOString() });
 
         usedWords.add(picked.word);
-        await supabase.from('app_data').upsert({ id: 'motfrancais_used', data: { words: [...usedWords] }, updated_at: new Date().toISOString() });
+        await supabase.from('motfrancais_public').upsert({ id: 'motfrancais_used', data: { words: [...usedWords] }, updated_at: new Date().toISOString() });
 
         return res.status(200).json(publicData);
     } catch (e) {

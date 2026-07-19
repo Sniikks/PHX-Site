@@ -718,10 +718,11 @@ function toggleSection(key){
 }
 
 const STORAGE_KEY = 'backlog_cards_v1';
+const STORAGE_TABLE = 's369_games'; // table dédiée (ex-clé "backlog_cards_v1" dans app_data)
 
 async function loadGames(){
   RemoteStore.setStatusElement(document.getElementById('dbStatus'));
-  await RemoteStore.init([STORAGE_KEY]);
+  await RemoteStore.init([STORAGE_KEY], STORAGE_TABLE);
   const remote = RemoteStore.get(STORAGE_KEY, null);
   if(remote && Array.isArray(remote)){ games=remote; }
   else {
@@ -732,7 +733,7 @@ async function loadGames(){
     saveGames();
   }
 }
-function saveGames(){ RemoteStore.set(STORAGE_KEY, games); }
+function saveGames(){ RemoteStore.set(STORAGE_KEY, games, STORAGE_TABLE); }
 function genId(){ return Math.random().toString(36).substr(2,8); }
 
 function extractSteamAppId(url){
@@ -1323,7 +1324,7 @@ loadGames().then(()=>{
     games = data;
     renderStats();
     renderGrid();
-  });
+  }, STORAGE_TABLE);
 });
 
 </script>

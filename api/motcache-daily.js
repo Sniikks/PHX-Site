@@ -1,7 +1,7 @@
 // ==========================================================
 // /api/motcache-daily.js — Vercel Serverless Function
 // Génère (une seule fois par jour, paresseusement : au 1er visiteur)
-// le mot du jour de "Mot Caché" et le stocke dans Supabase (app_data).
+// le mot du jour de "Mot Caché" et le stocke dans Supabase (tables motcache_public / motcache_secret).
 //
 // Comme ZoomJeu : la ligne publique porte AUSSI la "session" partagée
 // (essais déjà tentés, résolu/échoué) — pas juste les infos du puzzle.
@@ -157,14 +157,14 @@ export default async function handler(req, res) {
     try {
         const dateStr = getParisDateString();
 
-        const { data: existing } = await supabase.from('app_data').select('data').eq('id', puzzleKey(dateStr)).maybeSingle();
+        const { data: existing } = await supabase.from('motcache_public').select('data').eq('id', puzzleKey(dateStr)).maybeSingle();
         if (existing?.data?.wordLength && !force) {
             const publicData = existing.data;
             publicData.session = publicData.session || { guesses: [], solved: false, failed: false };
             return res.status(200).json(publicData);
         }
 
-        const { data: usedRow } = await supabase.from('app_data').select('data').eq('id', 'motcache_used').maybeSingle();
+        const { data: usedRow } = await supabase.from('motcache_public').select('data').eq('id', 'motcache_used').maybeSingle();
         const usedWords = new Set(usedRow?.data?.words || []);
 
         const picked = await pickWord(usedWords);
@@ -175,7 +175,7 @@ export default async function handler(req, res) {
         const puzzleId = dateStr + '_' + Math.random().toString(36).slice(2, 8);
 
         const secret = { word: picked.word, name: picked.name, cover: picked.cover, puzzleId };
-        await supabase.from('app_data').upsert({ id: secretKey(dateStr), data: secret, updated_at: new Date().toISOString() });
+        await supabase.from('motcache_secret').upsert({ id: secretKey(dateStr), data: secret, updated_at: new Date().toISOString() });
 
         const publicData = {
             date: dateStr,
@@ -184,10 +184,10 @@ export default async function handler(req, res) {
             maxTries: MAX_TRIES,
             session: { guesses: [], solved: false, failed: false }
         };
-        await supabase.from('app_data').upsert({ id: puzzleKey(dateStr), data: publicData, updated_at: new Date().toISOString() });
+        await supabase.from('motcache_public').upsert({ id: puzzleKey(dateStr), data: publicData, updated_at: new Date().toISOString() });
 
         usedWords.add(picked.word);
-        await supabase.from('app_data').upsert({ id: 'motcache_used', data: { words: [...usedWords] }, updated_at: new Date().toISOString() });
+        await supabase.from('motcache_public').upsert({ id: 'motcache_used', data: { words: [...usedWords] }, updated_at: new Date().toISOString() });
 
         return res.status(200).json(publicData);
     } catch (e) {

@@ -645,6 +645,7 @@
 
 <script>
 const STORAGE_KEY = 'backlog_jeux_v4';
+const STORAGE_TABLE = 'sniikks_games'; // table dédiée (ex-clé "backlog_jeux_v4" dans app_data)
 let games = [];
 let editingId = null;
 let filterStatus = 'tous';
@@ -795,7 +796,7 @@ const EXCEL_DATA = [{"id": "xe92ocsb", "name": "A way out", "platform": "steam",
 
 async function load() {
   RemoteStore.setStatusElement(document.getElementById('dbStatus'));
-  await RemoteStore.init([STORAGE_KEY]);
+  await RemoteStore.init([STORAGE_KEY], STORAGE_TABLE);
   try {
     let remote = RemoteStore.get(STORAGE_KEY, null);
     if (remote && Array.isArray(remote)) {
@@ -815,7 +816,7 @@ async function load() {
     games = games.map(g => ({ img:'', ...g }));
   } catch(e) { console.error(e); games = EXCEL_DATA.map(g=>({...g})); }
 }
-function save() { RemoteStore.set(STORAGE_KEY, games); }
+function save() { RemoteStore.set(STORAGE_KEY, games, STORAGE_TABLE); }
 function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
 // ── CARD RENDERING ──
@@ -1266,7 +1267,7 @@ load().then(() => {
     if(document.querySelector('.overlay.open, .info-overlay.open')) return;
     games = data.map(g => ({ img:'', ...g }));
     renderGrid();
-  });
+  }, STORAGE_TABLE);
 });
 </script>
 <script src="nav.js" defer></script>
