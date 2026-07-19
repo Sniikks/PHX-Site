@@ -73,7 +73,7 @@ const STEAMSPY_GENRES = [
     'Indie', 'Casual', 'Massively Multiplayer'
 ];
 
-const MIN_OWNERS = 20000;
+const MIN_OWNERS = 60000;
 
 // ───────────────────────── Utils texte ─────────────────────────
 
@@ -139,9 +139,9 @@ async function fetchSteamSpyGames(url) {
 async function fetchSteamBigPool() {
     const sourceRoll = Math.random();
     let url;
-    if (sourceRoll < 0.35) {
+    if (sourceRoll < 0.5) {
         url = `${STEAMSPY_BASE}?request=top100forever`;
-    } else if (sourceRoll < 0.6) {
+    } else if (sourceRoll < 0.85) {
         url = `${STEAMSPY_BASE}?request=top100in2weeks`;
     } else {
         const page = Math.floor(Math.random() * 5);
@@ -300,7 +300,7 @@ async function fetchIgdbGameDetails(igdbId) {
 // ───────────────────────── Sélection du jeu du jour ─────────────────────────
 
 async function pickDailyGame(usedIds, usedNames) {
-    const primaryMode = Math.random() < 0.65 ? 'big' : 'retro';
+    const primaryMode = Math.random() < 0.8 ? 'big' : 'retro';
 
     // Plusieurs sources de pool, dans l'ordre de préférence. Si la première ne donne
     // rien d'exploitable (SteamSpy/IGDB en panne ou rate-limité, pool épuisé par les
@@ -308,9 +308,9 @@ async function pickDailyGame(usedIds, usedNames) {
     // seule panne transitoire d'une API externe faisait échouer tout le puzzle du jour.
     const igdbAvailable = !!(TWITCH_CLIENT_ID && TWITCH_CLIENT_SECRET);
     const poolFetchers = primaryMode === 'big'
-        ? [fetchSteamBigPool, fetchSteamRandomPool, () => fetchIgdbGamePool(0.85)]
+        ? [fetchSteamBigPool, fetchSteamRandomPool, () => fetchIgdbGamePool(0.55)]
         : [
-            () => (igdbAvailable && Math.random() < 0.7 ? fetchIgdbGamePool(0.85) : fetchSteamRandomPool()),
+            () => (igdbAvailable && Math.random() < 0.7 ? fetchIgdbGamePool(0.55) : fetchSteamRandomPool()),
             fetchSteamBigPool,
             fetchSteamRandomPool
           ];

@@ -35,7 +35,7 @@
   /* .menu-btn : styles partagés dans theme.css, ici juste le positionnement propre à cette page */
   .menu-btn { align-self:flex-start; margin-bottom:1rem; }
 
-  .title { font-family:'Rajdhani',sans-serif; font-size:clamp(1.3rem,4vw,1.9rem); font-weight:700; letter-spacing:.1em; color:var(--gold); text-transform:uppercase; }
+  .title { font-family:'Rajdhani',sans-serif; font-size:clamp(1.3rem,4vw,1.9rem); font-weight:700; line-height:1.15; letter-spacing:.1em; color:var(--gold); text-transform:uppercase; }
   .subtitle { color:var(--text2); font-size:12.5px; margin-top:.35rem; margin-bottom:1.4rem; letter-spacing:.03em; text-align:center; }
 
   #loading { color:var(--text2); font-size:13px; margin-top:2rem; text-align:center; max-width:320px; }
@@ -59,6 +59,7 @@
   .cell.flip { animation:flip .5s ease forwards; }
   @keyframes flip { 0%{transform:rotateX(0deg);} 50%{transform:rotateX(90deg);} 100%{transform:rotateX(0deg);} }
   .cell.correct { background:var(--good); border-color:var(--good); color:#08130c; }
+  .cell.prefilled { border-color:var(--good); color:var(--good); }
   .cell.present { background:var(--warn); border-color:var(--warn); color:#1a1206; }
   .cell.absent  { background:var(--bg3); border-color:var(--bg3); color:var(--text2); }
 
@@ -384,7 +385,8 @@
   let puzzle = null;       // { date, puzzleId, wordLength, maxTries, session }
   let wordLen = 5;
   let maxTries = 6;
-  let curGuess = '';
+  let guessCells = [];     // tableau positionnel de l'essai en cours (une case par lettre)
+  let knownCorrect = [];   // lettres bien placées connues (reportées automatiquement à l'essai suivant)
   let letterStates = {};
   let submitting = false;
   let renderedCount = 0;   // nb de lignes déjà affichées (pour n'animer que les nouvelles)
@@ -486,23 +488,42 @@
   function curRow() { return puzzle?.session?.guesses?.length || 0; }
   function isFinished() { return !!(puzzle?.session?.solved || puzzle?.session?.failed); }
 
+  function resetGuessCells() {
+    guessCells = knownCorrect.map(l => l || '');
+  }
+  function firstEmptyIndex() { return guessCells.findIndex(l => !l); }
+  function lastEditableIndex() {
+    for (let i = guessCells.length - 1; i >= 0; i--) {
+      if (guessCells[i] && !knownCorrect[i]) return i;
+    }
+    return -1;
+  }
+
   function handleKey(k) {
     if (!isLive() || !puzzle || isFinished() || submitting) return;
     if (k === 'ENTER') { submitGuess(); return; }
-    if (k === '←') { curGuess = curGuess.slice(0, -1); renderCurrentRow(); return; }
-    if (/^[A-Z]$/.test(k) && curGuess.length < wordLen) { curGuess += k; renderCurrentRow(true); }
+    if (k === '←') {
+      const idx = lastEditableIndex();
+      if (idx !== -1) { guessCells[idx] = ''; renderCurrentRow(); }
+      return;
+    }
+    if (/^[A-Z]$/.test(k)) {
+      const idx = firstEmptyIndex();
+      if (idx !== -1) { guessCells[idx] = k; renderCurrentRow(true, idx); }
+    }
   }
 
-  function renderCurrentRow(pop) {
+  function renderCurrentRow(pop, poppedIdx) {
     const row = curRow();
     if (row >= maxTries) return;
     for (let c = 0; c < wordLen; c++) {
       const cell = document.getElementById(`cell-${row}-${c}`);
       if (!cell) continue;
-      const letter = curGuess[c] || '';
+      const letter = guessCells[c] || '';
       cell.textContent = letter;
       cell.classList.toggle('filled', !!letter);
-      if (pop && c === curGuess.length - 1) { cell.classList.remove('pop'); void cell.offsetWidth; cell.classList.add('pop'); }
+      cell.classList.toggle('prefilled', !!knownCorrect[c]);
+      if (pop && c === poppedIdx) { cell.classList.remove('pop'); void cell.offsetWidth; cell.classList.add('pop'); }
     }
   }
 
@@ -522,7 +543,8 @@
 
   async function submitGuess() {
     if (!isLive()) return;
-    if (curGuess.length !== wordLen) { showBanner('Pas assez de lettres'); shakeRow(); return; }
+    const guessStr = guessCells.join('');
+    if (guessStr.length !== wordLen || guessCells.includes('')) { showBanner('Pas assez de lettres'); shakeRow(); return; }
     if (submitting) return;
     submitting = true;
     lockInputs(true);
@@ -531,7 +553,7 @@
       const res = await fetch('/api/motcache-guess', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ guess: curGuess })
+        body: JSON.stringify({ guess: guessStr })
       });
       const data = await safeJson(res);
       if (!res.ok) {
@@ -541,7 +563,6 @@
         if (data.session) { puzzle.session = data.session; renderSession(); }
         throw new Error(data.error || 'Erreur serveur');
       }
-      curGuess = '';
       puzzle.session = data.session;
       renderSession();
     } catch (e) {
@@ -570,12 +591,18 @@
         if (!letterStates[guess[c]] || rank[result[c]] > rank[letterStates[guess[c]]]) {
           letterStates[guess[c]] = result[c];
         }
+        // Lettre bien placée : reportée automatiquement dans la case du
+        // prochain essai, tant qu'elle n'a pas été retirée par une autre
+        // lettre saisie par-dessus (voir handleKey / lastEditableIndex).
+        if (result[c] === 'correct') knownCorrect[c] = guess[c];
       }
     }
     renderedCount = guesses.length;
     refreshKeyboardColors();
+    resetGuessCells();
 
     const finished = session.solved || session.failed;
+    if (!finished) renderCurrentRow();
     lockInputs(finished || !isLive());
     document.getElementById('historyBanner').style.display = 'none';
     renderHintBanner(session, finished);
@@ -694,7 +721,8 @@
       wordLen = puzzle.wordLength;
       maxTries = puzzle.maxTries;
       renderedCount = 0;
-      curGuess = '';
+      knownCorrect = new Array(wordLen).fill(null);
+      guessCells = [];
       letterStates = {};
       document.getElementById('resultModal').classList.remove('open');
       document.getElementById('subtitle').textContent = isLive()
