@@ -7,6 +7,11 @@
    ========================================================== */
 
 /* ---------- Grille cyberpunk en fond ---------- */
+/* Dérive lente continue (background-position, en boucle invisible car
+   multiple de background-size) + parallaxe interactif au survol/scroll,
+   piloté par bg-animate.js via les variables --phx-px/--phx-py posées sur
+   <html> (transform, indépendant du background-position donc les deux se
+   cumulent sans se marcher dessus). */
 body::before {
   content: '';
   position: fixed;
@@ -19,6 +24,35 @@ body::before {
   background-size: 44px 44px;
   mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 0%, transparent 75%);
   -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 0%, transparent 75%);
+  transform: translate(var(--phx-px, 0px), var(--phx-py, 0px));
+  transition: transform .5s cubic-bezier(.22,.68,0,1);
+  animation: phxGridDrift 48s linear infinite;
+}
+@keyframes phxGridDrift {
+  from { background-position: 0 0; }
+  to   { background-position: 88px 88px; }
+}
+
+/* ---------- Particules en dérive (data motes) ---------- */
+#phx-bg-particles { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.phx-particle {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--gold, #00f0ff);
+  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--gold, #00f0ff) 70%, transparent);
+  opacity: 0;
+  animation: phxParticleDrift linear infinite;
+}
+@keyframes phxParticleDrift {
+  0%   { opacity: 0; transform: translate(0, 0); }
+  12%  { opacity: .55; }
+  88%  { opacity: .55; }
+  100% { opacity: 0; transform: translate(var(--dx, 0px), var(--dy, -260px)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before { animation: none; transition: none; transform: none; }
+  .phx-particle { display: none; }
 }
 
 /* ---------- Scanlines CRT (au-dessus de tout, très subtil) ---------- */

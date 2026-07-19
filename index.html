@@ -370,7 +370,7 @@
       const g = row && row.data;
       if (g && typeof g.lives === 'number') {
         const hearts = '❤️'.repeat(Math.max(0, g.lives));
-        showBanner('pixels', `${hearts || '💀'} · série de ${g.streak || 0}`);
+        showBanner('pixels', hearts || '💀', null, `Série de ${g.streak || 0}`);
       }
     } catch (e) { /* pas grave, on laisse la tuile sans bandeau */ }
   }
@@ -382,5 +382,6 @@
   loadPixelsBanner();
   </script>
   <script src="page-transitions.js" defer></script>
+<script src="bg-animate.js" defer></script>
 </body>
 </html>
