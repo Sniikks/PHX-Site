@@ -683,8 +683,20 @@ function initImages(container){
 const _urlTimers={};
 
 function slugToName(url){
+  // On ignore d'abord tout ce qui suit "?" ou "#" (query string / ancre) :
+  // sans ça, un lien copié avec un paramètre collé juste après le nom du
+  // jeu sans slash (ex. ".../221100/DayZ/?announce_gid=123") faisait
+  // prendre "?announce_gid=123" comme dernier "segment" au lieu de "DayZ".
+  let path;
+  try{
+    path=new URL(url).pathname;
+  }catch(e){
+    // URL invalide/partielle (ex. collée sans "https://") : on retombe sur
+    // un simple découpage manuel de la query string/ancre.
+    path=url.split('?')[0].split('#')[0];
+  }
   // Exact same logic as reference: take last non-numeric path segment, decode, replace _ with space
-  const parts=url.split('/').filter(Boolean);
+  const parts=path.split('/').filter(Boolean);
   const slug=parts[parts.length-1];
   if(!slug||!isNaN(slug))return'';
   let name=slug;
