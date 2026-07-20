@@ -59,7 +59,7 @@
   .cell.flip { animation:flip .5s ease forwards; }
   @keyframes flip { 0%{transform:rotateX(0deg);} 50%{transform:rotateX(90deg);} 100%{transform:rotateX(0deg);} }
   .cell.correct { background:var(--good); border-color:var(--good); color:#08130c; }
-  .cell.prefilled { border-color:var(--good); color:var(--good); }
+  .cell.prefilled { color:var(--good); opacity:.4; }
   .cell.present { background:var(--warn); border-color:var(--warn); color:#1a1206; }
   .cell.absent  { background:var(--bg3); border-color:var(--bg3); color:var(--text2); }
 
@@ -489,12 +489,16 @@
   function isFinished() { return !!(puzzle?.session?.solved || puzzle?.session?.failed); }
 
   function resetGuessCells() {
-    guessCells = knownCorrect.map(l => l || '');
+    // Les lettres bien placées ne sont plus insérées automatiquement dans
+    // la saisie (ça bloquait la case) : guessCells démarre toujours vide.
+    // knownCorrect sert uniquement d'indice visuel transparent (voir
+    // renderCurrentRow) — la personne tape librement par-dessus.
+    guessCells = new Array(wordLen).fill('');
   }
   function firstEmptyIndex() { return guessCells.findIndex(l => !l); }
-  function lastEditableIndex() {
+  function lastFilledIndex() {
     for (let i = guessCells.length - 1; i >= 0; i--) {
-      if (guessCells[i] && !knownCorrect[i]) return i;
+      if (guessCells[i]) return i;
     }
     return -1;
   }
@@ -503,7 +507,7 @@
     if (!isLive() || !puzzle || isFinished() || submitting) return;
     if (k === 'ENTER') { submitGuess(); return; }
     if (k === '←') {
-      const idx = lastEditableIndex();
+      const idx = lastFilledIndex();
       if (idx !== -1) { guessCells[idx] = ''; renderCurrentRow(); }
       return;
     }
@@ -519,10 +523,11 @@
     for (let c = 0; c < wordLen; c++) {
       const cell = document.getElementById(`cell-${row}-${c}`);
       if (!cell) continue;
-      const letter = guessCells[c] || '';
-      cell.textContent = letter;
-      cell.classList.toggle('filled', !!letter);
-      cell.classList.toggle('prefilled', !!knownCorrect[c]);
+      const typed = guessCells[c] || '';
+      const hint = !typed && knownCorrect[c] ? knownCorrect[c] : '';
+      cell.textContent = typed || hint;
+      cell.classList.toggle('filled', !!typed);
+      cell.classList.toggle('prefilled', !!hint);
       if (pop && c === poppedIdx) { cell.classList.remove('pop'); void cell.offsetWidth; cell.classList.add('pop'); }
     }
   }
