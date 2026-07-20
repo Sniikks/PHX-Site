@@ -103,7 +103,7 @@ body{
 .search-input{
   background:var(--surface-1);border:1px solid var(--border);
   color:var(--text);padding:8px 32px 8px 32px;
-  font-family:'Exo 2',sans-serif;font-size:13px;
+  font-family:'Exo 2',sans-serif;font-size:12px !important;
   outline:none;border-radius:var(--radius);width:220px;
   transition:border-color .15s,background .15s,box-shadow .15s;
 }
@@ -551,11 +551,6 @@ body.compact-view .card-name{
   </div>
 
   <div class="toolbar">
-    <span class="search-wrap">
-      <span class="search-icon">⌕</span>
-      <input type="text" id="searchInput" class="search-input" placeholder="Rechercher un jeu..." autocomplete="off">
-      <button type="button" class="search-clear" id="searchClear" title="Effacer">✕</button>
-    </span>
     <div class="filter-pills">
       <button class="pill active" data-filter="Tous">Tous</button>
       <button class="pill" data-filter="A faire">À faire</button>
@@ -573,6 +568,11 @@ body.compact-view .card-name{
     </div>
     <button type="button" class="filters-toggle-btn" id="filtersToggleBtn" aria-expanded="false">☰ Filtres</button>
     <button class="btn-primary" id="btnAdd"><span>+</span> Ajouter</button>
+    <span class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="searchInput" class="search-input" placeholder="Rechercher un jeu..." autocomplete="off">
+      <button type="button" class="search-clear" id="searchClear" title="Effacer">✕</button>
+    </span>
   </div>
 
   <div class="years-row-outer">

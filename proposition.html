@@ -60,7 +60,7 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
 #filterRow1,#filterRow2{display:none;}
 .search-wrap{position:relative;flex-shrink:0;}
 .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.3);font-size:14px;pointer-events:none;}
-.sh-search{background:var(--surface);border:1px solid var(--border);color:#fff;padding:8px 14px 8px 32px;font-family:'Exo 2',sans-serif;font-size:13px;outline:none;border-radius:10px;width:220px;transition:all .2s;flex-shrink:0;}
+.sh-search{background:var(--surface);border:1px solid var(--border);color:#fff;padding:8px 14px 8px 32px;font-family:'Exo 2',sans-serif;font-size:12px !important;outline:none;border-radius:10px;width:220px;transition:all .2s;flex-shrink:0;}
 .sh-search:focus{border-color:rgba(0,240,255,0.4);width:240px;}
 .sh-search::placeholder{color:rgba(255,255,255,.3);}
 .filter-btn{background:transparent;border:1px solid var(--border);color:var(--text-dim);padding:7px 13px;font-family:'Exo 2',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .2s;border-radius:8px;white-space:nowrap;}
@@ -337,7 +337,6 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
     <input type="file" id="file-import" accept=".json" onchange="importJSON(event)">
   </div>
   <div class="sh-row" id="filterRow1">
-    <span class="search-wrap"><span class="search-icon">⌕</span><input type="text" id="searchInput1" class="sh-search" placeholder="Rechercher un jeu..." autocomplete="off"></span>
     <button class="filter-btn active" data-filter1="Tous">Tous</button>
     <button class="filter-btn" data-filter1="A faire">À faire</button>
     <button class="filter-btn" data-filter1="En cours">En cours</button>
@@ -347,9 +346,9 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
       <button class="icon-btn icon-btn-label" onclick="document.getElementById('file-import').click()" title="Importer">⬆</button>
     </div>
     <button class="btn-add-main" onclick="openModal1()">+ Ajouter</button>
+    <span class="search-wrap"><span class="search-icon">⌕</span><input type="text" id="searchInput1" class="sh-search" placeholder="Rechercher un jeu..." autocomplete="off"></span>
   </div>
   <div class="sh-row" id="filterRow2">
-    <span class="search-wrap"><span class="search-icon">⌕</span><input type="text" id="searchInput2" class="sh-search" placeholder="Rechercher une proposition..." autocomplete="off"></span>
     <button class="filter-btn active" data-filter2="Tous">Tous</button>
     <button class="filter-btn" data-filter2="369">369 Oui</button>
     <button class="filter-btn" data-filter2="Sniikks">Sniikks Oui</button>
@@ -358,6 +357,7 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
       <button class="icon-btn icon-btn-label" onclick="document.getElementById('file-import').click()" title="Importer">⬆</button>
     </div>
     <button class="btn-add-main" onclick="openModal2()">+ Ajouter</button>
+    <span class="search-wrap"><span class="search-icon">⌕</span><input type="text" id="searchInput2" class="sh-search" placeholder="Rechercher une proposition..." autocomplete="off"></span>
   </div>
 </div>
 </div>
