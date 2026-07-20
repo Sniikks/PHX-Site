@@ -113,37 +113,58 @@
   // assets/icons/ est à la racine du site, à côté d'index.html.
   const ICONS_BASE = 'assets/icons/';
 
+  // ── Icônes en dérive : fait réapparaître une nouvelle icône
+  // régulièrement (au lieu d'un lot fixe qui compte sur une animation
+  // CSS "infinite" pour boucler indéfiniment — plus fragile sur la
+  // durée : un onglet mis en arrière-plan, un throttling navigateur,
+  // etc. peuvent la figer sans redémarrage possible). Chaque icône a
+  // un cycle de vie fini (une seule traversée), puis est retirée du
+  // DOM et remplacée par une nouvelle — ça ne peut donc jamais
+  // "s'arrêter" au bout d'un moment.
+  function spawnIconMote(wrap) {
+    const file = ICONS[Math.floor(Math.random() * ICONS.length)];
+    const img = document.createElement('img');
+    img.className = 'phx-icon-mote';
+    img.src = ICONS_BASE + file;
+    img.alt = '';
+    img.decoding = 'async';
+    const size = 22 + Math.random() * 18; // 22-40px : discret, jamais imposant
+    const dx = (Math.random() * 120 - 60).toFixed(0) + 'px';
+    const dy = -(320 + Math.random() * 360).toFixed(0) + 'px';
+    const duration = 22 + Math.random() * 16; // durée d'une traversée complète
+    img.style.left = (Math.random() * 100) + '%';
+    img.style.top = (Math.random() * 100) + '%';
+    img.style.width = size + 'px';
+    img.style.setProperty('--dx', dx);
+    img.style.setProperty('--dy', dy);
+    img.style.animationDuration = duration.toFixed(1) + 's';
+    img.style.animationIterationCount = '1';
+    // Filet de sécurité : si "animationend" ne se déclenche pas pour une
+    // raison quelconque (onglet resté en arrière-plan, etc.), on retire
+    // quand même l'élément après la durée prévue + marge.
+    const cleanup = () => img.remove();
+    img.addEventListener('animationend', cleanup, { once: true });
+    setTimeout(cleanup, (duration + 2) * 1000);
+    wrap.appendChild(img);
+  }
+
   function buildIconMotes() {
     const wrap = document.createElement('div');
     wrap.id = 'phx-bg-icons';
     wrap.setAttribute('aria-hidden', 'true');
-    const count = isCoarsePointer || window.innerWidth < 640 ? 3 : 5;
-    // Pioche sans répétition tant que la liste le permet, pour ne pas
-    // voir deux fois le même logo en même temps à l'écran.
-    const pool = [...ICONS].sort(() => Math.random() - 0.5);
-    for (let i = 0; i < count; i++) {
-      const file = pool[i % pool.length];
-      const img = document.createElement('img');
-      img.className = 'phx-icon-mote';
-      img.src = ICONS_BASE + file;
-      img.alt = '';
-      img.loading = 'lazy';
-      img.decoding = 'async';
-      const size = 22 + Math.random() * 18; // 22-40px : discret, jamais imposant
-      const dx = (Math.random() * 120 - 60).toFixed(0) + 'px';
-      const dy = -(320 + Math.random() * 360).toFixed(0) + 'px';
-      const duration = 34 + Math.random() * 26; // lent, "de temps en temps"
-      const delay = -Math.random() * duration;
-      img.style.left = (Math.random() * 100) + '%';
-      img.style.top = (Math.random() * 100) + '%';
-      img.style.width = size + 'px';
-      img.style.setProperty('--dx', dx);
-      img.style.setProperty('--dy', dy);
-      img.style.animationDuration = duration.toFixed(1) + 's';
-      img.style.animationDelay = delay.toFixed(1) + 's';
-      wrap.appendChild(img);
-    }
     document.body.prepend(wrap);
+
+    const maxConcurrent = isCoarsePointer || window.innerWidth < 640 ? 2 : 4;
+    const spawnEveryMs = 7000; // tente une nouvelle icône environ toutes les 7s
+
+    // Amorçage : quelques icônes déjà présentes au chargement, pour ne pas
+    // attendre 7s avant la toute première.
+    const initialCount = isCoarsePointer || window.innerWidth < 640 ? 1 : 3;
+    for (let i = 0; i < initialCount; i++) spawnIconMote(wrap);
+
+    setInterval(() => {
+      if (wrap.children.length < maxConcurrent) spawnIconMote(wrap);
+    }, spawnEveryMs);
   }
 
   function init() {
