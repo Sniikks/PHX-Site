@@ -127,6 +127,7 @@
   }
   .history .h-item.wrong { color:var(--bad); border-color:rgba(226,104,95,.3); }
   .history .h-item.close { color:var(--gold); border-color:rgba(0,240,255,.35); }
+  .history .h-item.win { color:var(--good); border-color:rgba(95,191,134,.35); font-weight:700; }
   .history .h-item.placeholder { color:var(--text2); font-style:italic; opacity:.6; }
 
   .msg-banner {
@@ -339,7 +340,7 @@
       const entry = guesses[i];
       const div = document.createElement('div');
       if (entry) {
-        div.className = 'h-item' + (entry.close ? ' close' : entry.wrong ? ' wrong' : '');
+        div.className = 'h-item' + (entry.close ? ' close' : entry.wrong ? ' wrong' : ' win');
         div.textContent = entry.text;
       } else {
         div.className = 'h-item placeholder';
