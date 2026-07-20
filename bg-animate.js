@@ -103,7 +103,11 @@
     '55912-wiimote-dpad.png', '63643-gameboy.png', '6438-warpstarkirby.png',
     '7183-mk-red-shell.png', '720020-minecraftheart.png',
     '738422-minecraftdiamond.png', '82816-classicsonic.png',
-    'PS4Controller.png', 'XboxOneController.png'
+    'PS4Controller.png', 'XboxOneController.png',
+    '6108-ryu-hmm.png', '16392-goku.png', '2759_geralt.png',
+    '788129-umbrella.png', '62625-butterfly.png', '2754-a2laugh.png',
+    '4898-tekken-kazuya.png', '11639-rebeccasalute.png',
+    '6074-orisahappy.png', '8212-bastioncap.png', '7588-the-last-of-us.png'
   ];
   // Chemin relatif : fonctionne quelle que soit la page tant que
   // assets/icons/ est à la racine du site, à côté d'index.html.
