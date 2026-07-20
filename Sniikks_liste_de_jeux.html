@@ -77,11 +77,11 @@
   .status-pill .sp-count { font-size:10.5px; opacity:.75; margin-left:3px; }
 
   .row2-right { display:flex; align-items:center; gap:10px; flex-wrap:nowrap; justify-content:flex-end; }
-  .view-toggle { display:flex; align-items:center; gap:4px; background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:3px; flex-shrink:0; }
-  .view-toggle #viewListBtn { border-left:1px solid var(--border); margin-left:2px; padding-left:6px; }
-  .view-toggle button, .view-btn { background:transparent; border:none; color:var(--text-dim); width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; border-radius:2px; font-size:14px; transition:all .15s; flex-shrink:0; }
-  .view-toggle button:hover, .view-btn:hover { color:var(--gold); background:var(--bg3); }
-  .view-toggle button.active { color:var(--gold); background:var(--bg3); }
+  .icon-group { display:flex; align-items:center; gap:4px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:3px; flex-shrink:0; }
+  .icon-btn { background:transparent; border:none; color:var(--text-dim); width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; border-radius:2px; font-size:14px; transition:all .15s; flex-shrink:0; }
+  .icon-btn:hover { color:var(--gold); background:var(--bg3); }
+  .icon-btn.active { color:var(--gold); background:var(--bg3); }
+  .icon-btn-label { width:auto; padding:0 12px; font-family:'Exo 2',sans-serif; font-size:12px; font-weight:600; white-space:nowrap; }
   .add-btn-main { background:var(--gold); border:none; color:#0d0e14; padding:8px 16px; font-family:'Exo 2',sans-serif; font-size:12.5px; font-weight:700; cursor:pointer; border-radius:var(--radius); white-space:nowrap; transition:all .15s; }
   .add-btn-main:hover { background:#ffab33; transform:translateY(-1px); }
 
@@ -322,7 +322,7 @@
     .status-pill { padding:6px 10px; font-size:11.5px; flex-shrink:0; }
 
     .row2-right { justify-content:space-between; width:100%; gap:8px; }
-    .view-toggle button, .view-btn { width:28px; height:28px; font-size:12px; }
+    .icon-btn { width:28px; height:28px; font-size:12px; }
     .add-btn-main { padding:7px 12px; font-size:11.5px; }
 
     .platform-row {
@@ -380,7 +380,7 @@
 
     .toolbar-row { padding:4px 0 3px; }
     .status-pill, .year-pill, .filter-btn { padding:4px 8px; font-size:10.5px; }
-    .view-toggle button, .view-btn { width:24px; height:24px; font-size:11px; }
+    .icon-btn { width:24px; height:24px; font-size:11px; }
     .add-btn-main { padding:5px 10px; font-size:10.5px; }
 
     /* En paysage il y a de la largeur disponible : la barre de recherche
@@ -473,18 +473,12 @@
           <button class="status-pill" data-filter="afaire">À faire <span class="sp-count" id="cnt-afaire"></span></button>
         </div>
         <div class="row2-right">
-          <div class="view-toggle">
-            <button id="exportBtn" title="Exporter">⇩</button>
-            <button id="importBtn" title="Importer">⇧</button>
-            <button id="viewListBtn" title="Vue compacte">☰</button>
-            <button id="viewGridBtn" class="active" title="Vue grille">⊞</button>
-            <button class="view-btn" onclick="collapseAllYears()" title="Tout fermer">
-    ⬇
-</button>
-
-<button class="view-btn" onclick="expandAllYears()" title="Tout ouvrir">
-    ⬆
-</button>
+          <div class="icon-group">
+            <button class="icon-btn icon-btn-label" id="exportBtn" title="Exporter">⬇</button>
+            <button class="icon-btn icon-btn-label" id="importBtn" title="Importer">⬆</button>
+            <button class="icon-btn" id="btnCollapseAll" title="Tout réduire">⊟</button>
+            <button class="icon-btn" id="btnExpandAll" title="Tout déplier">⊞</button>
+            <button class="icon-btn" id="btnCompactToggle" title="Vue compacte">☰</button>
           </div>
           <button class="add-btn-main" id="addBtnTop">+ Ajouter</button>
         </div>
@@ -1078,8 +1072,22 @@ document.getElementById('searchClear').addEventListener('mousedown',e=>{
   input.focus();
 });
 document.getElementById('addBtnTop').addEventListener('click',()=>openModal(null));
-document.getElementById('viewGridBtn').addEventListener('click',()=>{document.getElementById('mainContent').classList.remove('compact');document.getElementById('viewGridBtn').classList.add('active');document.getElementById('viewListBtn').classList.remove('active');fitCardTitles(document.getElementById('mainContent'));});
-document.getElementById('viewListBtn').addEventListener('click',()=>{document.getElementById('mainContent').classList.add('compact');document.getElementById('viewListBtn').classList.add('active');document.getElementById('viewGridBtn').classList.remove('active');fitCardTitles(document.getElementById('mainContent'));});
+function applyCompactState(on){
+  document.getElementById('mainContent').classList.toggle('compact',on);
+  const btn=document.getElementById('btnCompactToggle');
+  btn.classList.toggle('active',on);
+  btn.title=on?'Vue normale':'Vue compacte';
+  fitCardTitles(document.getElementById('mainContent'));
+}
+let compactView=localStorage.getItem('sniikks_compact_v1')==='1';
+applyCompactState(compactView);
+document.getElementById('btnCompactToggle').addEventListener('click',()=>{
+  compactView=!compactView;
+  localStorage.setItem('sniikks_compact_v1',compactView?'1':'0');
+  applyCompactState(compactView);
+});
+document.getElementById('btnCollapseAll').addEventListener('click',collapseAllYears);
+document.getElementById('btnExpandAll').addEventListener('click',expandAllYears);
 
 let resizeFitTimer=null;
 window.addEventListener('resize',()=>{

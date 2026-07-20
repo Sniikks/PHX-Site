@@ -45,10 +45,10 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
 .tab-btn{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);background:none;border:none;border-bottom:2px solid transparent;padding:6px 16px;cursor:pointer;transition:color .2s,border-color .2s;}
 .tab-btn:hover{color:var(--text);}
 .tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
-.header-actions{display:flex;gap:8px;align-items:center;}
-.io-toggle{display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:3px;flex-shrink:0;}
-.io-toggle button{background:transparent;border:none;color:var(--text-dim);width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:2px;font-size:14px;transition:all .15s;flex-shrink:0;}
-.io-toggle button:hover{color:var(--gold);background:var(--surface2);}
+.icon-group{display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:3px;flex-shrink:0;}
+.icon-btn{background:transparent;border:none;color:var(--text-dim);width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:2px;font-size:14px;transition:all .15s;flex-shrink:0;}
+.icon-btn:hover{color:var(--gold);background:var(--surface2);}
+.icon-btn-label{width:auto;padding:0 12px;font-family:'Exo 2',sans-serif;font-size:12px;font-weight:600;white-space:nowrap;}
 #file-import{display:none;}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;}
 .dot.connecting{background:var(--orange);animation:pulse 1.2s infinite;}
@@ -254,7 +254,6 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
   .sh-title{padding:25.6px 0 8px;gap:8px;}
   .sh-title-left{gap:8px;min-width:0;}
   .tab-btn{padding:6px 10px;font-size:11.5px;}
-  .header-actions{gap:6px;flex-wrap:wrap;}
   /* La ligne de filtres était centrée (justify-content:center) : combinée
      à un débordement, ça coupait la recherche à gauche ET le bouton
      "Ajouter" à droite de façon symétrique. On aligne à gauche et on
@@ -332,13 +331,7 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
         <button class="tab-btn" id="tabBtn2" onclick="switchTab('tab2',this)">Proposition</button>
       </div>
     </div>
-    <div class="header-actions">
-      <input type="file" id="file-import" accept=".json" onchange="importJSON(event)">
-      <div class="io-toggle">
-        <button id="exportBtnProp" onclick="exportJSON()" title="Exporter">⇩</button>
-        <button id="importBtnProp" onclick="document.getElementById('file-import').click()" title="Importer">⇧</button>
-      </div>
-    </div>
+    <input type="file" id="file-import" accept=".json" onchange="importJSON(event)">
   </div>
   <div class="sh-row" id="filterRow1">
     <span class="search-wrap"><span class="search-icon">⌕</span><input type="text" id="searchInput1" class="sh-search" placeholder="Rechercher un jeu..." autocomplete="off"></span>
@@ -346,6 +339,10 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
     <button class="filter-btn" data-filter1="A faire">À faire</button>
     <button class="filter-btn" data-filter1="En cours">En cours</button>
     <button class="filter-btn" data-filter1="Attente/Bug">Attente/Bug</button>
+    <div class="icon-group">
+      <button class="icon-btn icon-btn-label" onclick="exportJSON()" title="Exporter">⬇</button>
+      <button class="icon-btn icon-btn-label" onclick="document.getElementById('file-import').click()" title="Importer">⬆</button>
+    </div>
     <button class="btn-add-main" onclick="openModal1()">+ Ajouter</button>
   </div>
   <div class="sh-row" id="filterRow2">
@@ -353,6 +350,10 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
     <button class="filter-btn active" data-filter2="Tous">Tous</button>
     <button class="filter-btn" data-filter2="369">369 Oui</button>
     <button class="filter-btn" data-filter2="Sniikks">Sniikks Oui</button>
+    <div class="icon-group">
+      <button class="icon-btn icon-btn-label" onclick="exportJSON()" title="Exporter">⬇</button>
+      <button class="icon-btn icon-btn-label" onclick="document.getElementById('file-import').click()" title="Importer">⬆</button>
+    </div>
     <button class="btn-add-main" onclick="openModal2()">+ Ajouter</button>
   </div>
 </div>
