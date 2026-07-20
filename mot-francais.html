@@ -473,6 +473,55 @@
     });
   }
 
+  // Recalcule l'état de chaque lettre du clavier à partir de tout
+  // l'historique. Contrairement à un simple "meilleur rang jamais vu", une
+  // lettre "present" (jaune) ne passe "correct" (vert) que si TOUTES ses
+  // occurrences connues dans le mot sont désormais trouvées — sinon elle
+  // reste jaune tant qu'il peut encore en rester une copie cachée ailleurs
+  // (ex: "TRANSPARENT" — le N trouvé aux deux endroits passe vert, mais si
+  // le R n'a qu'une occurrence confirmée sur les deux qu'il compte, il
+  // reste jaune).
+  function computeLetterStates(guesses, knownCorrectArr) {
+    const rank = { absent: 0, present: 1, correct: 2 };
+    const states = {};
+    const maxColoredSeen = {};
+    const provenExact = {};
+
+    guesses.forEach(({ guess, result }) => {
+      const counts = {};
+      for (let i = 0; i < guess.length; i++) {
+        const l = guess[i];
+        if (!states[l] || rank[result[i]] > rank[states[l]]) states[l] = result[i];
+        counts[l] = counts[l] || { colored: 0, absent: 0 };
+        if (result[i] === 'correct' || result[i] === 'present') counts[l].colored++;
+        else counts[l].absent++;
+      }
+      Object.entries(counts).forEach(([l, c]) => {
+        if (c.colored > (maxColoredSeen[l] || 0)) maxColoredSeen[l] = c.colored;
+        // Un essai qui mélange des occurrences colorées ET "absent" pour la
+        // même lettre révèle le nombre EXACT de copies dans le mot (les
+        // copies en trop sont marquées "absent" par le serveur).
+        if (c.absent > 0 && c.colored > 0) provenExact[l] = c.colored;
+      });
+    });
+
+    // Lettres connues uniquement via un indice (jamais tapées) : comptent
+    // comme "correct" au moins une fois.
+    const confirmedCount = {};
+    knownCorrectArr.forEach(l => { if (l) confirmedCount[l] = (confirmedCount[l] || 0) + 1; });
+
+    Object.keys(confirmedCount).forEach(l => {
+      const required = provenExact[l] !== undefined ? provenExact[l] : Math.max(1, maxColoredSeen[l] || 1);
+      if (confirmedCount[l] >= required) {
+        states[l] = 'correct';
+      } else if (!states[l] || rank[states[l]] < rank.present) {
+        states[l] = 'present';
+      }
+    });
+
+    return states;
+  }
+
   function refreshKeyboardColors() {
     document.querySelectorAll('.key').forEach(btn => {
       const k = btn.dataset.key;
@@ -592,10 +641,6 @@
         if (!cell) continue;
         cell.textContent = guess[c];
         cell.classList.add('flip', 'filled', result[c]);
-        const rank = { absent:0, present:1, correct:2 };
-        if (!letterStates[guess[c]] || rank[result[c]] > rank[letterStates[guess[c]]]) {
-          letterStates[guess[c]] = result[c];
-        }
         // Lettre bien placée : reportée automatiquement dans la case du
         // prochain essai, tant qu'elle n'a pas été retirée par une autre
         // lettre saisie par-dessus (voir handleKey / lastEditableIndex).
@@ -603,7 +648,6 @@
       }
     }
     renderedCount = guesses.length;
-    refreshKeyboardColors();
 
     // Les indices débloqués (banner "💡 Lettre n°X") s'affichent maintenant
     // aussi directement dans la grille, en transparent, comme les lettres
@@ -612,6 +656,8 @@
       if (!knownCorrect[h.index]) knownCorrect[h.index] = h.letter;
     });
 
+    letterStates = computeLetterStates(guesses, knownCorrect);
+    refreshKeyboardColors();
     resetGuessCells();
 
     const finished = session.solved || session.failed;
