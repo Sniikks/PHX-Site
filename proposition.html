@@ -39,12 +39,6 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
 .sh-inner{max-width:1320px;margin:0 auto;padding:0 32px;}
 .sh-title{display:flex;align-items:center;justify-content:space-between;padding:25.6px 0 20px;gap:12px;flex-wrap:wrap;}
 .sh-title-left{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
-.logo{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;letter-spacing:2px;color:var(--gold);white-space:nowrap;}
-.logo span{color:var(--text-dim);font-weight:400;}
-.tabs{display:flex;align-items:center;gap:2px;}
-.tab-btn{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);background:none;border:none;border-bottom:2px solid transparent;padding:6px 16px;cursor:pointer;transition:color .2s,border-color .2s;}
-.tab-btn:hover{color:var(--text);}
-.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
 .icon-group{display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:3px;flex-shrink:0;}
 .icon-btn{background:transparent;border:none;color:var(--text-dim);width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:2px;font-size:14px;transition:all .15s;flex-shrink:0;}
 .icon-btn:hover{color:var(--gold);background:var(--surface2);}
@@ -236,10 +230,6 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
 
 /* ── RESPONSIVE ── */
 @media (min-width:769px) and (max-width:1640px) and (min-height:600px){ .sh-title{padding-left:96px;} }
-@media (min-width:769px) and (min-height:431px){
-  .sh-title{position:relative;}
-  .tabs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);}
-}
 @media(max-width:640px){
   .sh-inner{padding:0 14px;}
   .main-content{padding:16px 14px 60px;}
@@ -253,7 +243,6 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
   .sh-inner{padding:0 19.2px;}
   .sh-title{padding:25.6px 0 16px;gap:8px;}
   .sh-title-left{gap:8px;min-width:0;}
-  .tab-btn{padding:6px 10px;font-size:11.5px;}
   /* La ligne de filtres était centrée (justify-content:center) : combinée
      à un débordement, ça coupait la recherche à gauche ET le bouton
      "Ajouter" à droite de façon symétrique. On aligne à gauche et on
@@ -329,10 +318,6 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
   <div class="sh-title">
     <div class="sh-title-left">
       <a href="index.html" class="menu-btn">☰ Menu</a>
-      <div class="tabs">
-        <button class="tab-btn" id="tabBtn1" onclick="switchTab('tab1',this)">Jeux à faire</button>
-        <button class="tab-btn" id="tabBtn2" onclick="switchTab('tab2',this)">Proposition</button>
-      </div>
     </div>
     <input type="file" id="file-import" accept=".json" onchange="importJSON(event)">
   </div>
@@ -358,6 +343,10 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
     </div>
     <button class="btn-add-main" onclick="openModal2()">+ Ajouter</button>
     <span class="search-wrap"><span class="search-icon">⌕</span><input type="text" id="searchInput2" class="sh-search" placeholder="Rechercher une proposition..." autocomplete="off"></span>
+  </div>
+  <div class="sh-row" id="tabsRow">
+    <button class="filter-btn active" id="tabBtn1" onclick="switchTab('tab1',this)">Jeux à faire</button>
+    <button class="filter-btn" id="tabBtn2" onclick="switchTab('tab2',this)">Proposition</button>
   </div>
 </div>
 </div>
@@ -575,7 +564,8 @@ let _pending=null;
 // ── TABS ─────────────────────────────────────────────────────────────────────
 function switchTab(id,btn){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tabBtn1').classList.remove('active');
+  document.getElementById('tabBtn2').classList.remove('active');
   document.getElementById(id).classList.add('active');
   btn.classList.add('active');
   document.getElementById('filterRow1').style.display=(id==='tab1')?'flex':'none';
