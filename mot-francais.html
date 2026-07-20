@@ -379,7 +379,7 @@
   const LAUNCH_DATE = '2026-07-11';
   const WEEKDAYS_FR = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
   const MONTHS_FR = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
-  const STATS_MAX_TRIES = 6; // maxTries est toujours 6 côté génération (api/motfrancais-daily.js)
+  const STATS_MAX_TRIES = 6; // maxTries est toujours 6 côté génération (api/motfrancais.js)
   const ADMIN_KEY_STORAGE = 'phx_admin_key'; // partagée avec ZoomJeu / la tier list
 
   let puzzle = null;       // { date, puzzleId, wordLength, maxTries, session }
@@ -550,7 +550,7 @@
     lockInputs(true);
 
     try {
-      const res = await fetch('/api/motfrancais-guess', {
+      const res = await fetch('/api/motfrancais', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ guess: guessStr })
@@ -797,7 +797,7 @@
       let data;
       if (isLive()) {
         // Aujourd'hui : génération paresseuse si besoin (comportement inchangé).
-        const res = await fetch('/api/motfrancais-daily', { cache: 'no-store' });
+        const res = await fetch('/api/motfrancais', { cache: 'no-store' });
         data = await safeJson(res);
         if (!res.ok) throw new Error(data.error || 'Erreur serveur');
       } else {
@@ -903,7 +903,7 @@
     btn.innerHTML = '⏳ <span class="archive-label">Génération…</span>';
 
     try {
-      const res = await fetch(`/api/motfrancais-daily?key=${encodeURIComponent(adminKey)}&force=true`);
+      const res = await fetch(`/api/motfrancais?key=${encodeURIComponent(adminKey)}&force=true`);
       if (res.status === 401) {
         sessionStorage.removeItem(ADMIN_KEY_STORAGE);
         btn.innerHTML = '🔒 <span class="archive-label">Clé invalide</span>';

@@ -227,7 +227,7 @@
   const MAX_LIVES = 3;
   const MAX_ATTEMPTS = 5;
   const GRID_COLS = 10;
-  const LIFE_INTERVAL = 20; // doit rester identique à LIFE_INTERVAL côté /api/pixels-action.js
+  const LIFE_INTERVAL = 20; // doit rester identique à LIFE_INTERVAL côté /api/pixels.js
   // Fraction cumulée de cases révélées après 0,1,2,3,4,5 essais ratés.
   const REVEAL_SCHEDULE = [0.06, 0.18, 0.34, 0.52, 0.72, 1];
 
@@ -452,7 +452,7 @@
     document.getElementById('loading').textContent = 'Chargement de l\'image…';
     document.getElementById('game').style.display = 'none';
 
-    const res = await fetch('/api/pixels-image', { cache: 'no-store' });
+    const res = await fetch('/api/pixels?image=1', { cache: 'no-store' });
     const data = await safeJson(res);
     if (!res.ok) throw new Error(data.error || 'Erreur serveur');
     img = await loadImageEl(data.image);
@@ -520,7 +520,7 @@
     setGuessControlsEnabled(false);
     document.getElementById('continueBtn').disabled = true;
     try {
-      const res = await fetch('/api/pixels-action', {
+      const res = await fetch('/api/pixels', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, ...extra })
@@ -674,7 +674,7 @@
 
   async function init() {
     try {
-      const res = await fetch('/api/pixels-state', { cache: 'no-store' });
+      const res = await fetch('/api/pixels', { cache: 'no-store' });
       const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error || 'Erreur serveur');
       await applyState(data);
