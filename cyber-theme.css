@@ -63,6 +63,24 @@ body::before {
   .phx-particle { display: none; }
 }
 
+/* ---------- Icônes/logos jeu vidéo en dérive ----------
+   Mêmes principes que les particules (fixed, z-index:-1, jamais interactif),
+   mais ce sont ici de vraies images (assets/icons/, fournies par
+   l'utilisateur) affichées dans leurs couleurs d'origine — pas de teinte
+   ni de filtre de couleur appliqué. */
+#phx-bg-icons { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.phx-icon-mote {
+  position: absolute;
+  height: auto;
+  opacity: 0;
+  animation: phxParticleDrift linear infinite;
+  filter: drop-shadow(0 0 4px rgba(0,0,0,.35));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phx-icon-mote { display: none; }
+}
+
 /* ---------- Scanlines CRT (au-dessus de tout, très subtil) ---------- */
 body::after {
   content: '';
