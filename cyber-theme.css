@@ -191,7 +191,7 @@ a.home:hover {
 .view-toggle button {
   border-radius: 8px !important;
 }
-@media (min-width: 761px) and (min-height: 431px) {
+@media (min-width: 761px) and (min-height: 600px) {
   .menu-btn {
     position: fixed !important;
     top: 12px !important;
