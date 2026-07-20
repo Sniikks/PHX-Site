@@ -46,11 +46,8 @@
   .app-header.scrolled { box-shadow:0 8px 22px rgba(0,0,0,.5); }
   .app-header.header-hidden { transform:translateY(-100%); }
   .page-header { position:relative; display:flex; align-items:center; justify-content:center; padding:16px 32px; max-width:1320px; margin:0 auto; padding-left:max(32px, env(safe-area-inset-left)); padding-right:max(32px, env(safe-area-inset-right)); }
-  .header-io { position:absolute; right:max(32px, env(safe-area-inset-right)); top:50%; transform:translateY(-50%); display:flex; gap:8px; margin-top:4px; }
   .menu-btn{position:absolute;left:max(32px, env(safe-area-inset-left));top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);border-radius:var(--radius);color:#e5e5e5;font-family:'Exo 2',sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.02em;text-decoration:none;cursor:pointer;transition:all .15s ease;white-space:nowrap;}
   .menu-btn:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.24);color:#fff;}
-  .text-action-btn { background:transparent; border:1px solid var(--border); color:var(--text-dim); font-family:inherit; font-size:12px; cursor:pointer; transition:all .15s; padding:7px 13px; border-radius:var(--radius); }
-  .text-action-btn:hover { color:var(--text); background:var(--bg3); border-color:var(--gold-dim); }
   .brand { display:flex; align-items:center; gap:10px; }
   .brand-icon { width:28px; height:28px; border-radius:3px; background:linear-gradient(155deg,#ff9500 0%, #ffd54b 100%); display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; box-shadow:0 0 0 3px var(--violet-soft); }
   h1 { font-family:'Rajdhani',sans-serif; font-size:15px; color:var(--text); letter-spacing:.01em; font-weight:600; }
@@ -81,6 +78,7 @@
 
   .row2-right { display:flex; align-items:center; gap:10px; flex-wrap:nowrap; justify-content:flex-end; }
   .view-toggle { display:flex; align-items:center; gap:4px; background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:3px; flex-shrink:0; }
+  .view-toggle #viewListBtn { border-left:1px solid var(--border); margin-left:2px; padding-left:6px; }
   .view-toggle button, .view-btn { background:transparent; border:none; color:var(--text-dim); width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; border-radius:2px; font-size:14px; transition:all .15s; flex-shrink:0; }
   .view-toggle button:hover, .view-btn:hover { color:var(--gold); background:var(--bg3); }
   .view-toggle button.active { color:var(--gold); background:var(--bg3); }
@@ -307,8 +305,6 @@
     .brand { order:1; flex:1; justify-content:center; min-width:0; gap:6px; }
     .brand-icon { width:22px; height:22px; font-size:11px; flex-shrink:0; }
     .brand h1 { font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .header-io { position:static; transform:none; order:2; width:auto; gap:5px; flex-shrink:0; }
-    .text-action-btn { padding:6px 9px; font-size:10.5px; }
 
     .sticky-inner { padding:0 12px; }
     .toolbar-row { padding:8px 0 4px; gap:6px; justify-content:flex-start; }
@@ -373,10 +369,6 @@
   }
   @media (max-width:420px) {
     .brand h1 { display:none; }
-    .text-action-btn { padding:6px 7px; font-size:0; }
-    .text-action-btn::before { font-size:12px; }
-    #exportBtn::before { content:'⇩'; }
-    #importBtn::before { content:'⇧'; }
   }
   /* ── Téléphone en paysage (peu de hauteur) ──
      Les 3 rangées d'outils empilées + le header prennent trop de place
@@ -385,10 +377,6 @@
      retirer aucune fonctionnalité. */
   @media (max-height:430px) {
     .brand h1 { display:none; }
-    .text-action-btn { padding:5px 7px; font-size:0; }
-    .text-action-btn::before { font-size:12px; }
-    #exportBtn::before { content:'⇩'; }
-    #importBtn::before { content:'⇧'; }
 
     .toolbar-row { padding:4px 0 3px; }
     .status-pill, .year-pill, .filter-btn { padding:4px 8px; font-size:10.5px; }
@@ -469,10 +457,6 @@
 <div class="app-header" id="appHeader">
 <div class="page-header">
   <a href="index.html" class="menu-btn">☰ Menu</a>
-  <div class="header-io">
-    <button class="text-action-btn" id="exportBtn">Exporter</button>
-    <button class="text-action-btn" id="importBtn">Importer</button>
-  </div>
   <div class="brand"></div>
 </div>
 
@@ -490,6 +474,8 @@
         </div>
         <div class="row2-right">
           <div class="view-toggle">
+            <button id="exportBtn" title="Exporter">⇩</button>
+            <button id="importBtn" title="Importer">⇧</button>
             <button id="viewListBtn" title="Vue compacte">☰</button>
             <button id="viewGridBtn" class="active" title="Vue grille">⊞</button>
             <button class="view-btn" onclick="collapseAllYears()" title="Tout fermer">
