@@ -9,7 +9,7 @@
 // ==========================================================
 
 import { createClient } from '@supabase/supabase-js';
-import { pickGameWithCover, fetchImageAsDataUri, isCorrectGuess } from './_pixelpool.js';
+import { pickGameWithCover, fetchImageAsDataUri, isCorrectGuess, isCloseGuess } from './_pixelpool.js';
 import { rememberKnownGame } from './_knowngames.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -191,7 +191,8 @@ async function handleAction(req, res) {
         if (publicData.attempt >= MAX_ATTEMPTS) {
             return await resolveLoss(publicData, secretName, secretYear, res);
         }
-        publicData.guesses.push({ text: `✕ ${text.trim()}`, wrong: true });
+        const close = isCloseGuess(text, secretName);
+        publicData.guesses.push({ text: `${close ? '🔥' : '✕'} ${text.trim()}`, wrong: true, close });
         await savePublicOnly(publicData);
         return res.status(200).json(publicData);
     }

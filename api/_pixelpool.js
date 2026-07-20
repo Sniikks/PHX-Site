@@ -14,7 +14,7 @@
 // ==========================================================
 
 import { igdbQuery, isIgdbConfigured } from './_igdb.js';
-import { isCorrectGuess as sharedIsCorrectGuess, normalize as sharedNormalize } from './_gamematch.js';
+import { isCorrectGuess as sharedIsCorrectGuess, isCloseGuess as sharedIsCloseGuess, normalize as sharedNormalize } from './_gamematch.js';
 
 const STEAMSPY_BASE = 'https://steamspy.com/api.php';
 const COVER_URL = id => `https://images.igdb.com/igdb/image/upload/t_cover_big_2x/${id}.jpg`;
@@ -225,3 +225,4 @@ export async function fetchImageAsDataUri(coverId) {
 // chaîne entière (trop permissive sur les titres longs).
 export const normalize = sharedNormalize;
 export const isCorrectGuess = sharedIsCorrectGuess;
+export const isCloseGuess = sharedIsCloseGuess;
