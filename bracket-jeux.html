@@ -30,8 +30,8 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
 
 /* HEADER */
 .header{display:flex;align-items:center;gap:.6rem;padding:.4rem .8rem;flex-shrink:0;}
-.page-title{text-align:center;padding:1.2rem 0 .7rem;flex-shrink:0;}
-.page-title h1{font-family:'Rajdhani',sans-serif;font-size:clamp(20.8px,4vw,30.4px);font-weight:700;line-height:1.15;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;}
+.page-title{text-align:center;padding:.8rem 0 0;flex-shrink:0;}
+.page-title h1{margin:0;font-family:'Rajdhani',sans-serif;font-size:clamp(20.8px,4vw,30.4px);font-weight:700;line-height:1.15;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;}
 .sep{flex:1;}
 .pill:empty{display:none;}
 .pill{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-size:10px;padding:.18rem .5rem;letter-spacing:.06em;white-space:nowrap;border-radius:2px;}
@@ -41,6 +41,7 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
 .btn.primary:hover{background:var(--gold2);color:#111;}
 .btn.danger{border-color:#5a2020;color:#c04040;}
 .btn.danger:hover{background:#5a2020;color:#ff8080;}
+.subtitle { color:var(--text2); font-size:12.5px; margin-top:.35rem; margin-bottom:1rem; letter-spacing:.03em; text-align:center; }
 
 /* SCREENS */
 .screen{display:none;flex-direction:column;height:calc(100vh - 42px - 48px);overflow:hidden;}
@@ -536,6 +537,7 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
   <button class="btn danger" id="resetBtn" onclick="resetBracket()" style="display:none">↺ Quitter</button>
 </div>
 <div class="page-title"><h1>🏆 Bracket</h1></div>
+  <div class="subtitle" id="subtitleEl">Choisis ton mode de jeu, ainsi que la liste des jeux.</div>
 
 <!-- IMPORT -->
 <div class="screen active" id="screenImport">
