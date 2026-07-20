@@ -89,8 +89,62 @@
     document.body.prepend(wrap);
   }
 
+  // ── Icônes en dérive (logos/émojis jeu vidéo, fond transparent) ──
+  // Liste des fichiers dans assets/icons/. Pour en ajouter de nouveaux :
+  // déposer le PNG dans ce dossier et ajouter son nom ici, rien d'autre
+  // à toucher.
+  const ICONS = [
+    '1431-mk-lightning.png', '1734-vaultboy.png', '18173-gamecube.png',
+    '1888-mk-mushroom.png', '1920-snorlax.png', '197187-plumbobmelt.png',
+    '2072-gtav.png', '250291-playstation.png', '2581-gamecubecontroller.png',
+    '26156-red-dead-redemption-2.png', '3335_rocket_league_logo.png',
+    '4002_PS2_Controller.png', '423190-xbox.png', '43674-mariokart.png',
+    '50459-wiimote-power-button.png', '52226-steam.png',
+    '55912-wiimote-dpad.png', '63643-gameboy.png', '6438-warpstarkirby.png',
+    '7183-mk-red-shell.png', '720020-minecraftheart.png',
+    '738422-minecraftdiamond.png', '82816-classicsonic.png',
+    'PS4Controller.png', 'XboxOneController.png'
+  ];
+  // Chemin relatif : fonctionne quelle que soit la page tant que
+  // assets/icons/ est à la racine du site, à côté d'index.html.
+  const ICONS_BASE = 'assets/icons/';
+
+  function buildIconMotes() {
+    const wrap = document.createElement('div');
+    wrap.id = 'phx-bg-icons';
+    wrap.setAttribute('aria-hidden', 'true');
+    const count = isCoarsePointer || window.innerWidth < 640 ? 3 : 5;
+    // Pioche sans répétition tant que la liste le permet, pour ne pas
+    // voir deux fois le même logo en même temps à l'écran.
+    const pool = [...ICONS].sort(() => Math.random() - 0.5);
+    for (let i = 0; i < count; i++) {
+      const file = pool[i % pool.length];
+      const img = document.createElement('img');
+      img.className = 'phx-icon-mote';
+      img.src = ICONS_BASE + file;
+      img.alt = '';
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      const size = 22 + Math.random() * 18; // 22-40px : discret, jamais imposant
+      const dx = (Math.random() * 120 - 60).toFixed(0) + 'px';
+      const dy = -(320 + Math.random() * 360).toFixed(0) + 'px';
+      const duration = 34 + Math.random() * 26; // lent, "de temps en temps"
+      const delay = -Math.random() * duration;
+      img.style.left = (Math.random() * 100) + '%';
+      img.style.top = (Math.random() * 100) + '%';
+      img.style.width = size + 'px';
+      img.style.setProperty('--dx', dx);
+      img.style.setProperty('--dy', dy);
+      img.style.animationDuration = duration.toFixed(1) + 's';
+      img.style.animationDelay = delay.toFixed(1) + 's';
+      wrap.appendChild(img);
+    }
+    document.body.prepend(wrap);
+  }
+
   function init() {
     buildParticles();
+    buildIconMotes();
     // Position initiale de la grille (avant tout mouvement de souris)
     root.style.setProperty('--phx-py', scrollOffset().toFixed(1) + 'px');
   }
