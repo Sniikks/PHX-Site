@@ -604,6 +604,14 @@
     }
     renderedCount = guesses.length;
     refreshKeyboardColors();
+
+    // Les indices débloqués (banner "💡 Lettre n°X") s'affichent maintenant
+    // aussi directement dans la grille, en transparent, comme les lettres
+    // bien placées reportées automatiquement.
+    (session.hints || []).forEach(h => {
+      if (!knownCorrect[h.index]) knownCorrect[h.index] = h.letter;
+    });
+
     resetGuessCells();
 
     const finished = session.solved || session.failed;
