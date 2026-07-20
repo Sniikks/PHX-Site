@@ -79,6 +79,9 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
 .sh-prop-both .status-heading{color:var(--green);}
 .sh-prop-both .status-heading::after{border-top-color:rgba(76,175,120,.3);}
 .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:12px;}
+.main-content.compact .card-grid{grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;}
+.main-content.compact .game-card .card-img-wrap{aspect-ratio:16/9.4;}
+.main-content.compact .game-card .card-name{font-size:10px;height:39px;padding:3px 4px;}
 
 /* ── COLLAPSIBLE DISPO SUBGROUPS ── */
 .dispo-group{margin-bottom:10px;}
@@ -329,6 +332,7 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
     <div class="icon-group">
       <button class="icon-btn icon-btn-label" onclick="exportJSON()" title="Exporter">⬇</button>
       <button class="icon-btn icon-btn-label" onclick="document.getElementById('file-import').click()" title="Importer">⬆</button>
+      <button class="icon-btn" id="btnCompactToggle1" onclick="toggleCompact(1)" title="Vue compacte">☰</button>
     </div>
     <button class="btn-add-main" onclick="openModal1()">+ Ajouter</button>
     <span class="search-wrap"><span class="search-icon">⌕</span><input type="text" id="searchInput1" class="sh-search" placeholder="Rechercher un jeu..." autocomplete="off"></span>
@@ -340,6 +344,7 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
     <div class="icon-group">
       <button class="icon-btn icon-btn-label" onclick="exportJSON()" title="Exporter">⬇</button>
       <button class="icon-btn icon-btn-label" onclick="document.getElementById('file-import').click()" title="Importer">⬆</button>
+      <button class="icon-btn" id="btnCompactToggle2" onclick="toggleCompact(2)" title="Vue compacte">☰</button>
     </div>
     <button class="btn-add-main" onclick="openModal2()">+ Ajouter</button>
     <span class="search-wrap"><span class="search-icon">⌕</span><input type="text" id="searchInput2" class="sh-search" placeholder="Rechercher une proposition..." autocomplete="off"></span>
@@ -571,6 +576,24 @@ function switchTab(id,btn){
   document.getElementById('filterRow1').style.display=(id==='tab1')?'flex':'none';
   document.getElementById('filterRow2').style.display=(id==='tab2')?'flex':'none';
   try{localStorage.setItem('gt_active_tab',id);}catch(e){}
+}
+
+// ── Vue compacte / normale (comme sur Sniikks et 369) ──
+function applyCompactState(on){
+  document.getElementById('mainContent1').classList.toggle('compact',on);
+  document.getElementById('mainContent2').classList.toggle('compact',on);
+  [document.getElementById('btnCompactToggle1'), document.getElementById('btnCompactToggle2')].forEach(btn=>{
+    btn.classList.toggle('active',on);
+    btn.title=on?'Vue normale':'Vue compacte';
+  });
+}
+let _compactView=false;
+try{_compactView=localStorage.getItem('proposition_compact_v1')==='1';}catch(e){}
+applyCompactState(_compactView);
+function toggleCompact(){
+  _compactView=!_compactView;
+  try{localStorage.setItem('proposition_compact_v1',_compactView?'1':'0');}catch(e){}
+  applyCompactState(_compactView);
 }
 
 // Run immediately to restore tab without flash
