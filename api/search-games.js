@@ -155,7 +155,13 @@ async function handleAutocomplete(req, res, debug) {
     if (q.length < 2) return res.status(200).json({ suggestions: [] });
 
     const debugInfo = {};
-    const cacheId = q.toLowerCase();
+    // Le préfixe de version fait partie de la clé de cache : à chaque changement
+    // de la logique de filtrage (DLC, éditions...), on l'incrémente pour que les
+    // entrées mises en cache AVANT le correctif ne soient plus jamais servies
+    // telles quelles — sans ça, une requête déjà en cache (ex. tapée pendant un
+    // test) continue de renvoyer l'ancienne liste non filtrée pendant 24h,
+    // même après un correctif déployé.
+    const cacheId = 'v2:' + q.toLowerCase();
 
     // ── Option A : cache écrit au fil de l'eau (table games_cache) ──
     // La toute première fois que quelqu'un tape cette saisie (tous joueurs/
