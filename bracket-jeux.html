@@ -32,10 +32,8 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
 
 /* HEADER */
 .header{display:flex;align-items:center;gap:.6rem;padding:.4rem .8rem;flex-shrink:0;position:relative;}
-.header-right{display:flex;align-items:center;gap:.6rem;}
 @media (min-width:761px) and (min-height:600px){
   .header .sep{display:none;}
-  .header-right{position:absolute;right:.8rem;top:50%;transform:translateY(-50%);}
 }
 .page-title{text-align:center;padding:.8rem 0 0;flex-shrink:0;}
 .page-title h1{margin:0;font-family:'Rajdhani',sans-serif;font-size:clamp(20.8px,4vw,30.4px);font-weight:700;line-height:1.15;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;}
@@ -233,13 +231,16 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
 .match-topbar{
   display:flex;
   padding:.65rem 1.2rem;
-  background:var(--bg2);border-bottom:1px solid var(--border);
   flex-shrink:0;
 }
 .match-topbar-inner{
-  display:flex;align-items:center;gap:.9rem;
+  display:flex;flex-direction:column;gap:.4rem;
   max-width:1320px;margin:0 auto;width:100%;
-  flex-wrap:wrap;
+  background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+  padding:.65rem .8rem;
+}
+.match-topbar-top{
+  display:flex;align-items:baseline;justify-content:space-between;gap:.6rem;flex-wrap:wrap;
 }
 .round-badge{
   font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.9rem;
@@ -247,11 +248,12 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
 }
 .round-badge.draft-badge{color:var(--draft);}
 .round-badge.champion-badge{color:var(--champ);}
+.match-info-group{display:flex;gap:.5rem;align-items:baseline;flex-wrap:wrap;}
 .match-info{font-size:10.5px;color:var(--text2);white-space:nowrap;letter-spacing:.03em;}
-.progress-wrap{flex:1;min-width:80px;height:4px;background:var(--bg4);overflow:hidden;border-radius:10px;}
-.progress-fill{height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold));transition:width .35s ease;border-radius:10px;}
-.progress-fill.draft-fill{background:linear-gradient(90deg,#a03030,var(--draft));}
-.progress-fill.champion-fill{background:linear-gradient(90deg,#5a3590,var(--champ));}
+.progress-wrap{width:100%;height:7px;background:var(--bg3);border:1px solid var(--border);overflow:hidden;border-radius:99px;}
+.progress-fill{height:100%;background:var(--gold-dim);transition:width .35s ease;border-radius:99px;}
+.progress-fill.draft-fill{background:var(--draft);}
+.progress-fill.champion-fill{background:var(--champ);}
 
 /* History strip */
 .history-strip{
@@ -547,11 +549,6 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
 <div class="header">
   <a href="index.html" class="menu-btn">☰ Menu</a>
   <div class="sep"></div>
-  <div class="header-right">
-    <span class="pill" id="statusPill"></span>
-    <button class="btn" id="exportBtn" onclick="exportResults()" style="display:none">💾 Export</button>
-    <button class="btn danger" id="resetBtn" onclick="resetBracket()" style="display:none">↺ Quitter</button>
-  </div>
 </div>
 <div class="page-title"><h1 id="pageTitleH1">🏆 Bracket</h1></div>
   <div class="subtitle" id="subtitleEl">Choisis ton mode de jeu, ainsi que la liste des jeux.</div>
@@ -701,10 +698,14 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
   <div class="match-screen">
     <div class="match-topbar">
       <div class="match-topbar-inner">
-        <span class="round-badge" id="roundBadge">ROUND 1</span>
-        <span class="match-info" id="matchInfo">Match 1/1</span>
+        <div class="match-topbar-top">
+          <span class="round-badge" id="roundBadge">ROUND 1</span>
+          <span class="match-info-group">
+            <span class="match-info" id="matchInfo">Match 1/1</span>
+            <span class="match-info" id="totalInfo"></span>
+          </span>
+        </div>
         <div class="progress-wrap"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
-        <span class="match-info" id="totalInfo"></span>
       </div>
     </div>
     <div class="history-strip" id="historyStrip"></div>
@@ -1413,8 +1414,6 @@ function startBracket(games){
   roundNum     = 1;
 
   document.getElementById('historyStrip').innerHTML='';
-  document.getElementById('exportBtn').style.display='';
-  document.getElementById('resetBtn').style.display='';
   document.getElementById('progressFill').classList.remove('draft-fill','champion-fill');
   document.getElementById('roundBadge').classList.remove('draft-badge','champion-badge');
 
@@ -1502,7 +1501,6 @@ function updateTopbar(){
   document.getElementById('matchInfo').textContent=`Match ${displayMatch}/${queue.length} du round`;
   document.getElementById('progressFill').style.width=pct+'%';
   document.getElementById('totalInfo').textContent=`${matchesDone}/${totalMatches} total`;
-  document.getElementById('statusPill').textContent=`${totalGames} jeux · Round ${roundNum}`+(chronoEnabled?' · ⏱':'');
 }
 
 function getRoundName(){
@@ -1533,8 +1531,6 @@ function startDraft(games){
   totalMatches       = draftTotalRounds;
 
   document.getElementById('historyStrip').innerHTML='';
-  document.getElementById('exportBtn').style.display='';
-  document.getElementById('resetBtn').style.display='';
   document.getElementById('progressFill').classList.remove('champion-fill');
   document.getElementById('progressFill').classList.add('draft-fill');
   document.getElementById('roundBadge').classList.remove('champion-badge');
@@ -1633,7 +1629,6 @@ function updateDraftTopbar(){
   document.getElementById('matchInfo').textContent  = `${draftPool.length} jeux dispo`;
   document.getElementById('progressFill').style.width = pct+'%';
   document.getElementById('totalInfo').textContent  = `${draftFinalList.length} sélectionnés`;
-  document.getElementById('statusPill').textContent = `DRAFT · ${totalGames} jeux`+(chronoEnabled?' · ⏱':'');
 }
 
 // ── Transition Phase 1 → Phase 2 ──
@@ -1812,7 +1807,6 @@ function updateDraftGroupTopbar(){
   document.getElementById('matchInfo').textContent  = `Groupe ${displayGroup}/${totalGroupsThisRound}`;
   document.getElementById('progressFill').style.width = pct+'%';
   document.getElementById('totalInfo').textContent  = `${draftBracketWinners.length}/${totalGames} restants`;
-  document.getElementById('statusPill').textContent = `DRAFT BRACKET · groupes de ${draftPickCount}`+(chronoEnabled?' · ⏱':'');
 }
 
 function getDraftGroupRoundName(){
@@ -1903,8 +1897,6 @@ function startChampion(games){
   championCurrent = championPool.shift();
 
   document.getElementById('historyStrip').innerHTML='';
-  document.getElementById('exportBtn').style.display='';
-  document.getElementById('resetBtn').style.display='';
   document.getElementById('progressFill').classList.remove('draft-fill');
   document.getElementById('progressFill').classList.add('champion-fill');
   document.getElementById('roundBadge').classList.remove('draft-badge');
@@ -2025,7 +2017,6 @@ function updateChampionTopbar(){
   document.getElementById('matchInfo').textContent  = `${roundsLeft} défi${roundsLeft>1?'s':''} restant${roundsLeft>1?'s':''}`;
   document.getElementById('progressFill').style.width = pct+'%';
   document.getElementById('totalInfo').textContent  = `Règne : ${championReign} round${championReign>1?'s':''}`;
-  document.getElementById('statusPill').textContent = `CHAMPION · ${totalGames} jeux`+(chronoEnabled?' · ⏱':'');
 }
 
 function showChampionWinner(){
@@ -2187,9 +2178,6 @@ function resetBracket(){
   roundNum=1;matchesDone=0;totalGames=0;
   document.getElementById('progressFill').classList.remove('draft-fill','champion-fill');
   document.getElementById('roundBadge').classList.remove('draft-badge','champion-badge');
-  document.getElementById('exportBtn').style.display='none';
-  document.getElementById('resetBtn').style.display='none';
-  document.getElementById('statusPill').textContent='';
   document.getElementById('historyStrip').innerHTML='';
   showScreen('screenImport');
 }
