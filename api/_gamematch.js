@@ -132,15 +132,34 @@ function significantTokens(tokens) {
 
 export function isCloseGuess(guessRaw, gameName) {
     const cleanName = gameName.replace(/\s*\(\d{4}\)\s*$/, '');
-    const guessTokens = significantTokens(normalize(guessRaw).split(' ').filter(Boolean));
-    const baseTokens = significantTokens(normalize(cleanName).split(' ').filter(Boolean));
+    const guessAllTokens = normalize(guessRaw).split(' ').filter(Boolean);
+    const baseAllTokens = normalize(cleanName).split(' ').filter(Boolean);
+    const guessTokens = significantTokens(guessAllTokens);
+    const baseTokens = significantTokens(baseAllTokens);
     if (guessTokens.length === 0 || baseTokens.length === 0) return false;
 
     let matches = 0;
     guessTokens.forEach(gt => { if (baseTokens.some(bt => tokensMatch(gt, bt))) matches++; });
 
+    // Un numéro d'épisode identique (ex. "Persona 3" pour "Persona 3
+    // Portable") est un signal fort de proximité — mais les tokens numériques
+    // sont exclus de significantTokens (ce ne sont pas des "mots" comparables
+    // par faute de frappe), donc ce match ne comptait jamais. Sans ce bonus,
+    // deviner la bonne franchise ET le bon numéro, sans le mot d'édition qui
+    // suit ("Portable", "Reload"...), ne comptait jamais comme "proche" — juste
+    // "faux" 🔥, ce qui perdait le joueur qui avait pourtant identifié le bon
+    // jeu. Le bonus n'est appliqué que s'il y a déjà au moins un mot en commun
+    // (matches > 0), pour ne pas rapprocher deux jeux sans rapport qui
+    // partagent juste un numéro (ex. "Diablo 2" ne doit pas devenir "proche"
+    // de "Fallout 2").
+    const guessNumbers = new Set(guessAllTokens.filter(t => /^\d+$/.test(t)));
+    const baseNumbers = new Set(baseAllTokens.filter(t => /^\d+$/.test(t)));
+    let numberBonus = 0;
+    guessNumbers.forEach(n => { if (baseNumbers.has(n)) numberBonus++; });
+    const totalMatches = matches + (matches > 0 ? numberBonus : 0);
+
     const threshold = Math.min(2, baseTokens.length);
-    return matches >= threshold;
+    return totalMatches >= threshold;
 }
 
 // Repère si la réponse commence par le(s) même(s) mot(s) que le vrai jeu.
