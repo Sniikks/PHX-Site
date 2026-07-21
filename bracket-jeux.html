@@ -2211,18 +2211,92 @@ function toast(msg){
 }
 
 // ══════════════════════════════════════════
+//  SYNC AUTO : jeux "Terminé" (369 / Sniikks) → liste par défaut
+// ══════════════════════════════════════════
+// Dès qu'un jeu passe "Fini" sur la page 369 ou "fini" sur la page Sniikks,
+// il est ajouté automatiquement à la liste par défaut de Bracket. Lecture
+// seule sur ces 2 tables (jamais d'écriture dedans), et on n'ajoute
+// jamais que du NOUVEAU — un jeu retiré manuellement de la liste par
+// défaut ici ne revient pas tout seul.
+function normGameName(s){ return String(s||'').trim().toLowerCase(); }
+
+function steamAppIdFromUrl(url){
+  if(!url) return null;
+  const m = String(url).match(/(?:store\.steampowered\.com(?:\/agecheck)?\/app|steamstatic\.com\/(?:store_item_assets\/)?steam\/apps)\/(\d+)/i);
+  return m ? m[1] : null;
+}
+function steamHeaderUrl(appId){
+  return `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`;
+}
+
+async function fetchFinishedFrom369(){
+  try{
+    const { data } = await supabaseClient.from('369_games').select('data').eq('id','backlog_cards_v1').maybeSingle();
+    const list = Array.isArray(data?.data) ? data.data : [];
+    return list.filter(g => g.status === 'Fini' && g.title).map(g => {
+      const appId = steamAppIdFromUrl(g.steamId);
+      return { name: g.title.trim(), src: appId ? steamHeaderUrl(appId) : (g.steamId || '') };
+    });
+  }catch(e){ console.error('Sync 369 → Bracket, erreur:', e); return []; }
+}
+async function fetchFinishedFromSniikks(){
+  try{
+    const { data } = await supabaseClient.from('sniikks_games').select('data').eq('id','backlog_jeux_v4').maybeSingle();
+    const list = Array.isArray(data?.data) ? data.data : [];
+    return list.filter(g => g.status === 'fini' && g.name).map(g => ({ name: g.name.trim(), src: g.img || '' }));
+  }catch(e){ console.error('Sync Sniikks → Bracket, erreur:', e); return []; }
+}
+
+async function syncDefaultGamesFromLists(){
+  const [from369, fromSniikks] = await Promise.all([fetchFinishedFrom369(), fetchFinishedFromSniikks()]);
+  const current = getDefaultGamesData();
+  const knownNames = new Set(current.map(g => normGameName(g.name)));
+  const merged = [...current];
+  let added = 0;
+  [...from369, ...fromSniikks].forEach(g => {
+    const key = normGameName(g.name);
+    if(!key || knownNames.has(key)) return;
+    knownNames.add(key);
+    merged.push(g);
+    added++;
+  });
+  if(added > 0){
+    RemoteStore.set(DEFAULT_GAMES_KEY, merged, BRACKET_TABLE);
+    // La liste par défaut a été copiée une fois dans les sauvegardes
+    // (ensureDefaultSeed) : on la garde synchro elle aussi si elle existe.
+    const saves = getSavedList();
+    const idx = saves.findIndex(s => s.name === 'Jeux (liste par défaut)');
+    if(idx !== -1){
+      saves[idx] = { ...saves[idx], data: merged, count: merged.length };
+      setSavedList(saves);
+    }
+    toast(added + ' jeu' + (added>1?'x':'') + ' terminé' + (added>1?'s':'') + ' ajouté' + (added>1?'s':'') + ' à la liste par défaut ✓');
+  }
+}
+
+// ══════════════════════════════════════════
 //  INITIALISATION SUPABASE
 // ══════════════════════════════════════════
 RemoteStore.setStatusElement(document.getElementById('dbStatus'));
 RemoteStore.init([SAVED_KEY, BLACKLIST_KEY, DEFAULT_SEED_KEY, DEFAULT_GAMES_KEY], BRACKET_TABLE).then(()=>{
   ensureDefaultSeed();
   renderSavedList();
+  syncDefaultGamesFromLists();
 
   // ── Synchro temps réel ──
   // Garde le cache à jour si l'autre ajoute/modifie une liste sauvegardée ou
   // une blacklist : les sélecteurs liront toujours des données fraîches.
   RemoteStore.subscribe(SAVED_KEY, ()=>{ renderSavedList(); }, BRACKET_TABLE);
   RemoteStore.subscribe(BLACKLIST_KEY, undefined, BRACKET_TABLE);
+
+  // Écoute en direct les listes 369 et Sniikks : un jeu marqué "Terminé"
+  // là-bas met à jour la liste par défaut ici sans recharger la page.
+  supabaseClient.channel('bracket_sync_369')
+    .on('postgres_changes', { event:'*', schema:'public', table:'369_games', filter:'id=eq.backlog_cards_v1' }, () => syncDefaultGamesFromLists())
+    .subscribe();
+  supabaseClient.channel('bracket_sync_sniikks')
+    .on('postgres_changes', { event:'*', schema:'public', table:'sniikks_games', filter:'id=eq.backlog_jeux_v4' }, () => syncDefaultGamesFromLists())
+    .subscribe();
 });
 
 </script>
