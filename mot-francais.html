@@ -516,11 +516,14 @@
 
     Object.keys(confirmedCount).forEach(l => {
       const required = provenExact[l] !== undefined ? provenExact[l] : Math.max(1, maxColoredSeen[l] || 1);
-      if (confirmedCount[l] >= required) {
-        states[l] = 'correct';
-      } else if (!states[l] || rank[states[l]] < rank.present) {
-        states[l] = 'present';
-      }
+      // État FORCÉ ici (pas de "else if" conditionné par le rang précédent) :
+      // une lettre déjà marquée "correct" par la boucle des essais doit
+      // pouvoir être redescendue en "present" si le nombre de positions
+      // confirmées est inférieur au nombre d'occurrences qu'on sait exister
+      // — sinon le clavier annonce à tort qu'il n'y a plus cette lettre dans
+      // le mot (ex. "COMPOSE" a 2 "O" : en confirmer un seul ne doit pas
+      // passer la touche au vert).
+      states[l] = confirmedCount[l] >= required ? 'correct' : 'present';
     });
 
     return states;
