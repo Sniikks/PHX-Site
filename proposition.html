@@ -47,7 +47,8 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* ── FILTER ROWS ── */
-.sh-row{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;padding:14px 0 6px;}
+.sh-row{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;padding:14px 0 6px;}
+.sh-row-left,.sh-row-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 /* Hidden by default — JS shows the right one immediately */
 #filterRow2{display:flex;}
 .search-wrap{position:relative;flex-shrink:0;}
@@ -320,16 +321,20 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
     <input type="file" id="file-import" accept=".json" onchange="importJSON(event)">
   </div>
   <div class="sh-row" id="filterRow2">
-    <button class="filter-btn active" data-filter2="Tous">Tous</button>
-    <button class="filter-btn" data-filter2="369">369 Oui</button>
-    <button class="filter-btn" data-filter2="Sniikks">Sniikks Oui</button>
-    <div class="icon-group">
-      <button class="icon-btn icon-btn-label" onclick="exportJSON()" title="Exporter">⬇</button>
-      <button class="icon-btn icon-btn-label" onclick="document.getElementById('file-import').click()" title="Importer">⬆</button>
-      <button class="icon-btn" id="btnCompactToggle2" onclick="toggleCompact(2)" title="Vue compacte">☰</button>
+    <div class="sh-row-left">
+      <button class="filter-btn active" data-filter2="Tous">Tous</button>
+      <button class="filter-btn" data-filter2="369">369 Oui</button>
+      <button class="filter-btn" data-filter2="Sniikks">Sniikks Oui</button>
     </div>
-    <button class="btn-add-main" onclick="openModal2()">+ Ajouter</button>
-    <span class="search-wrap"><span class="search-icon">⌕</span><input type="text" id="searchInput2" class="sh-search" placeholder="Rechercher une proposition..." autocomplete="off"></span>
+    <div class="sh-row-right">
+      <div class="icon-group">
+        <button class="icon-btn icon-btn-label" onclick="exportJSON()" title="Exporter">⬇</button>
+        <button class="icon-btn icon-btn-label" onclick="document.getElementById('file-import').click()" title="Importer">⬆</button>
+        <button class="icon-btn" id="btnCompactToggle2" onclick="toggleCompact(2)" title="Vue compacte">☰</button>
+      </div>
+      <button class="btn-add-main" onclick="openModal2()">+ Ajouter</button>
+      <span class="search-wrap"><span class="search-icon">⌕</span><input type="text" id="searchInput2" class="sh-search" placeholder="Rechercher une proposition..." autocomplete="off"></span>
+    </div>
   </div>
 </div>
 </div>
