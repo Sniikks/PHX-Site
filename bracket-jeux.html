@@ -2214,10 +2214,10 @@ function toast(msg){
 //  SYNC AUTO : jeux "Terminé" (369 / Sniikks) → liste par défaut
 // ══════════════════════════════════════════
 // Dès qu'un jeu passe "Fini" sur la page 369 ou "fini" sur la page Sniikks,
-// il est ajouté automatiquement à la liste par défaut de Bracket. Lecture
-// seule sur ces 2 tables (jamais d'écriture dedans), et on n'ajoute
-// jamais que du NOUVEAU — un jeu retiré manuellement de la liste par
-// défaut ici ne revient pas tout seul.
+// il est ajouté à la liste par défaut de Bracket — définitivement : si son
+// statut change ensuite là-bas (repasse "En cours", etc.), il RESTE dans
+// Bracket. Seule une suppression manuelle ici (ou en base) le retire.
+// Lecture seule sur les tables 369/Sniikks, jamais d'écriture dedans.
 function normGameName(s){ return String(s||'').trim().toLowerCase(); }
 
 function steamAppIdFromUrl(url){
