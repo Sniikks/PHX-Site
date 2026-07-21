@@ -196,8 +196,16 @@ async function handleAutocomplete(req, res, debug) {
             // hypes) a été testé et écarté : il excluait à tort des jeux récents mais
             // légitimes (pas encore notés sur IGDB, ex. "Mechwarrior 5: Clans - Wolves
             // of Tukayyid") — plus de faux positifs que de vrai nettoyage.
+            // "category" est demandé comme CHAMP renvoyé (pas comme filtre "where" —
+            // c'est justement la combinaison "category = 0 dans where" qui est cassée,
+            // voir plus haut). Ça permet d'exclure ensuite en JS, de façon fiable, les
+            // catégories IGDB qui ne sont jamais le jeu de base : 1=dlc_addon,
+            // 2=expansion, 3=bundle, 5=mod, 6=episode, 7=season, 13=pack. Bien plus
+            // robuste que deviner via des mots-clés dans le nom (ex. "Batman: Arkham
+            // Knight - A Matter of Family", "- GCPD Lockdown"... aucun mot-clé DLC
+            // générique n'aurait détecté ces épisodes).
             const rows = await igdbQuery('games',
-                `fields name,first_release_date,total_rating_count; ` +
+                `fields name,first_release_date,total_rating_count,category; ` +
                 `where name ~ *"${clean}"* & version_parent = null & first_release_date < ${nowUnix}; ` +
                 `sort total_rating_count desc; limit 50;`,
                 1800
@@ -248,27 +256,40 @@ async function handleAutocomplete(req, res, debug) {
     // Année + popularité (total_rating_count) IGDB par nom normalisé : sert à
     // (1) donner une année aux résultats Steam sans correspondance IGDB directe,
     // (2) décider si un jeu SANS date connue est "vraiment connu" (voir plus bas).
+    // Catégories IGDB qui ne sont jamais le jeu de base : 1=dlc_addon, 2=expansion,
+    // 3=bundle, 5=mod, 6=episode, 7=season, 13=pack. On les écarte ici (pas dans le
+    // "where" IGDB, qui casse tout si on y ajoute "category = ...", voir plus haut),
+    // et on retient leur nom pour aussi écarter le même contenu côté Steam (qui,
+    // lui, ne les étiquette pas toujours correctement en "dlc").
+    const DLC_CATEGORIES = new Set([1, 2, 3, 5, 6, 7, 13]);
+    const igdbDlcNames = new Set();
+    const igdbResultsFiltered = igdbResults.filter(g => {
+        if (DLC_CATEGORIES.has(g.category)) { igdbDlcNames.add(normalizeName(g.name)); return false; }
+        return true;
+    });
+
     const igdbYearByName = new Map();
     const igdbPopularityByName = new Map();
-    igdbResults.forEach(g => {
+    igdbResultsFiltered.forEach(g => {
         const key = normalizeName(g.name);
         const y = yearFromUnixSeconds(g.first_release_date);
         if (y) igdbYearByName.set(key, y);
         igdbPopularityByName.set(key, g.total_rating_count || 0);
     });
 
-    // Fusion + déduplication + filets anti-DLC (nom).
+    // Fusion + déduplication + filets anti-DLC (nom + catégorie IGDB).
     const seen = new Set();
     const results = [];
     const push = (name, year, popularity) => {
         if (isDlcName(name)) return;
         const key = normalizeName(name);
+        if (igdbDlcNames.has(key)) return;
         if (!key || seen.has(key)) return;
         seen.add(key);
         results.push({ name, year: year || null, popularity: popularity || 0 });
     };
 
-    igdbResults.forEach(g => push(g.name, yearFromUnixSeconds(g.first_release_date), g.total_rating_count));
+    igdbResultsFiltered.forEach(g => push(g.name, yearFromUnixSeconds(g.first_release_date), g.total_rating_count));
     steamItems.forEach(i => {
         const key = normalizeName(i.name);
         push(i.name, igdbYearByName.get(key) || null, igdbPopularityByName.get(key) || 0);
