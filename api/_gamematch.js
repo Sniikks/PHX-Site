@@ -71,8 +71,48 @@ export function getVariants(name) {
     return [...new Set(variants)];
 }
 
+// Équivalence chiffres arabes <-> numéral romain (ex. "7" == "VII"), pour que
+// deviner "Final Fantasy 7" valide "Final Fantasy VII" et inversement — la
+// fiche Steam/IGDB n'utilise souvent qu'une seule des deux écritures, mais le
+// joueur tape naturellement l'autre.
+const ROMAN_MAP = [
+    [1000, 'm'], [900, 'cm'], [500, 'd'], [400, 'cd'],
+    [100, 'c'], [90, 'xc'], [50, 'l'], [40, 'xl'],
+    [10, 'x'], [9, 'ix'], [5, 'v'], [4, 'iv'], [1, 'i']
+];
+const MAX_ROMAN_VALUE = 49; // au-delà, trop de mots anglais courts (cd, civ, mix...) redeviennent des numéraux romains valides par coïncidence
+
+function toRoman(num) {
+    let n = num, out = '';
+    for (const [val, sym] of ROMAN_MAP) {
+        while (n >= val) { out += sym; n -= val; }
+    }
+    return out;
+}
+
+// N'accepte une chaîne comme numéral romain QUE si elle est canonique (le
+// round-trip toRoman(valeur) redonne exactement la même chaîne) — ça élimine
+// les faux positifs sur des mots anglais composés des mêmes lettres (i, v, x,
+// l, c, d, m) qui ne sont pas de vrais numéraux valides.
+function fromCanonicalRoman(str) {
+    if (!/^[ivxlcdm]+$/.test(str)) return null;
+    let n = 0, i = 0;
+    for (const [val, sym] of ROMAN_MAP) {
+        while (str.startsWith(sym, i)) { n += val; i += sym.length; }
+    }
+    if (i !== str.length || n < 1 || n > MAX_ROMAN_VALUE) return null;
+    return toRoman(n) === str ? n : null;
+}
+
+function numeralEquivalent(a, b) {
+    const na = /^\d+$/.test(a) ? parseInt(a, 10) : fromCanonicalRoman(a);
+    const nb = /^\d+$/.test(b) ? parseInt(b, 10) : fromCanonicalRoman(b);
+    return na !== null && nb !== null && na === nb;
+}
+
 export function tokensMatch(a, b) {
     if (a === b) return true;
+    if (numeralEquivalent(a, b)) return true;
     if (/\d/.test(a) || /\d/.test(b)) return false;
     if (a.length <= 3 || b.length <= 3) return false;
     const maxLen = Math.max(a.length, b.length);
