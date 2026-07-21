@@ -231,19 +231,31 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
 /* ── MATCH SCREEN ── */
 .match-screen{flex:1;display:flex;flex-direction:column;overflow:hidden;}
 .match-topbar{
-  display:flex;align-items:center;gap:.8rem;
-  padding:.4rem .9rem;
+  display:flex;
+  padding:.65rem 1.2rem;
   background:var(--bg2);border-bottom:1px solid var(--border);
-  flex-shrink:0;flex-wrap:wrap;
+  flex-shrink:0;
 }
-.round-badge{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.85rem;color:var(--gold);letter-spacing:.12em;white-space:nowrap;}
-.round-badge.draft-badge{color:var(--draft);}
-.round-badge.champion-badge{color:var(--champ);}
-.match-info{font-size:10px;color:var(--text2);white-space:nowrap;}
-.progress-wrap{flex:1;min-width:80px;height:3px;background:var(--bg4);overflow:hidden;}
-.progress-fill{height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold));transition:width .35s ease;}
-.progress-fill.draft-fill{background:linear-gradient(90deg,#a03030,var(--draft));}
-.progress-fill.champion-fill{background:linear-gradient(90deg,#5a3590,var(--champ));}
+.match-topbar-inner{
+  display:flex;align-items:center;gap:.9rem;
+  max-width:1320px;margin:0 auto;width:100%;
+  flex-wrap:wrap;
+}
+.round-badge{
+  display:flex;align-items:center;gap:.35rem;
+  font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;
+  color:var(--gold);letter-spacing:.12em;white-space:nowrap;
+  background:var(--bg3);border:1px solid var(--gold-dim);
+  padding:.35rem .8rem;border-radius:20px;
+  box-shadow:0 0 12px var(--gold-glow);
+}
+.round-badge.draft-badge{color:var(--draft);border-color:var(--draft-dim);box-shadow:0 0 12px var(--draft-glow);}
+.round-badge.champion-badge{color:var(--champ);border-color:var(--champ-dim);box-shadow:0 0 12px var(--champ-glow);}
+.match-info{font-size:10.5px;color:var(--text2);white-space:nowrap;letter-spacing:.03em;}
+.progress-wrap{flex:1;min-width:80px;height:5px;background:var(--bg4);overflow:hidden;border-radius:10px;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold));transition:width .35s ease;border-radius:10px;box-shadow:0 0 8px var(--gold-glow);}
+.progress-fill.draft-fill{background:linear-gradient(90deg,#a03030,var(--draft));box-shadow:0 0 8px var(--draft-glow);}
+.progress-fill.champion-fill{background:linear-gradient(90deg,#5a3590,var(--champ));box-shadow:0 0 8px var(--champ-glow);}
 
 /* History strip */
 .history-strip{
@@ -692,10 +704,12 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
 <div class="screen" id="screenMatch">
   <div class="match-screen">
     <div class="match-topbar">
-      <span class="round-badge" id="roundBadge">ROUND 1</span>
-      <span class="match-info" id="matchInfo">Match 1/1</span>
-      <div class="progress-wrap"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
-      <span class="match-info" id="totalInfo"></span>
+      <div class="match-topbar-inner">
+        <span class="round-badge" id="roundBadge">ROUND 1</span>
+        <span class="match-info" id="matchInfo">Match 1/1</span>
+        <div class="progress-wrap"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        <span class="match-info" id="totalInfo"></span>
+      </div>
     </div>
     <div class="history-strip" id="historyStrip"></div>
     <div class="chrono-bar" id="chronoBar">
