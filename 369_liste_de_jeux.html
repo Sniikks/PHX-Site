@@ -91,10 +91,9 @@ body{
 .gstat-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;}
 
 .toolbar{
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  display:flex;align-items:center;justify-content:center;gap:10px;
   padding:14px 0 6px;flex-wrap:wrap;
 }
-.toolbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 
 .search-wrap{position:relative;flex-shrink:0;}
 .search-icon{
@@ -512,8 +511,8 @@ body.compact-view .card-name{
   .filters-toggle-btn:hover{color:var(--text);background:var(--surface-2);}
   .filters-toggle-btn.active{color:#0d0e14;background:var(--gold);border-color:var(--gold);}
 
-  .years-row-outer{display:none;width:100%;}
-  .topbar.filters-open .years-row-outer{display:flex;}
+  .years-row, #globalStats{display:none;width:100%;order:3;}
+  .topbar.filters-open .years-row, .topbar.filters-open #globalStats{display:flex;}
 }
 /* .card-grid s'adapte à la largeur de son conteneur (.main), pas à celle
    de l'écran — utile si la grille se retrouve un jour dans un panneau
@@ -559,28 +558,26 @@ body.compact-view .card-name{
       <button class="pill" data-filter="Fini">Terminés</button>
       <button class="pill" data-filter="Abandonne">Abandonnés</button>
     </div>
-    <div class="toolbar-right">
-      <div class="icon-group">
-        <button class="icon-btn icon-btn-label" id="btnExportJSON" title="Exporter JSON">⬇</button>
-        <button class="icon-btn icon-btn-label" id="btnImportJSON" title="Importer JSON">⬆</button>
-        <input type="file" id="fileImport" accept=".json" style="display:none">
-        <button class="icon-btn" id="btnCollapseAll" title="Tout réduire">⊟</button>
-        <button class="icon-btn" id="btnExpandAll" title="Tout déplier">⊞</button>
-        <button class="icon-btn" id="btnCompactToggle" title="Vue compacte">☰</button>
-      </div>
-      <button type="button" class="filters-toggle-btn" id="filtersToggleBtn" aria-expanded="false">☰ Filtres</button>
-      <button class="btn-primary" id="btnAdd"><span>+</span> Ajouter</button>
-      <span class="search-wrap">
-        <span class="search-icon">⌕</span>
-        <input type="text" id="searchInput" class="search-input" placeholder="Rechercher un jeu..." autocomplete="off">
-        <button type="button" class="search-clear" id="searchClear" title="Effacer">✕</button>
-      </span>
+    <div class="icon-group">
+      <button class="icon-btn icon-btn-label" id="btnExportJSON" title="Exporter JSON">⬇</button>
+      <button class="icon-btn icon-btn-label" id="btnImportJSON" title="Importer JSON">⬆</button>
+      <input type="file" id="fileImport" accept=".json" style="display:none">
+      <button class="icon-btn" id="btnCollapseAll" title="Tout réduire">⊟</button>
+      <button class="icon-btn" id="btnExpandAll" title="Tout déplier">⊞</button>
+      <button class="icon-btn" id="btnCompactToggle" title="Vue compacte">☰</button>
     </div>
+    <button class="btn-primary" id="btnAdd"><span>+</span> Ajouter</button>
   </div>
 
   <div class="years-row-outer">
     <div class="years-row" id="statsYears"></div>
     <div class="global-stats" id="globalStats"></div>
+    <button type="button" class="filters-toggle-btn" id="filtersToggleBtn" aria-expanded="false">☰ Filtres</button>
+    <span class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="searchInput" class="search-input" placeholder="Rechercher un jeu..." autocomplete="off">
+      <button type="button" class="search-clear" id="searchClear" title="Effacer">✕</button>
+    </span>
   </div>
 
 </div>
