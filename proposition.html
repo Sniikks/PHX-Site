@@ -427,6 +427,7 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
+<script src="protected-write.js"></script>
 <script>
 // ── CONFIG SUPABASE ──────────────────────────────────────────────────────────
 // Clé et URL centralisées dans config.js, plus de doublon en dur ici.
@@ -448,9 +449,9 @@ async function getH(){
 
 // ── API ──────────────────────────────────────────────────────────────────────
 async function sbGet(t){try{const r=await fetch(`${SUPA_URL}/rest/v1/${t}?order=inserted_at.asc,id.asc`,{headers:await getH()});return await r.json();}catch(e){return[];}}
-async function sbInsert(t,o){try{const r=await fetch(`${SUPA_URL}/rest/v1/${t}`,{method:'POST',headers:await getH(),body:JSON.stringify({...o,inserted_at:new Date().toISOString()})});return await r.json();}catch(e){return null;}}
-async function sbUpdate(t,id,o){try{const{inserted_at,...d}=o;await fetch(`${SUPA_URL}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:await getH(),body:JSON.stringify(d)});}catch(e){}}
-async function sbDelete(t,id){try{await fetch(`${SUPA_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:await getH()});}catch(e){}}
+async function sbInsert(t,o){try{return await ProtectedWrite.call({table:t,mode:'insert',data:{...o,inserted_at:new Date().toISOString()}});}catch(e){showToast('⚠️ '+e.message);return null;}}
+async function sbUpdate(t,id,o){try{const{inserted_at,...d}=o;await ProtectedWrite.call({table:t,mode:'update',id,data:d});}catch(e){showToast('⚠️ '+e.message);}}
+async function sbDelete(t,id){try{await ProtectedWrite.call({table:t,mode:'delete',id});}catch(e){showToast('⚠️ '+e.message);}}
 
 // ── REALTIME ─────────────────────────────────────────────────────────────────
 // Utilise le client supabase-js (canaux postgres_changes), qui gère lui-même
@@ -750,12 +751,8 @@ async function sbGetAppData(table,key){
 }
 async function sbUpsertAppData(table,key,dataArr){
   try{
-    await fetch(`${SUPA_URL}/rest/v1/${table}?on_conflict=id`,{
-      method:'POST',
-      headers:{...(await getH()),'Prefer':'resolution=merge-duplicates,return=minimal'},
-      body:JSON.stringify({id:key,data:dataArr,updated_at:new Date().toISOString()})
-    });
-  }catch(e){}
+    await ProtectedWrite.call({table,mode:'kv',key,value:dataArr});
+  }catch(e){ console.error('sbUpsertAppData error:', e); }
 }
 
 async function syncNewGameToPersonalLists(jeu,lien){

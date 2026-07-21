@@ -14,6 +14,11 @@
 //  - subscribe(key, cb) : écoute en temps réel les modifications
 //    faites par d'autres visiteurs sur une clé (évite d'écraser
 //    les changements de l'autre avec un vieux cache).
+//  - Les écritures (set) passent maintenant par ProtectedWrite
+//    (voir protected-write.js) : un code d'accès partagé, vérifié
+//    côté serveur, protège les tables modifiées en direct depuis le
+//    navigateur. Les lectures (init) restent directes, non protégées.
+//    Nécessite que la page charge protected-write.js AVANT db.js.
 // ==========================================================
 
 const RemoteStore = {
@@ -92,18 +97,17 @@ const RemoteStore = {
 
   _push(key, value, table) {
     table = table || this._defaultTable;
-    supabaseClient
-      .from(table)
-      .upsert({ id: key, data: value, updated_at: new Date().toISOString() })
-      .then(({ error }) => {
-        if (error) {
-          console.error('RemoteStore.set error:', error);
-          this._queueRetry(key, value, table);
-        } else {
-          delete this._pendingWrites[table + '::' + key];
-          this._retryDelay = 3000; // reset du backoff après un succès
-          this._setStatus('● Connecté', true);
-        }
+    ProtectedWrite.call({ table, mode: 'kv', key, value })
+      .then(() => {
+        delete this._pendingWrites[table + '::' + key];
+        this._retryDelay = 3000; // reset du backoff après un succès
+        this._setStatus('● Connecté', true);
+      })
+      .catch(error => {
+        console.error('RemoteStore.set error:', error);
+        // Une annulation volontaire du code n'a pas à déclencher la file
+        // de retry automatique (elle redemanderait le code en boucle).
+        if (error.message !== 'Annulé.') this._queueRetry(key, value, table);
       });
   },
 
