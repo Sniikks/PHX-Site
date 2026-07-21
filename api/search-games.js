@@ -70,7 +70,7 @@ const BROWSER_HEADERS = {
     'Accept': 'application/json, text/plain, */*'
 };
 
-const DLC_NAME_PATTERN = /\b(dlc|season pass|expansion pass|expansion|add-?on|content pack|bonus content|artbook|art book|soundtrack|ost|skin pack|costume pack|weapon pack|outfit pack|upgrade pack|map pack|character pack|booster pack|challenge pack|premiere club|wallpaper|bundle|chapter|extra area)\b/i;
+const DLC_NAME_PATTERN = /\b(dlc|season pass|expansion pass|expansion|add-?on|content pack|bonus content|artbook|art book|soundtrack|ost|skin|costume pack|weapon pack|outfit pack|upgrade pack|map pack|character pack|booster pack|challenge pack|premiere club|wallpaper|bundle|chapter|extra area)\b/i;
 
 // Filet de nom anti-DLC. Le mot "pack" seul est très évocateur de DLC
 // ("Mechromancer Pack", "Ultimate Vault Hunter Upgrade Pack"...), avec une
