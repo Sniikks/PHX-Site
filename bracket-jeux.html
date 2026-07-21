@@ -362,7 +362,7 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
 @keyframes pulse{from{opacity:1;}to{opacity:.5;}}
 
 /* ── WINNER SCREEN ── */
-.winner-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 40%,rgba(0,240,255,.1) 0%,transparent 70%);}
+.winner-wrap{flex:1;display:flex;align-items:center;justify-content:center;}
 .winner-box{background:var(--bg2);border:2px solid var(--gold-dim);padding:2rem;max-width:460px;width:90%;text-align:center;}
 .winner-box .trophy{font-size:3rem;display:block;margin-bottom:.4rem;}
 .winner-box h2{font-family:'Rajdhani',sans-serif;font-weight:800;font-size:.95rem;color:var(--gold);letter-spacing:.2em;margin-bottom:1rem;}
@@ -2161,6 +2161,7 @@ function exportResults(){
 }
 
 function resetBracket(){
+  if(!confirm('Es-tu sûr de vouloir quitter?')) return;
   stopChrono();
   queue=[];roundWinners=[];matchHistory=[];
   draftPool=[];draftFinalList=[];draftPicksDone=0;_currentDraftOffers=[];
