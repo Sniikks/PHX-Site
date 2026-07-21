@@ -67,6 +67,10 @@ const ProtectedWrite = {
         if (code === null) throw new Error('Annulé.');
         continue;
       }
+      if (res.status === 429) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Trop de tentatives, réessaie plus tard.');
+      }
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Erreur serveur.');
