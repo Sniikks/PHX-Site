@@ -32,6 +32,20 @@ const ALLOWED_TABLES = new Set(['369_games', 'sniikks_games', 'proposition', 'br
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 
+// ── Verrou global ──
+// Un blocage par IP seule peut être contourné en changeant d'IP de
+// sortie VPN à chaque tentative. En plus du verrou par IP, on compte
+// aussi le nombre total d'échecs (toutes IP confondues) sur une courte
+// fenêtre glissante : si ça dépasse GLOBAL_MAX_ATTEMPTS, on bloque
+// TOUTES les écritures pendant GLOBAL_LOCKOUT_MINUTES — y compris pour
+// les IP qui n'ont encore rien raté. Un compromis assumé : sur un site
+// à faible trafic entre quelques personnes, un blocage global bref en
+// cas d'attaque est un bien moindre inconvénient que de laisser
+// quelqu'un de déterminé recommencer indéfiniment en changeant d'IP.
+const GLOBAL_MAX_ATTEMPTS = 5;
+const GLOBAL_LOCKOUT_MINUTES = 10;
+const GLOBAL_ROW_ID = '__global__';
+
 function getClientIp(req) {
     const xff = req.headers['x-forwarded-for'];
     if (xff) return String(xff).split(',')[0].trim();
@@ -55,16 +69,22 @@ export default async function handler(req, res) {
     const ip = getClientIp(req);
     const now = new Date();
 
-    // ── Anti-brute-force : cette IP est-elle actuellement bloquée ? ──
+    // ── Anti-brute-force : cette IP, ou le site entier, est-il bloqué ? ──
     let attemptRow = null;
+    let globalRow = null;
     try {
-        const { data: row } = await supabase.from('write_attempts').select('*').eq('ip', ip).maybeSingle();
-        attemptRow = row;
+        const { data: rows } = await supabase.from('write_attempts').select('*').in('ip', [ip, GLOBAL_ROW_ID]);
+        attemptRow = rows?.find(r => r.ip === ip) || null;
+        globalRow = rows?.find(r => r.ip === GLOBAL_ROW_ID) || null;
     } catch (e) { console.error('write_attempts lecture, erreur:', e); }
 
     if (attemptRow?.locked_until && new Date(attemptRow.locked_until) > now) {
         const minutesLeft = Math.ceil((new Date(attemptRow.locked_until) - now) / 60000);
         return res.status(429).json({ error: `Trop de tentatives. Réessaie dans ${minutesLeft} min.` });
+    }
+    if (globalRow?.locked_until && new Date(globalRow.locked_until) > now) {
+        const minutesLeft = Math.ceil((new Date(globalRow.locked_until) - now) / 60000);
+        return res.status(429).json({ error: `Trop de tentatives ratées récemment (toutes origines confondues). Réessaie dans ${minutesLeft} min.` });
     }
 
     // ── Vérification du code ──
@@ -72,23 +92,32 @@ export default async function handler(req, res) {
         try {
             const failCount = (attemptRow?.fail_count || 0) + 1;
             const upd = { ip, fail_count: failCount, updated_at: now.toISOString() };
-            if (failCount >= MAX_ATTEMPTS) {
-                upd.locked_until = new Date(now.getTime() + LOCKOUT_MINUTES * 60000).toISOString();
-                upd.fail_count = 0; // le verrou prend le relai, on repart de zéro après
-            } else {
-                upd.locked_until = null;
-            }
-            await supabase.from('write_attempts').upsert(upd, { onConflict: 'ip' });
+            upd.locked_until = failCount >= MAX_ATTEMPTS
+                ? new Date(now.getTime() + LOCKOUT_MINUTES * 60000).toISOString()
+                : null;
+            if (upd.locked_until) upd.fail_count = 0; // le verrou prend le relai, on repart de zéro après
+
+            const globalFailCount = (globalRow?.fail_count || 0) + 1;
+            const globalUpd = { ip: GLOBAL_ROW_ID, fail_count: globalFailCount, updated_at: now.toISOString() };
+            globalUpd.locked_until = globalFailCount >= GLOBAL_MAX_ATTEMPTS
+                ? new Date(now.getTime() + GLOBAL_LOCKOUT_MINUTES * 60000).toISOString()
+                : null;
+            if (globalUpd.locked_until) globalUpd.fail_count = 0;
+
+            await supabase.from('write_attempts').upsert([upd, globalUpd], { onConflict: 'ip' });
         } catch (e) { console.error('write_attempts écriture, erreur:', e); }
         return res.status(401).json({ error: 'Code incorrect.' });
     }
 
-    // Code correct : on efface l'historique d'échecs de cette IP.
-    if (attemptRow) {
-        try {
-            await supabase.from('write_attempts').update({ fail_count: 0, locked_until: null, updated_at: now.toISOString() }).eq('ip', ip);
-        } catch (e) { console.error('write_attempts reset, erreur:', e); }
-    }
+    // Code correct : on efface l'historique d'échecs (cette IP + le
+    // compteur global — une réussite est un signal d'usage légitime).
+    try {
+        await supabase.from('write_attempts')
+            .upsert([
+                { ip, fail_count: 0, locked_until: null, updated_at: now.toISOString() },
+                { ip: GLOBAL_ROW_ID, fail_count: 0, locked_until: null, updated_at: now.toISOString() }
+            ], { onConflict: 'ip' });
+    } catch (e) { console.error('write_attempts reset, erreur:', e); }
 
     if (!ALLOWED_TABLES.has(table)) {
         return res.status(400).json({ error: 'Table non autorisée.' });
