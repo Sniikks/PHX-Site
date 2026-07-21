@@ -31,7 +31,12 @@ html{background:var(--bg);}
 body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08), transparent 60%);}
 
 /* HEADER */
-.header{display:flex;align-items:center;gap:.6rem;padding:.4rem .8rem;flex-shrink:0;}
+.header{display:flex;align-items:center;gap:.6rem;padding:.4rem .8rem;flex-shrink:0;position:relative;}
+.header-right{display:flex;align-items:center;gap:.6rem;}
+@media (min-width:761px) and (min-height:600px){
+  .header .sep{display:none;}
+  .header-right{position:absolute;right:.8rem;top:50%;transform:translateY(-50%);}
+}
 .page-title{text-align:center;padding:.8rem 0 0;flex-shrink:0;}
 .page-title h1{margin:0;font-family:'Rajdhani',sans-serif;font-size:clamp(20.8px,4vw,30.4px);font-weight:700;line-height:1.15;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;}
 .sep{flex:1;}
@@ -534,11 +539,13 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
 <div class="header">
   <a href="index.html" class="menu-btn">☰ Menu</a>
   <div class="sep"></div>
-  <span class="pill" id="statusPill"></span>
-  <button class="btn" id="exportBtn" onclick="exportResults()" style="display:none">💾 Export</button>
-  <button class="btn danger" id="resetBtn" onclick="resetBracket()" style="display:none">↺ Quitter</button>
+  <div class="header-right">
+    <span class="pill" id="statusPill"></span>
+    <button class="btn" id="exportBtn" onclick="exportResults()" style="display:none">💾 Export</button>
+    <button class="btn danger" id="resetBtn" onclick="resetBracket()" style="display:none">↺ Quitter</button>
+  </div>
 </div>
-<div class="page-title"><h1>🏆 Bracket</h1></div>
+<div class="page-title"><h1 id="pageTitleH1">🏆 Bracket</h1></div>
   <div class="subtitle" id="subtitleEl">Choisis ton mode de jeu, ainsi que la liste des jeux.</div>
 
 <!-- IMPORT -->
@@ -2161,7 +2168,6 @@ function exportResults(){
 }
 
 function resetBracket(){
-  if(!confirm('Es-tu sûr de vouloir quitter?')) return;
   stopChrono();
   queue=[];roundWinners=[];matchHistory=[];
   draftPool=[];draftFinalList=[];draftPicksDone=0;_currentDraftOffers=[];
