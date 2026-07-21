@@ -107,7 +107,20 @@
     '6108-ryu-hmm.png', '16392-goku.png', '2759_geralt.png',
     '788129-umbrella.png', '62625-butterfly.png', '2754-a2laugh.png',
     '4898-tekken-kazuya.png', '11639-rebeccasalute.png',
-    '6074-orisahappy.png', '8212-bastioncap.png', '7588-the-last-of-us.png'
+    '6074-orisahappy.png', '8212-bastioncap.png', '7588-the-last-of-us.png',
+    '1018_Witcher3.png', '1355-rust.png', '1642_vault_blTPS.png',
+    '1986_SpiderMan.png', '205621-worldofwarcraft.png',
+    '208924-btd6-dart-monkey.png', '24367-pubgsteam.png', '27174-camera.png',
+    '2874-baldursgate.png', '3051-assassin-mission.png',
+    '32558-pacman-showsyou.png', '3495-rockstar-launcher.png',
+    '3692-pikachusmug.png', '4858-platinum-trophy.png',
+    '521028-phasmo-ids.png', '555182-hrclub14days.png',
+    '57291-alta-recycling-cude.png', '6707-lol.png', '6844-deadbydaylight.png',
+    '7445-callofdutyblackops3.png', '7694-gameover.png', '7863-skyrimicon.png',
+    '824551-masterchief.png', '8403-gaben.png', '90202-targetacquired.png',
+    '940605-legostarwarsclassiclogo.png', '95962-supermansymbolclassic.png',
+    '969490-csgo.png', 'MadSmashBayonetta.png', 'Metroid.png',
+    'borderlands2.png', 'gmod.png'
   ];
   // Chemin relatif : fonctionne quelle que soit la page tant que
   // assets/icons/ est à la racine du site, à côté d'index.html.
