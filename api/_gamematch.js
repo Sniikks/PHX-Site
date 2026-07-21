@@ -57,7 +57,11 @@ export function tokensMatch(a, b) {
     if (/\d/.test(a) || /\d/.test(b)) return false;
     if (a.length <= 3 || b.length <= 3) return false;
     const maxLen = Math.max(a.length, b.length);
-    const threshold = maxLen <= 6 ? 1 : 2;
+    // Un mot court (4 lettres) où une seule lettre change peut être un tout
+    // autre jeu (ex. "Raft" vs "Rift") : pas de tolérance dans ce cas, il faut
+    // une correspondance exacte. La tolérance ne s'applique qu'à partir de 5
+    // lettres, où une faute de frappe pèse proportionnellement moins.
+    const threshold = maxLen <= 4 ? 0 : maxLen <= 7 ? 1 : 2;
     return levenshtein(a, b) <= threshold;
 }
 
