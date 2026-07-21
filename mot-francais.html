@@ -258,9 +258,11 @@
   .cell-mini-guesses span.win { background:var(--good); }
   .cell-mini-guesses span.used { background:var(--text2); }
   .archive-cell .cell-name {
-    position:absolute; bottom:.3rem; left:.3rem; right:.3rem; z-index:2;
-    font-size:8.5px; color:var(--text); font-weight:600; line-height:1.1;
+    position:absolute; bottom:.25rem; left:.25rem; right:.25rem; z-index:2;
+    font-size:8.5px; color:var(--text); font-weight:600; line-height:1.25;
     overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+    background:rgba(8,9,12,.72); padding:2px 4px; border-radius:2px;
+    -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px);
   }
   .archive-cell:hover:not(.disabled) { filter:brightness(1.15); }
 
