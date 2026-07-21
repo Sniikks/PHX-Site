@@ -265,7 +265,6 @@
     text-align:center;
     -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px);
   }
-  .archive-cell .cell-name.multiline { text-align:left; }
   .archive-cell:hover:not(.disabled) { filter:brightness(1.15); }
 
   .history-banner {
@@ -1060,30 +1059,6 @@
   function monthPrefix(y, m) { return `motcache_${y}-${String(m).padStart(2, '0')}-`; }
   let showNames = true;
 
-  // Le nom d'un jeu est centré par défaut dans sa case d'archive ; s'il est
-  // trop long pour tenir sur une ligne (donc affiché sur 2 lignes), le
-  // centrage rend la lecture moins naturelle — on repasse alors en aligné
-  // à gauche. Détection par mesure réelle (pas un seuil de caractères,
-  // peu fiable vu que la case peut changer de taille selon l'écran).
-  function markMultilineCellNames() {
-    const probe = document.createElement('span');
-    probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;left:-9999px;';
-    document.body.appendChild(probe);
-    document.querySelectorAll('.cell-name').forEach(el => {
-      const cell = el.closest('.archive-cell');
-      if (!cell) return;
-      const cs = getComputedStyle(el);
-      probe.style.fontSize = cs.fontSize;
-      probe.style.fontWeight = cs.fontWeight;
-      probe.style.fontFamily = cs.fontFamily;
-      probe.style.letterSpacing = cs.letterSpacing;
-      probe.textContent = el.textContent;
-      const available = cell.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-      el.classList.toggle('multiline', probe.getBoundingClientRect().width > available);
-    });
-    probe.remove();
-  }
-
   async function renderArchive() {
     const area = document.getElementById('archiveArea');
     area.innerHTML = '<div class="state-msg">Chargement des archives…</div>';
@@ -1172,7 +1147,6 @@
           ${cellsHtml}
         </div>
       `;
-      markMultilineCellNames();
 
       document.getElementById('archFirst').addEventListener('click', () => { archiveYear = parseInt(LAUNCH_DATE.slice(0,4)); archiveMonth = parseInt(LAUNCH_DATE.slice(5,7)); renderArchive(); });
       document.getElementById('archLast').addEventListener('click', () => { archiveYear = parseInt(todayStr.slice(0,4)); archiveMonth = parseInt(todayStr.slice(5,7)); renderArchive(); });
