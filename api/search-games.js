@@ -121,7 +121,7 @@ const steamYearCache = new Map();
 // seulement pour un petit nombre de jeux à la fois et avec un délai court,
 // pour ne pas retomber dans la lenteur de l'ancienne boucle (jusqu'à 12
 // appels par frappe, supprimée précédemment).
-async function fetchSteamYear(appid, timeoutMs = 900) {
+async function fetchSteamYear(appid, timeoutMs = 700) {
     if (steamYearCache.has(appid)) return steamYearCache.get(appid);
     try {
         const res = await fetchWithTimeout(`https://store.steampowered.com/api/appdetails?appids=${appid}&l=english&filters=basic`, timeoutMs);
@@ -200,7 +200,7 @@ async function handleAutocomplete(req, res, debug) {
                 `fields name,first_release_date,total_rating_count; ` +
                 `where name ~ *"${clean}"* & version_parent = null & first_release_date < ${nowUnix}; ` +
                 `sort total_rating_count desc; limit 50;`,
-                2500
+                1800
             );
             debugInfo.igdbCount = Array.isArray(rows) ? rows.length : 0;
             return Array.isArray(rows) ? rows : [];
@@ -213,7 +213,7 @@ async function handleAutocomplete(req, res, debug) {
     const steamPromise = (async () => {
         try {
             const url = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(q)}&l=english&cc=us`;
-            const r = await fetchWithTimeout(url, 2500);
+            const r = await fetchWithTimeout(url, 1800);
             debugInfo.steamStatus = r.status;
             if (!r.ok) { debugInfo.steamBody = (await r.text()).slice(0, 200); return []; }
             const data = await r.json();

@@ -114,7 +114,7 @@
   .suggestions {
     position:absolute; top:100%; left:0; right:0; margin-top:4px;
     background:var(--bg2); border:1px solid var(--border); border-radius:8px;
-    max-height:220px; overflow-y:auto; z-index:50; display:none;
+    max-height:340px; overflow-y:auto; z-index:50; display:none;
   }
   .suggestions.open { display:block; }
   .suggestions div { padding:.55rem .8rem; font-size:13px; cursor:pointer; color:var(--text); border-bottom:1px solid var(--border); }
@@ -597,7 +597,7 @@
       renderSuggestionsList(cached);
       return;
     }
-    suggestTimer = setTimeout(() => fetchSuggestions(q), 90);
+    suggestTimer = setTimeout(() => fetchSuggestions(q), 55);
   }
   async function fetchSuggestions(q) {
     if (suggestAbortController) suggestAbortController.abort();
@@ -607,7 +607,7 @@
     try {
       const res = await fetch('/api/search-games?q=' + encodeURIComponent(q), { signal: controller.signal });
       const data = await res.json();
-      const suggestions = (data.suggestions || []).slice(0, 8);
+      const suggestions = (data.suggestions || []).slice(0, 20);
       if (suggestCache.size >= SUGGEST_CACHE_MAX) suggestCache.delete(suggestCache.keys().next().value);
       suggestCache.set(q.toLowerCase(), suggestions);
       if (reqId !== suggestRequestId) return; // une saisie plus récente a déjà pris le relais

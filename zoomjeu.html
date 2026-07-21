@@ -959,7 +959,7 @@
       renderSuggestions();
       return;
     }
-    suggestTimer = setTimeout(() => fetchSuggestions(q), 90);
+    suggestTimer = setTimeout(() => fetchSuggestions(q), 55);
   }
   async function fetchSuggestions(q) {
     // On annule la requête précédente si elle n'a pas encore répondu : sans ça, une réponse lente

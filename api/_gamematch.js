@@ -34,6 +34,23 @@ export function levenshtein(a, b) {
     return dp[m][n];
 }
 
+// Suffixe d'édition/version commerciale ajouté par Steam ou IGDB (ex. "Grand
+// Theft Auto V: Premium Edition") : ça ne désigne PAS un jeu différent, juste
+// un SKU/une édition — contrairement au sous-titre d'un épisode numéroté
+// (ex. "Half-Life: Alyx"), qui lui identifie un jeu précis. Sans ce filet, la
+// bonne réponse tapée telle quelle ("Grand Theft Auto V") n'était jamais
+// validée : juste comptée "proche" 🔥, alors que c'est le bon jeu.
+const EDITION_SUFFIX_RE = /[:\-–]?\s*(the\s+)?(complete|definitive|enhanced|remaster(?:ed)?|redux|legacy|goty|game of the year|premium(?:\s+online)?|deluxe|ultimate|gold|special|anniversary|standard|extended|director'?s?\s*cut)\s*(edition)?\s*$/i;
+
+function stripEditionSuffix(name) {
+    let prev, current = name.trim();
+    do {
+        prev = current;
+        current = current.replace(EDITION_SUFFIX_RE, '').trim();
+    } while (current !== prev && current.length > 0);
+    return current;
+}
+
 export function getVariants(name) {
     const cleanName = name.replace(/\s*\(\d{4}\)\s*$/, '');
     const base = normalize(cleanName);
@@ -44,6 +61,8 @@ export function getVariants(name) {
     // NE DOIT PAS suffire à gagner (c'était la cause du bug où deviner juste
     // le nom de la licence validait n'importe quel épisode).
     const variants = [base];
+    const withoutEdition = normalize(stripEditionSuffix(cleanName));
+    if (withoutEdition && withoutEdition !== base) variants.push(withoutEdition);
     const parts = cleanName.split(/[:\-]/);
     if (parts.length > 1) {
         const subtitle = normalize(parts[parts.length - 1]);
