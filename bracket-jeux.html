@@ -242,20 +242,16 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
   flex-wrap:wrap;
 }
 .round-badge{
-  display:flex;align-items:center;gap:.35rem;
-  font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;
-  color:var(--gold);letter-spacing:.12em;white-space:nowrap;
-  background:var(--bg3);border:1px solid var(--gold-dim);
-  padding:.35rem .8rem;border-radius:20px;
-  box-shadow:0 0 12px var(--gold-glow);
+  font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.9rem;
+  color:var(--gold);letter-spacing:.14em;white-space:nowrap;
 }
-.round-badge.draft-badge{color:var(--draft);border-color:var(--draft-dim);box-shadow:0 0 12px var(--draft-glow);}
-.round-badge.champion-badge{color:var(--champ);border-color:var(--champ-dim);box-shadow:0 0 12px var(--champ-glow);}
+.round-badge.draft-badge{color:var(--draft);}
+.round-badge.champion-badge{color:var(--champ);}
 .match-info{font-size:10.5px;color:var(--text2);white-space:nowrap;letter-spacing:.03em;}
-.progress-wrap{flex:1;min-width:80px;height:5px;background:var(--bg4);overflow:hidden;border-radius:10px;}
-.progress-fill{height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold));transition:width .35s ease;border-radius:10px;box-shadow:0 0 8px var(--gold-glow);}
-.progress-fill.draft-fill{background:linear-gradient(90deg,#a03030,var(--draft));box-shadow:0 0 8px var(--draft-glow);}
-.progress-fill.champion-fill{background:linear-gradient(90deg,#5a3590,var(--champ));box-shadow:0 0 8px var(--champ-glow);}
+.progress-wrap{flex:1;min-width:80px;height:4px;background:var(--bg4);overflow:hidden;border-radius:10px;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold));transition:width .35s ease;border-radius:10px;}
+.progress-fill.draft-fill{background:linear-gradient(90deg,#a03030,var(--draft));}
+.progress-fill.champion-fill{background:linear-gradient(90deg,#5a3590,var(--champ));}
 
 /* History strip */
 .history-strip{
