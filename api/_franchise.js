@@ -18,18 +18,6 @@
 
 import { igdbQuery, isIgdbConfigured } from './_igdb.js';
 
-// Même logique que dans search-games.js (voir les commentaires là-bas) : IGDB
-// compare le filtre "~" littéralement, donc "half life 2" ne trouverait pas
-// "Half-Life 2" sans ce découpage en mots enchaînés par des wildcards.
-function splitQueryWords(clean) {
-    return clean.split(/[\s\-_:]+/).filter(Boolean);
-}
-function buildContainsPattern(clean) {
-    const words = splitQueryWords(clean);
-    if (words.length <= 1) return `*"${clean}"*`;
-    return '*' + words.map(w => `"${w}"`).join('*') + '*';
-}
-
 // Cache mémoire (survit tant que l'instance serverless reste "chaude") : deux
 // essais successifs sur la même licence ne refont pas l'aller-retour IGDB.
 const franchiseInfoCache = new Map();
@@ -41,15 +29,23 @@ async function fetchFranchiseInfo(name) {
     if (franchiseInfoCache.has(cacheKey)) return franchiseInfoCache.get(cacheKey);
 
     try {
+        // Commande "search" (floue, insensible aux accents/tirets/espaces) plutôt
+        // que "~" (littéral) — on cherche ici "la meilleure correspondance IGDB
+        // pour ce nom", exactement ce à quoi "search" sert. PAS de clause "where"
+        // (combo "search" + "where" documenté cassé ailleurs dans le projet) :
+        // le filtrage édition/DLC se fait donc en JS après coup.
         const rows = await igdbQuery('games',
-            `fields name,franchises,collection,total_rating_count; ` +
-            `where name ~ ${buildContainsPattern(clean)} & version_parent = null & parent_game = null; ` +
-            `sort total_rating_count desc; limit 5;`,
+            `search "${clean}"; ` +
+            `fields name,franchises,collection,total_rating_count,version_parent,parent_game; ` +
+            `limit 5;`,
             2000
         );
-        // Le résultat le plus populaire est pris comme correspondance la plus
-        // probable pour ce nom (même logique que le reste de l'autocomplétion).
-        const best = Array.isArray(rows) && rows.length ? rows[0] : null;
+        // Le résultat le plus populaire, parmi ceux qui ne sont ni une édition
+        // ni un DLC, est pris comme correspondance la plus probable pour ce nom.
+        const candidates = (Array.isArray(rows) ? rows : [])
+            .filter(g => g && !g.version_parent && !g.parent_game)
+            .sort((a, b) => (b.total_rating_count || 0) - (a.total_rating_count || 0));
+        const best = candidates[0] || null;
         franchiseInfoCache.set(cacheKey, best);
         return best;
     } catch (e) {

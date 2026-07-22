@@ -110,29 +110,12 @@ function fetchWithTimeout(url, ms) {
     return fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(ms) });
 }
 
-// ── Motifs IGDB insensibles aux séparateurs ("-", "_", ":") ──
-// IGDB compare le filtre "~" au titre de façon littérale : taper "half life 2"
-// (espaces) ne trouve PAS "Half-Life 2" (tiret), le caractère à cette position
-// ne correspond pas. On découpe donc la saisie en mots (en traitant espace,
-// tiret, underscore et deux-points comme des séparateurs équivalents), puis on
-// enchaîne des segments littéraux séparés par "*" (le wildcard IGDB déjà
-// utilisé et testé ailleurs dans ce fichier) : "*" entre deux mots veut dire
-// "n'importe quoi ici", ce qui couvre aussi bien un tiret, un espace, ou rien
-// du tout entre les deux. Une saisie d'un seul mot (le cas le plus courant,
-// ex. "spi") redonne exactement l'ancien motif — aucun changement pour elle.
-function splitQueryWords(clean) {
-    return clean.split(/[\s\-_:]+/).filter(Boolean);
-}
-function buildContainsPattern(clean) {
-    const words = splitQueryWords(clean);
-    if (words.length <= 1) return `*"${clean}"*`;
-    return '*' + words.map(w => `"${w}"`).join('*') + '*';
-}
-function buildPrefixPattern(clean) {
-    const words = splitQueryWords(clean);
-    if (words.length <= 1) return `"${clean}"*`;
-    return `"${words[0]}"` + words.slice(1).map(w => `*"${w}"`).join('') + '*';
-}
+// NOTE : une première tentative ici chaînait plusieurs segments littéraux
+// séparés par "*" (ex. *"half"*"life"*) pour ignorer les séparateurs — testée
+// en conditions réelles, elle ne fonctionne PAS comme espéré (résultats
+// quasi vides). Abandonnée. Le vrai correctif est plus bas : une requête IGDB
+// "search" (floue, insensible aux accents/tirets/espaces) en complément des
+// requêtes "~" littérales existantes, plutôt qu'un bricolage de motif.
 
 // Cache mémoire (survit tant que l'instance serverless reste "chaude") pour le
 // filet de secours ci-dessous : évite de rappeler Steam pour le même jeu à
@@ -241,7 +224,7 @@ async function handleAutocomplete(req, res, debug) {
         try {
             const rows = await igdbQuery('games',
                 `fields name,first_release_date,total_rating_count,category; ` +
-                `where name ~ ${buildPrefixPattern(clean)} & version_parent = null & parent_game = null & first_release_date < ${nowUnix}; ` +
+                `where name ~ "${clean}"* & version_parent = null & parent_game = null & first_release_date < ${nowUnix}; ` +
                 `sort total_rating_count desc; limit 30;`,
                 1400
             );
@@ -266,7 +249,7 @@ async function handleAutocomplete(req, res, debug) {
             // 5=mod, 6=episode, 7=season, 13=pack.
             const rows = await igdbQuery('games',
                 `fields name,first_release_date,total_rating_count,category; ` +
-                `where name ~ ${buildContainsPattern(clean)} & version_parent = null & parent_game = null & first_release_date < ${nowUnix}; ` +
+                `where name ~ *"${clean}"* & version_parent = null & parent_game = null & first_release_date < ${nowUnix}; ` +
                 `sort total_rating_count desc; limit 50;`,
                 1400
             );
@@ -274,6 +257,37 @@ async function handleAutocomplete(req, res, debug) {
             return Array.isArray(rows) ? rows : [];
         } catch (e) {
             debugInfo.igdbContainsError = e.message;
+            return [];
+        }
+    })();
+
+    // Requête "search" (floue) en complément des deux "~" ci-dessus, littérales.
+    // "~" ("half life 2" pour "Half-Life 2", "spider man" pour "Spider-Man")
+    // ne trouve rien : le caractère à la position du tiret ne correspond pas à
+    // l'espace tapé, et "~" ne normalise ni les accents ni la ponctuation. Une
+    // tentative de contournement par chaînage de wildcards (*"half"*"life"*) a
+    // été testée en conditions réelles et NE fonctionne PAS (résultats quasi
+    // vides) — abandonnée. La vraie recherche floue d'IGDB (commande "search",
+    // moteur type Algolia) est conçue pour exactement ce cas : elle ignore
+    // nativement accents, tirets, espaces et petites fautes de frappe.
+    // PAS de clause "where" ici : "search" combiné à un "where" est cassé (voir
+    // plus haut, déjà rencontré avec "category = 0"). Tout le filtrage
+    // (éditions, DLC, jeux pas encore sortis) se fait donc en JS après coup,
+    // en demandant version_parent/parent_game/first_release_date comme CHAMPS
+    // plutôt que comme filtres.
+    const igdbSearchPromise = (async () => {
+        if (!isIgdbConfigured()) return [];
+        try {
+            const rows = await igdbQuery('games',
+                `search "${clean}"; ` +
+                `fields name,first_release_date,total_rating_count,category,version_parent,parent_game; ` +
+                `limit 30;`,
+                1400
+            );
+            debugInfo.igdbSearchCount = Array.isArray(rows) ? rows.length : 0;
+            return Array.isArray(rows) ? rows : [];
+        } catch (e) {
+            debugInfo.igdbSearchError = e.message;
             return [];
         }
     })();
@@ -318,8 +332,14 @@ async function handleAutocomplete(req, res, debug) {
         }
     })();
 
-    const [igdbPrefixResults, igdbContainsResults, steamItems, knownGames] = await Promise.all([igdbPrefixPromise, igdbContainsPromise, steamPromise, knownGamesPromise]);
-    const igdbResults = [...igdbPrefixResults, ...igdbContainsResults];
+    const [igdbPrefixResults, igdbContainsResults, igdbSearchResultsRaw, steamItems, knownGames] = await Promise.all([igdbPrefixPromise, igdbContainsPromise, igdbSearchPromise, steamPromise, knownGamesPromise]);
+    // igdbSearchResultsRaw n'a pas passé par un "where" (voir plus haut) : on
+    // applique ici à la main les mêmes filtres que "where" faisait pour les
+    // deux autres requêtes (édition, DLC, pas encore sorti).
+    const igdbSearchResults = igdbSearchResultsRaw.filter(g =>
+        !g.version_parent && !g.parent_game && (!g.first_release_date || g.first_release_date < nowUnix)
+    );
+    const igdbResults = [...igdbPrefixResults, ...igdbContainsResults, ...igdbSearchResults];
 
     // Année + popularité (total_rating_count) IGDB par nom normalisé : sert à
     // (1) donner une année aux résultats Steam sans correspondance IGDB directe,
@@ -498,7 +518,7 @@ async function handleResolve(req, res, debug) {
             const nowUnix = Math.floor(Date.now() / 1000);
             const rows = await igdbQuery('games',
                 `fields name,first_release_date; ` +
-                `where name ~ ${buildContainsPattern(clean)} & version_parent = null & parent_game = null & first_release_date < ${nowUnix}; ` +
+                `where name ~ *"${clean}"* & version_parent = null & parent_game = null & first_release_date < ${nowUnix}; ` +
                 `sort total_rating_count desc; limit 5;`,
                 2000
             );
