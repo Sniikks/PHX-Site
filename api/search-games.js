@@ -187,7 +187,13 @@ async function handleAutocomplete(req, res, debug) {
     // sur Vercel, l'exécution peut être coupée juste après la réponse, donc
     // ces appels seraient de toute façon perdus. Le vrai gain de vitesse est
     // ailleurs : voir l'écriture de cache non bloquante plus bas).
+    // &nocache=1 : contourne le cache DB (lecture ET écriture) — utile pour
+    // déboguer en direct sans attendre l'expiration de 24h d'une entrée déjà
+    // en cache (ex. capturée pendant une transition entre deux déploiements).
+    const noCache = req.query.nocache === '1';
+
     try {
+        if (noCache) throw new Error('nocache=1, lecture sautée volontairement');
         const { data: cached } = await supabase
             .from('games_cache').select('data, updated_at').eq('id', cacheId).maybeSingle();
         if (cached && (Date.now() - new Date(cached.updated_at).getTime()) < CACHE_TTL_MS) {
@@ -196,7 +202,7 @@ async function handleAutocomplete(req, res, debug) {
             return res.status(200).json(debug ? { suggestions: cached.data, debug: debugInfo } : { suggestions: cached.data });
         }
     } catch (e) {
-        debugInfo.cacheReadError = e.message; // le cache est un bonus, jamais bloquant
+        if (!noCache) debugInfo.cacheReadError = e.message; // le cache est un bonus, jamais bloquant
     }
 
     const clean = q.replace(/["\\*]/g, '');
@@ -484,9 +490,20 @@ async function handleAutocomplete(req, res, debug) {
     // à quasiment chaque frappe) — le principal gain de vitesse de ce
     // correctif. Le joueur reçoit sa réponse dès que les résultats sont prêts ;
     // l'écriture se termine en arrière-plan, erreur ou pas.
-    supabase.from('games_cache').upsert({ id: cacheId, data: merged, updated_at: new Date().toISOString() })
-        .then(({ error }) => { if (error) debugInfo.cacheWriteError = error.message; })
-        .catch(e => { debugInfo.cacheWriteError = e.message; });
+    // Garde-fou : si IGDB est configuré mais qu'on se retrouve avec un résultat
+    // vide, c'est presque toujours un raté transitoire (timeout, hoquet IGDB)
+    // plutôt qu'une vraie saisie sans aucun jeu — on ne le met PAS en cache,
+    // pour que la prochaine frappe identique retente au lieu de rester coincée
+    // sur un résultat vide pendant 24h (c'est exactement ce qui est arrivé
+    // avec "spider man"/"half life" pendant une transition de déploiement).
+    const looksLikeTransientFailure = merged.length === 0 && isIgdbConfigured();
+    if (!looksLikeTransientFailure) {
+        supabase.from('games_cache').upsert({ id: cacheId, data: merged, updated_at: new Date().toISOString() })
+            .then(({ error }) => { if (error) debugInfo.cacheWriteError = error.message; })
+            .catch(e => { debugInfo.cacheWriteError = e.message; });
+    } else {
+        debugInfo.cacheWriteSkipped = 'résultat vide malgré IGDB configuré (probable raté transitoire)';
+    }
 
     // Cache CDN Vercel : la même saisie ("borderlands") faite par n'importe qui
     // dans les 24h est servie instantanément depuis le cache, sans même toucher
