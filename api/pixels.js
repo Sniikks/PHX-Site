@@ -9,7 +9,8 @@
 // ==========================================================
 
 import { createClient } from '@supabase/supabase-js';
-import { pickGameWithCover, fetchImageAsDataUri, isCorrectGuess, isCloseGuess } from './_pixelpool.js';
+import { pickGameWithCover, fetchImageAsDataUri, isCorrectGuess, isCloseGuess, sharesLeadingToken } from './_pixelpool.js';
+import { isSameFranchiseIgdb } from './_franchise.js';
 import { rememberKnownGame } from './_knowngames.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -191,7 +192,15 @@ async function handleAction(req, res) {
         if (publicData.attempt >= MAX_ATTEMPTS) {
             return await resolveLoss(publicData, secretName, secretYear, res);
         }
-        const close = isCloseGuess(text, secretName);
+        let close = isCloseGuess(text, secretName);
+        // Repli licence réelle : un seul mot en commun (le premier) ne suffit
+        // pas à isCloseGuess (trop risqué, voir "Dead Island"/"Dead Space")
+        // mais peut être le bon signal pour une vraie licence courte (ex.
+        // "Amnesia", "Arma", "TrackMania"). Vérifié via IGDB SEULEMENT dans
+        // ce cas précis (pas à chaque essai), pour rester rapide.
+        if (!close && sharesLeadingToken(text, secretName)) {
+            close = await isSameFranchiseIgdb(text, secretName);
+        }
         publicData.guesses.push({ text: `${close ? '🔥' : '✕'} ${text.trim()}`, wrong: true, close });
         await savePublicOnly(publicData);
         return res.status(200).json(publicData);

@@ -22,7 +22,8 @@
 // ==========================================================
 
 import { createClient } from '@supabase/supabase-js';
-import { isCorrectGuess, isCloseGuess, nameHint, extractYear } from './_gamematch.js';
+import { isCorrectGuess, isCloseGuess, sharesLeadingToken, nameHint, extractYear } from './_gamematch.js';
+import { isSameFranchiseIgdb } from './_franchise.js';
 import { rememberKnownGame } from './_knowngames.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -109,7 +110,16 @@ export default async function handler(req, res) {
                 if (!text) return res.status(400).json({ ok: false, error: 'Réponse vide.' });
 
                 const correct = isCorrectGuess(text, answer);
-                const close = !correct && isCloseGuess(text, answer);
+                let close = !correct && isCloseGuess(text, answer);
+                // Repli licence réelle : un seul mot en commun (le premier)
+                // ne suffit pas à isCloseGuess (trop risqué, voir "Dead
+                // Island"/"Dead Space") — mais peut être le bon signal pour
+                // une vraie licence courte (ex. "Amnesia", "Arma",
+                // "TrackMania"). On ne vérifie IGDB QUE dans ce cas précis
+                // (pas à chaque essai), pour rester rapide.
+                if (!correct && !close && sharesLeadingToken(text, answer)) {
+                    close = await isSameFranchiseIgdb(text, answer);
+                }
                 const hint = !correct ? nameHint(text, answer) : null;
                 lastGuess = { text, correct, close, nameHint: hint, year: null, yearHint: null };
 

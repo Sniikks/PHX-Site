@@ -198,22 +198,31 @@ export function isCloseGuess(guessRaw, gameName) {
     guessNumbers.forEach(n => { if (baseNumbers.has(n)) numberBonus++; });
     const totalMatches = matches + (matches > 0 ? numberBonus : 0);
 
-    // Seuil basé sur le "cœur" du nom (avant le premier ':' ou '-'), PAS sur le
-    // titre entier : un sous-titre différent (ex. "A Machine for Pigs" vs "The
-    // Dark Descent", "Operation Arrowhead" vs "DayZ") ajoute des mots qui ne
-    // matcheront jamais entre eux et gonflait artificiellement le seuil requis
-    // (ex. 4 mots significatifs pour "Amnesia: A Machine for Pigs" → seuil 2),
-    // alors qu'un seul mot de licence en commun ("amnesia", "arma") suffit à
-    // signaler "même franchise, autre épisode". Repli sur le titre entier si le
-    // nom n'a pas de séparateur (ex. "Dead Space") : dans ce cas on garde
-    // l'exigence stricte d'origine, pour ne pas rapprocher à tort deux
-    // franchises différentes qui partagent juste un mot générique (ex. "Dead
-    // Island" ne doit pas devenir "proche" de "Dead Space").
-    const corePart = cleanName.split(/[:\-]/)[0] || '';
-    const coreTokens = significantTokens(normalize(corePart).split(' ').filter(Boolean));
-    const thresholdBase = coreTokens.length > 0 ? coreTokens.length : baseTokens.length;
-    const threshold = Math.min(2, thresholdBase);
+    // Seuil : 2 mots partagés (ou 1 si le titre n'a qu'un seul mot
+    // significatif). Volontairement STRICT ici — un seul mot en commun ne
+    // suffit jamais tout seul (ex. "Dead Island" ne doit pas devenir "proche"
+    // de "Dead Space" juste parce qu'ils partagent "dead" : ce sont deux
+    // licences totalement différentes). Les cas où un seul mot de licence
+    // partagé DOIT compter (ex. "Amnesia", "Arma", "TrackMania") sont détectés
+    // séparément, par une vraie vérification de licence IGDB (voir
+    // sharesLeadingToken + isSameFranchiseIgdb dans _franchise.js, utilisés
+    // par guess.js/pixels.js) — pas par une supposition sur les mots.
+    const threshold = Math.min(2, baseTokens.length);
     return totalMatches >= threshold;
+}
+
+// Le tout premier mot significatif de l'essai correspond au tout premier mot
+// significatif du titre (ex. "TrackMania" pour "TrackMania Nations Forever",
+// "Amnesia" pour "Amnesia: A Machine for Pigs"). À lui seul, CE N'EST PAS une
+// preuve de même licence (voir "Dead Island"/"Dead Space") — sert seulement de
+// déclencheur pour décider s'il vaut la peine d'interroger IGDB (voir
+// isSameFranchiseIgdb) avant de conclure "proche".
+export function sharesLeadingToken(guessRaw, gameName) {
+    const cleanName = gameName.replace(/\s*\(\d{4}\)\s*$/, '');
+    const guessTokens = significantTokens(normalize(guessRaw).split(' ').filter(Boolean));
+    const baseTokens = significantTokens(normalize(cleanName).split(' ').filter(Boolean));
+    if (!guessTokens.length || !baseTokens.length) return false;
+    return tokensMatch(guessTokens[0], baseTokens[0]);
 }
 
 // Repère si la réponse commence par le(s) même(s) mot(s) que le vrai jeu.
