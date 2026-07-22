@@ -198,7 +198,21 @@ export function isCloseGuess(guessRaw, gameName) {
     guessNumbers.forEach(n => { if (baseNumbers.has(n)) numberBonus++; });
     const totalMatches = matches + (matches > 0 ? numberBonus : 0);
 
-    const threshold = Math.min(2, baseTokens.length);
+    // Seuil basé sur le "cœur" du nom (avant le premier ':' ou '-'), PAS sur le
+    // titre entier : un sous-titre différent (ex. "A Machine for Pigs" vs "The
+    // Dark Descent", "Operation Arrowhead" vs "DayZ") ajoute des mots qui ne
+    // matcheront jamais entre eux et gonflait artificiellement le seuil requis
+    // (ex. 4 mots significatifs pour "Amnesia: A Machine for Pigs" → seuil 2),
+    // alors qu'un seul mot de licence en commun ("amnesia", "arma") suffit à
+    // signaler "même franchise, autre épisode". Repli sur le titre entier si le
+    // nom n'a pas de séparateur (ex. "Dead Space") : dans ce cas on garde
+    // l'exigence stricte d'origine, pour ne pas rapprocher à tort deux
+    // franchises différentes qui partagent juste un mot générique (ex. "Dead
+    // Island" ne doit pas devenir "proche" de "Dead Space").
+    const corePart = cleanName.split(/[:\-]/)[0] || '';
+    const coreTokens = significantTokens(normalize(corePart).split(' ').filter(Boolean));
+    const thresholdBase = coreTokens.length > 0 ? coreTokens.length : baseTokens.length;
+    const threshold = Math.min(2, thresholdBase);
     return totalMatches >= threshold;
 }
 
