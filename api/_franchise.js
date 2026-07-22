@@ -18,6 +18,18 @@
 
 import { igdbQuery, isIgdbConfigured } from './_igdb.js';
 
+// Même logique que dans search-games.js (voir les commentaires là-bas) : IGDB
+// compare le filtre "~" littéralement, donc "half life 2" ne trouverait pas
+// "Half-Life 2" sans ce découpage en mots enchaînés par des wildcards.
+function splitQueryWords(clean) {
+    return clean.split(/[\s\-_:]+/).filter(Boolean);
+}
+function buildContainsPattern(clean) {
+    const words = splitQueryWords(clean);
+    if (words.length <= 1) return `*"${clean}"*`;
+    return '*' + words.map(w => `"${w}"`).join('*') + '*';
+}
+
 // Cache mémoire (survit tant que l'instance serverless reste "chaude") : deux
 // essais successifs sur la même licence ne refont pas l'aller-retour IGDB.
 const franchiseInfoCache = new Map();
@@ -31,7 +43,7 @@ async function fetchFranchiseInfo(name) {
     try {
         const rows = await igdbQuery('games',
             `fields name,franchises,collection,total_rating_count; ` +
-            `where name ~ *"${clean}"* & version_parent = null & parent_game = null; ` +
+            `where name ~ ${buildContainsPattern(clean)} & version_parent = null & parent_game = null; ` +
             `sort total_rating_count desc; limit 5;`,
             2000
         );

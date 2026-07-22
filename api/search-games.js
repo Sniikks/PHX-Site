@@ -110,6 +110,30 @@ function fetchWithTimeout(url, ms) {
     return fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(ms) });
 }
 
+// ── Motifs IGDB insensibles aux séparateurs ("-", "_", ":") ──
+// IGDB compare le filtre "~" au titre de façon littérale : taper "half life 2"
+// (espaces) ne trouve PAS "Half-Life 2" (tiret), le caractère à cette position
+// ne correspond pas. On découpe donc la saisie en mots (en traitant espace,
+// tiret, underscore et deux-points comme des séparateurs équivalents), puis on
+// enchaîne des segments littéraux séparés par "*" (le wildcard IGDB déjà
+// utilisé et testé ailleurs dans ce fichier) : "*" entre deux mots veut dire
+// "n'importe quoi ici", ce qui couvre aussi bien un tiret, un espace, ou rien
+// du tout entre les deux. Une saisie d'un seul mot (le cas le plus courant,
+// ex. "spi") redonne exactement l'ancien motif — aucun changement pour elle.
+function splitQueryWords(clean) {
+    return clean.split(/[\s\-_:]+/).filter(Boolean);
+}
+function buildContainsPattern(clean) {
+    const words = splitQueryWords(clean);
+    if (words.length <= 1) return `*"${clean}"*`;
+    return '*' + words.map(w => `"${w}"`).join('*') + '*';
+}
+function buildPrefixPattern(clean) {
+    const words = splitQueryWords(clean);
+    if (words.length <= 1) return `"${clean}"*`;
+    return `"${words[0]}"` + words.slice(1).map(w => `*"${w}"`).join('') + '*';
+}
+
 // Cache mémoire (survit tant que l'instance serverless reste "chaude") pour le
 // filet de secours ci-dessous : évite de rappeler Steam pour le même jeu à
 // chaque frappe suivante.
@@ -217,7 +241,7 @@ async function handleAutocomplete(req, res, debug) {
         try {
             const rows = await igdbQuery('games',
                 `fields name,first_release_date,total_rating_count,category; ` +
-                `where name ~ "${clean}"* & version_parent = null & parent_game = null & first_release_date < ${nowUnix}; ` +
+                `where name ~ ${buildPrefixPattern(clean)} & version_parent = null & parent_game = null & first_release_date < ${nowUnix}; ` +
                 `sort total_rating_count desc; limit 30;`,
                 1400
             );
@@ -242,7 +266,7 @@ async function handleAutocomplete(req, res, debug) {
             // 5=mod, 6=episode, 7=season, 13=pack.
             const rows = await igdbQuery('games',
                 `fields name,first_release_date,total_rating_count,category; ` +
-                `where name ~ *"${clean}"* & version_parent = null & parent_game = null & first_release_date < ${nowUnix}; ` +
+                `where name ~ ${buildContainsPattern(clean)} & version_parent = null & parent_game = null & first_release_date < ${nowUnix}; ` +
                 `sort total_rating_count desc; limit 50;`,
                 1400
             );
@@ -273,14 +297,21 @@ async function handleAutocomplete(req, res, debug) {
 
     const knownGamesPromise = (async () => {
         try {
-            // "Contient", insensible à la casse, comme IGDB — cohérent avec le
-            // reste de l'autocomplétion. Table minuscule (un jeu par puzzle
-            // conclu), donc pas besoin d'index spécial ni de limite agressive.
-            const { data, error } = await supabase
-                .from('known_games').select('name, year').ilike('name', `%${q}%`).limit(20);
+            // Avant : ILIKE '%q%' sur le nom brut — même souci que IGDB, "half
+            // life 2" ne trouvait pas "Half-Life 2" (le tiret ne correspond pas
+            // à l'espace tapé). Table minuscule (un jeu par puzzle conclu), donc
+            // on récupère tout et on filtre en JS avec normalizeName (déjà
+            // utilisé pour la déduplication plus bas), qui ignore ponctuation/
+            // accents/casse des deux côtés — insensible aux séparateurs dans
+            // les deux sens, contrairement à un ILIKE littéral.
+            const { data, error } = await supabase.from('known_games').select('name, year').limit(1000);
             if (error) throw error;
-            debugInfo.knownGamesCount = Array.isArray(data) ? data.length : 0;
-            return Array.isArray(data) ? data : [];
+            const normQ = normalizeName(q);
+            const filtered = (Array.isArray(data) ? data : [])
+                .filter(g => g && g.name && normalizeName(g.name).includes(normQ))
+                .slice(0, 20);
+            debugInfo.knownGamesCount = filtered.length;
+            return filtered;
         } catch (e) {
             debugInfo.knownGamesError = e.message;
             return [];
@@ -467,7 +498,7 @@ async function handleResolve(req, res, debug) {
             const nowUnix = Math.floor(Date.now() / 1000);
             const rows = await igdbQuery('games',
                 `fields name,first_release_date; ` +
-                `where name ~ *"${clean}"* & version_parent = null & parent_game = null & first_release_date < ${nowUnix}; ` +
+                `where name ~ ${buildContainsPattern(clean)} & version_parent = null & parent_game = null & first_release_date < ${nowUnix}; ` +
                 `sort total_rating_count desc; limit 5;`,
                 2000
             );
