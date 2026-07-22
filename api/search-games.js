@@ -161,15 +161,23 @@ async function handleAutocomplete(req, res, debug) {
     // telles quelles — sans ça, une requête déjà en cache (ex. tapée pendant un
     // test) continue de renvoyer l'ancienne liste non filtrée pendant 24h,
     // même après un correctif déployé.
-    const cacheId = 'v2:' + q.toLowerCase();
+    // v3 : bump lié au correctif "préfixe garanti" ci-dessous — les entrées
+    // mises en cache avant (résultats "commence par" parfois noyés/absents)
+    // ne doivent plus être resservies telles quelles.
+    const cacheId = 'v3:' + q.toLowerCase();
 
-    // ── Option A : cache écrit au fil de l'eau (table games_cache) ──
+    // ── Cache écrit au fil de l'eau (table games_cache) ──
     // La toute première fois que quelqu'un tape cette saisie (tous joueurs/
     // jours confondus), on interroge IGDB/Steam normalement. Toutes les
     // fois suivantes, tant que le cache n'a pas expiré (24h), la réponse
-    // vient directement de Supabase — plus aucun aller-retour IGDB/Steam,
-    // donc plus aucune latence externe. Le "catalogue" grossit tout seul
-    // avec l'usage réel, sans script de seed à maintenir.
+    // vient directement de Supabase — SANS toucher IGDB/Steam, exprès : ça
+    // évite de gaspiller leur quota (limité) sur des saisies déjà connues.
+    // On garde donc cette vérification AVANT de lancer les appels externes
+    // (les lancer en parallèle avec le cache économiserait ~100ms sur un
+    // cache-miss, mais déclencherait IGDB/Steam même sur un cache-hit — et
+    // sur Vercel, l'exécution peut être coupée juste après la réponse, donc
+    // ces appels seraient de toute façon perdus. Le vrai gain de vitesse est
+    // ailleurs : voir l'écriture de cache non bloquante plus bas).
     try {
         const { data: cached } = await supabase
             .from('games_cache').select('data, updated_at').eq('id', cacheId).maybeSingle();
@@ -182,44 +190,66 @@ async function handleAutocomplete(req, res, debug) {
         debugInfo.cacheReadError = e.message; // le cache est un bonus, jamais bloquant
     }
 
-    // IGDB et Steam en parallèle : le temps de réponse = le plus lent des deux,
-    // au lieu de la somme des deux. Ni l'un ni l'autre ne fait plus d'appel
-    // "détails" supplémentaire par jeu (c'était ça, le principal facteur de lenteur).
-    const igdbPromise = (async () => {
+    const clean = q.replace(/["\\*]/g, '');
+    const nowUnix = Math.floor(Date.now() / 1000);
+
+    // IGDB, Steam et known_games en parallèle : le temps de réponse = le plus
+    // lent des trois, au lieu de la somme. Aucun appel "détails" supplémentaire
+    // par jeu (c'était ça, le principal facteur de lenteur, réglé précédemment).
+    //
+    // IGDB est maintenant interrogé en DEUX requêtes séparées plutôt qu'une
+    // seule "contient" :
+    //  - igdbPrefixPromise : "commence par" (name ~ "texte"*), avec sa PROPRE
+    //    limite — garantit que les vrais jeux commençant par la saisie sont
+    //    toujours dans le lot, quelle que soit leur popularité.
+    //  - igdbContainsPromise : "contient" (name ~ *"texte"*), pour les jeux
+    //    ayant le mot ailleurs dans le titre (ex. "Star Wolves" pour "wolves").
+    // Avant, une seule requête "contient" triée par popularité + limit 50
+    // pouvait faire disparaître des jeux "commence par" peu connus si trop
+    // de jeux "contient" plus populaires remplissaient déjà les 50 places —
+    // exactement le bug signalé ("spi" ne remontait que des jeux commençant
+    // par Spi alors que des jeux avec Spi dedans existent aussi, et parfois
+    // l'inverse pouvait arriver). Les deux pools sont ensuite fusionnés et
+    // re-triés par pertinence (commence par > mot entier > sous-chaîne) plus
+    // bas, donc "commence par" reste bien affiché AVANT "contient".
+    const igdbPrefixPromise = (async () => {
         if (!isIgdbConfigured()) { debugInfo.igdbSkipped = 'TWITCH_CLIENT_ID/SECRET absents'; return []; }
         try {
-            const clean = q.replace(/["\\*]/g, '');
-            const nowUnix = Math.floor(Date.now() / 1000);
-            // Filtre "contient" (name ~ *"texte"*, insensible à la casse), testé et
-            // confirmé fonctionnel EN L'ISOLANT de "category = 0" (qui, lui, est cassé
-            // à lui seul — voir plus haut). Bien plus large qu'un simple "commence par" :
-            // trouve "Star Wolves", "MechWarrior 5: Clans - Wolves of Tukayyid"... même
-            // quand le mot cherché n'est pas en tout début de titre.
+            const rows = await igdbQuery('games',
+                `fields name,first_release_date,total_rating_count,category; ` +
+                `where name ~ "${clean}"* & version_parent = null & first_release_date < ${nowUnix}; ` +
+                `sort total_rating_count desc; limit 30;`,
+                1400
+            );
+            debugInfo.igdbPrefixCount = Array.isArray(rows) ? rows.length : 0;
+            return Array.isArray(rows) ? rows : [];
+        } catch (e) {
+            debugInfo.igdbPrefixError = e.message;
+            return [];
+        }
+    })();
+
+    const igdbContainsPromise = (async () => {
+        if (!isIgdbConfigured()) return [];
+        try {
             // "first_release_date < maintenant" écarte les jeux pas encore sortis (et,
             // en prime, ceux sans date du tout côté IGDB — auquel cas ils peuvent
             // toujours remonter via Steam + le filet de secours plus bas).
-            // NOTE : un filtre anti-"obscur" par popularité (total_rating_count/follows/
-            // hypes) a été testé et écarté : il excluait à tort des jeux récents mais
-            // légitimes (pas encore notés sur IGDB, ex. "Mechwarrior 5: Clans - Wolves
-            // of Tukayyid") — plus de faux positifs que de vrai nettoyage.
             // "category" est demandé comme CHAMP renvoyé (pas comme filtre "where" —
-            // c'est justement la combinaison "category = 0 dans where" qui est cassée,
-            // voir plus haut). Ça permet d'exclure ensuite en JS, de façon fiable, les
-            // catégories IGDB qui ne sont jamais le jeu de base : 1=dlc_addon,
-            // 2=expansion, 3=bundle, 5=mod, 6=episode, 7=season, 13=pack. Bien plus
-            // robuste que deviner via des mots-clés dans le nom (ex. "Batman: Arkham
-            // Knight - A Matter of Family", "- GCPD Lockdown"... aucun mot-clé DLC
-            // générique n'aurait détecté ces épisodes).
+            // c'est justement la combinaison "category = 0 dans where" qui est cassée).
+            // Ça permet d'exclure ensuite en JS, de façon fiable, les catégories IGDB
+            // qui ne sont jamais le jeu de base : 1=dlc_addon, 2=expansion, 3=bundle,
+            // 5=mod, 6=episode, 7=season, 13=pack.
             const rows = await igdbQuery('games',
                 `fields name,first_release_date,total_rating_count,category; ` +
                 `where name ~ *"${clean}"* & version_parent = null & first_release_date < ${nowUnix}; ` +
                 `sort total_rating_count desc; limit 50;`,
-                1800
+                1400
             );
-            debugInfo.igdbCount = Array.isArray(rows) ? rows.length : 0;
+            debugInfo.igdbContainsCount = Array.isArray(rows) ? rows.length : 0;
             return Array.isArray(rows) ? rows : [];
         } catch (e) {
-            debugInfo.igdbError = e.message;
+            debugInfo.igdbContainsError = e.message;
             return [];
         }
     })();
@@ -227,7 +257,7 @@ async function handleAutocomplete(req, res, debug) {
     const steamPromise = (async () => {
         try {
             const url = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(q)}&l=english&cc=us`;
-            const r = await fetchWithTimeout(url, 1800);
+            const r = await fetchWithTimeout(url, 1400);
             debugInfo.steamStatus = r.status;
             if (!r.ok) { debugInfo.steamBody = (await r.text()).slice(0, 200); return []; }
             const data = await r.json();
@@ -257,7 +287,8 @@ async function handleAutocomplete(req, res, debug) {
         }
     })();
 
-    const [igdbResults, steamItems, knownGames] = await Promise.all([igdbPromise, steamPromise, knownGamesPromise]);
+    const [igdbPrefixResults, igdbContainsResults, steamItems, knownGames] = await Promise.all([igdbPrefixPromise, igdbContainsPromise, steamPromise, knownGamesPromise]);
+    const igdbResults = [...igdbPrefixResults, ...igdbContainsResults];
 
     // Année + popularité (total_rating_count) IGDB par nom normalisé : sert à
     // (1) donner une année aux résultats Steam sans correspondance IGDB directe,
@@ -389,13 +420,15 @@ async function handleAutocomplete(req, res, debug) {
 
     const merged = filteredResults.slice(0, 60);
 
-    // Écriture dans le cache DB (best-effort, ne bloque jamais la réponse
-    // au joueur si Supabase est momentanément indisponible).
-    try {
-        await supabase.from('games_cache').upsert({ id: cacheId, data: merged, updated_at: new Date().toISOString() });
-    } catch (e) {
-        debugInfo.cacheWriteError = e.message;
-    }
+    // Écriture dans le cache DB (best-effort, ne bloque jamais la réponse au
+    // joueur). Volontairement PAS attendue (pas de "await") : avant, cet
+    // aller-retour Supabase retardait la réponse à chaque cache-miss (donc
+    // à quasiment chaque frappe) — le principal gain de vitesse de ce
+    // correctif. Le joueur reçoit sa réponse dès que les résultats sont prêts ;
+    // l'écriture se termine en arrière-plan, erreur ou pas.
+    supabase.from('games_cache').upsert({ id: cacheId, data: merged, updated_at: new Date().toISOString() })
+        .then(({ error }) => { if (error) debugInfo.cacheWriteError = error.message; })
+        .catch(e => { debugInfo.cacheWriteError = e.message; });
 
     // Cache CDN Vercel : la même saisie ("borderlands") faite par n'importe qui
     // dans les 24h est servie instantanément depuis le cache, sans même toucher
