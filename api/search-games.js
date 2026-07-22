@@ -168,10 +168,12 @@ async function handleAutocomplete(req, res, debug) {
     // telles quelles — sans ça, une requête déjà en cache (ex. tapée pendant un
     // test) continue de renvoyer l'ancienne liste non filtrée pendant 24h,
     // même après un correctif déployé.
-    // v3 : bump lié au correctif "préfixe garanti" ci-dessous — les entrées
-    // mises en cache avant (résultats "commence par" parfois noyés/absents)
-    // ne doivent plus être resservies telles quelles.
-    const cacheId = 'v3:' + q.toLowerCase();
+    // v4 : bump lié à l'ajout de la requête "search" floue + retour en arrière
+    // du chaînage de wildcards cassé — des saisies comme "spider man" ou
+    // "half life" avaient été mises en cache VIDES pendant que ce correctif
+    // cassé était en ligne ; sans ce bump, ce cache vide continuerait d'être
+    // servi pendant 24h, masquant complètement le nouveau correctif.
+    const cacheId = 'v4:' + q.toLowerCase();
 
     // ── Cache écrit au fil de l'eau (table games_cache) ──
     // La toute première fois que quelqu'un tape cette saisie (tous joueurs/
