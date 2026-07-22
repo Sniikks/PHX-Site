@@ -288,12 +288,15 @@ async function fetchIgdbGamePool(retroWeight = 0.7) {
     // category = 0 (jeu principal) semblait une bonne idée pour exclure DLC/remasters/
     // ports… mais s'est révélé CASSÉ à l'usage : ce filtre renvoie 0 résultat à lui seul,
     // quel que soit le contexte (confirmé par un test isolé via une route de debug). On
-    // s'appuie donc uniquement sur version_parent = null (exclut la plupart des éditions)
+    // s'appuie donc sur version_parent = null (exclut la plupart des éditions) ET
+    // parent_game = null (le vrai champ IGDB reliant un DLC/extension à son jeu de
+    // base — contrairement à "category", fiable même quand IGDB classe mal un DLC,
+    // ex. les chapitres payants de Dead by Daylight qui n'étaient pas détectés avant)
     // + les filtres par motif de nom déjà appliqués plus bas (isReRelease, isDlc).
     const offset = Math.floor(Math.random() * 200);
     const query =
         `fields ${IGDB_GAME_FIELDS}; ` +
-        `where platforms = (${platformIds.join(',')}) & version_parent = null ` +
+        `where platforms = (${platformIds.join(',')}) & version_parent = null & parent_game = null ` +
         `& screenshots != null & first_release_date != null${genreClause}; ` +
         `sort total_rating_count desc; ` +
         `limit 40; offset ${offset};`;

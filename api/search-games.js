@@ -217,7 +217,7 @@ async function handleAutocomplete(req, res, debug) {
         try {
             const rows = await igdbQuery('games',
                 `fields name,first_release_date,total_rating_count,category; ` +
-                `where name ~ "${clean}"* & version_parent = null & first_release_date < ${nowUnix}; ` +
+                `where name ~ "${clean}"* & version_parent = null & parent_game = null & first_release_date < ${nowUnix}; ` +
                 `sort total_rating_count desc; limit 30;`,
                 1400
             );
@@ -242,7 +242,7 @@ async function handleAutocomplete(req, res, debug) {
             // 5=mod, 6=episode, 7=season, 13=pack.
             const rows = await igdbQuery('games',
                 `fields name,first_release_date,total_rating_count,category; ` +
-                `where name ~ *"${clean}"* & version_parent = null & first_release_date < ${nowUnix}; ` +
+                `where name ~ *"${clean}"* & version_parent = null & parent_game = null & first_release_date < ${nowUnix}; ` +
                 `sort total_rating_count desc; limit 50;`,
                 1400
             );
@@ -294,11 +294,16 @@ async function handleAutocomplete(req, res, debug) {
     // (1) donner une année aux résultats Steam sans correspondance IGDB directe,
     // (2) décider si un jeu SANS date connue est "vraiment connu" (voir plus bas).
     // Catégories IGDB qui ne sont jamais le jeu de base : 1=dlc_addon, 2=expansion,
-    // 3=bundle, 5=mod, 6=episode, 7=season, 13=pack. On les écarte ici (pas dans le
-    // "where" IGDB, qui casse tout si on y ajoute "category = ...", voir plus haut),
-    // et on retient leur nom pour aussi écarter le même contenu côté Steam (qui,
-    // lui, ne les étiquette pas toujours correctement en "dlc").
-    const DLC_CATEGORIES = new Set([1, 2, 3, 5, 6, 7, 13]);
+    // 3=bundle, 4=standalone_expansion (manquait ici — catégorie confirmée via la
+    // doc IGDB : c'est le cas de nombreux chapitres payants type Dead by Daylight,
+    // qui passaient encore le filtre), 5=mod, 6=episode, 7=season, 13=pack. On les
+    // écarte ici (pas dans le "where" IGDB, qui casse tout si on y ajoute
+    // "category = ...", voir plus haut), et on retient leur nom pour aussi écarter
+    // le même contenu côté Steam (qui, lui, ne les étiquette pas toujours
+    // correctement en "dlc"). Le filtre "where parent_game = null" ajouté plus haut
+    // couvre maintenant aussi ces mêmes chapitres de façon plus fiable (le champ
+    // IGDB dédié à ce lien DLC → jeu de base, indépendant de "category").
+    const DLC_CATEGORIES = new Set([1, 2, 3, 4, 5, 6, 7, 13]);
     const igdbDlcNames = new Set();
     const igdbResultsFiltered = igdbResults.filter(g => {
         if (DLC_CATEGORIES.has(g.category)) { igdbDlcNames.add(normalizeName(g.name)); return false; }
@@ -462,7 +467,7 @@ async function handleResolve(req, res, debug) {
             const nowUnix = Math.floor(Date.now() / 1000);
             const rows = await igdbQuery('games',
                 `fields name,first_release_date; ` +
-                `where name ~ *"${clean}"* & version_parent = null & first_release_date < ${nowUnix}; ` +
+                `where name ~ *"${clean}"* & version_parent = null & parent_game = null & first_release_date < ${nowUnix}; ` +
                 `sort total_rating_count desc; limit 5;`,
                 2000
             );

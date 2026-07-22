@@ -31,7 +31,7 @@ async function fetchFranchiseInfo(name) {
     try {
         const rows = await igdbQuery('games',
             `fields name,franchises,collection,total_rating_count; ` +
-            `where name ~ *"${clean}"* & version_parent = null; ` +
+            `where name ~ *"${clean}"* & version_parent = null & parent_game = null; ` +
             `sort total_rating_count desc; limit 5;`,
             2000
         );

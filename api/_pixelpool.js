@@ -22,8 +22,11 @@ const MIN_OWNERS = 60000;
 const IGDB_TIMEOUT_MS = 8000;
 
 const DLC_NAME_PATTERN = /\b(dlc|season pass|expansion pass|expansion|add-?on|content pack|bonus content|artbook|art book|soundtrack|ost|skin|costume pack|weapon pack|outfit pack|upgrade pack|map pack|character pack|booster pack|challenge pack|premiere club|wallpaper|bundle|chapter|remaster(?:ed)?|definitive edition|goty|anniversary edition|enhanced edition|complete edition|deluxe edition|ultimate edition|hd edition)\b/i;
-// 1=dlc_addon, 3=bundle, 5=mod, 6=episode, 7=season, 9=remaster, 13=pack, 14=update
-const EXCLUDED_CATEGORIES = new Set([1, 3, 5, 6, 7, 9, 13, 14]);
+// 1=dlc_addon, 2=expansion, 3=bundle, 4=standalone_expansion, 5=mod, 6=episode,
+// 7=season, 9=remaster, 13=pack, 14=update — 2 et 4 manquaient (confirmé via la
+// doc IGDB), c'est ce qui laissait passer des chapitres payants type Dead by
+// Daylight (catégorie 4) dans le pool de sélection du jeu quotidien.
+const EXCLUDED_CATEGORIES = new Set([1, 2, 3, 4, 5, 6, 7, 9, 13, 14]);
 
 const NON_LATIN_SCRIPT_REGEX = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\uAC00-\uD7AF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\u0590-\u05FF\u0E00-\u0E7F\u0400-\u04FF]/;
 function hasNonLatinScript(name) {
@@ -141,7 +144,7 @@ async function fetchIgdbGamePool(excludeNamesLower, retroWeight = 0.55) {
     const offset = Math.floor(Math.random() * 200);
     const query =
         `fields name, category; ` +
-        `where platforms = (${platformIds.join(',')}) & version_parent = null ` +
+        `where platforms = (${platformIds.join(',')}) & version_parent = null & parent_game = null ` +
         `& cover != null & first_release_date != null; ` +
         `sort total_rating_count desc; ` +
         `limit 40; offset ${offset};`;
@@ -170,7 +173,7 @@ async function igdbQueryWithRetry(endpoint, body, attempts = 2) {
 
 async function fetchIgdbCover(name) {
     const cleanName = name.replace(/["\\]/g, '');
-    const body = `search "${cleanName}"; fields name, category, cover.image_id, first_release_date; where version_parent = null; limit 5;`;
+    const body = `search "${cleanName}"; fields name, category, cover.image_id, first_release_date; where version_parent = null & parent_game = null; limit 5;`;
     let results;
     try { results = await igdbQueryWithRetry('games', body); } catch (e) { return null; }
     if (!Array.isArray(results) || !results.length) return null;

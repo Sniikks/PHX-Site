@@ -21,7 +21,9 @@ const IGDB_TIMEOUT_MS = 8000;
 const MAX_TRIES = 6;
 
 const DLC_NAME_PATTERN = /\b(dlc|season pass|expansion pass|expansion|add-?on|content pack|bonus content|artbook|art book|soundtrack|ost|skin pack|costume pack|weapon pack|outfit pack|upgrade pack|map pack|character pack|booster pack|challenge pack|premiere club|wallpaper|bundle|chapter|remaster(?:ed)?|definitive edition|goty|anniversary edition|enhanced edition|complete edition|deluxe edition|ultimate edition|hd edition)\b/i;
-const EXCLUDED_CATEGORIES = new Set([1, 3, 5, 6, 7, 9, 13, 14]);
+// 1=dlc_addon, 2=expansion, 3=bundle, 4=standalone_expansion, 5=mod, 6=episode,
+// 7=season, 9=remaster, 13=pack, 14=update — 2 et 4 manquaient (voir _pixelpool.js).
+const EXCLUDED_CATEGORIES = new Set([1, 2, 3, 4, 5, 6, 7, 9, 13, 14]);
 
 function isUnwantedName(name) {
     if (!name) return true;
@@ -108,7 +110,7 @@ async function igdbQueryWithRetry(endpoint, body, attempts = 2) {
 
 async function validateOnIgdb(name) {
     const cleanName = name.replace(/["\\]/g, '');
-    const body = `search "${cleanName}"; fields name, category, cover.image_id, first_release_date; where version_parent = null; limit 5;`;
+    const body = `search "${cleanName}"; fields name, category, cover.image_id, first_release_date; where version_parent = null & parent_game = null; limit 5;`;
     let results;
     try { results = await igdbQueryWithRetry('games', body); } catch (e) { return null; }
     if (!Array.isArray(results) || !results.length) return null;
