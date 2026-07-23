@@ -28,6 +28,53 @@ function getParisDateString(offsetDays = 0) {
 function puzzleKey(date) { return 'motfrancais_' + date; }
 function secretKey(date) { return 'motfrancais_secret_' + date; }
 
+// État du clavier (correct/present/absent par lettre), calculé ICI, côté
+// serveur, à partir du VRAI mot — pas d'une supposition côté client sur le
+// nombre d'occurrences d'une lettre. C'est le seul endroit qui connaît le
+// mot avant la fin de partie, donc le seul endroit fiable pour ce calcul.
+// Avant : le client tentait de déduire ce nombre depuis l'historique des
+// essais (ex. combien de fois une lettre était apparue "colorée" dans un
+// même essai) — mais tant qu'aucun essai n'avait testé 2 fois la même
+// lettre, il supposait par défaut qu'elle n'apparaissait qu'une fois, et la
+// passait au vert dès la première occurrence trouvée (ex. "COUCOU" : le C,
+// le O et le U passaient au vert après un seul essai correct chacun, alors
+// que chacun apparaît 2 fois dans le mot). Même famille de bug que "COMPOSE"
+// déjà corrigée, mais qui touchait un cas différent (ici : aucune preuve
+// disponible, plutôt qu'une preuve mal interprétée).
+function computeKeyboardStates(guesses, answer) {
+    const answerLetters = answer.split('');
+    const totalCount = {};
+    answerLetters.forEach(l => { totalCount[l] = (totalCount[l] || 0) + 1; });
+
+    // Positions confirmées correctes, uniques (une même position retapée
+    // dans un essai ultérieur ne doit pas être comptée deux fois).
+    const confirmedPositions = new Set();
+    const everTried = new Set();
+    guesses.forEach(({ guess }) => {
+        for (let i = 0; i < guess.length; i++) {
+            everTried.add(guess[i]);
+            if (guess[i] === answerLetters[i]) confirmedPositions.add(i);
+        }
+    });
+
+    const confirmedCountPerLetter = {};
+    confirmedPositions.forEach(i => {
+        const l = answerLetters[i];
+        confirmedCountPerLetter[l] = (confirmedCountPerLetter[l] || 0) + 1;
+    });
+
+    const states = {};
+    everTried.forEach(l => {
+        if (!totalCount[l]) { states[l] = 'absent'; return; }
+        const confirmed = confirmedCountPerLetter[l] || 0;
+        // "correct" (vert) seulement quand TOUTES les occurrences réelles de
+        // cette lettre ont été confirmées à leur bonne place — jamais une
+        // supposition, toujours compté contre le vrai nombre d'occurrences.
+        states[l] = confirmed >= totalCount[l] ? 'correct' : 'present';
+    });
+    return states;
+}
+
 export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     try {
@@ -61,6 +108,16 @@ async function handleDaily(req, res) {
     if (existing?.data?.wordLength && !force) {
         const publicData = existing.data;
         publicData.session = publicData.session || { guesses: [], solved: false, failed: false };
+        // Recalculé à chaque chargement (pas seulement juste après un essai) :
+        // sinon, un rechargement de page en cours de partie perdrait l'état du
+        // clavier, ou pire, retomberait sur l'ancien calcul côté client erroné.
+        if (publicData.session.guesses.length) {
+            const { data: secretRow } = await supabase
+                .from('motfrancais_secret').select('data').eq('id', secretKey(dateStr)).maybeSingle();
+            if (secretRow?.data?.word) {
+                publicData.session.keyboardStates = computeKeyboardStates(publicData.session.guesses, secretRow.data.word);
+            }
+        }
         return res.status(200).json(publicData);
     }
 
@@ -182,6 +239,7 @@ async function handleGuess(req, res) {
     }
 
     publicData.session = session;
+    session.keyboardStates = computeKeyboardStates(session.guesses, answer);
 
     await supabase.from('motfrancais_public').upsert({ id: puzzleKey(dateStr), data: publicData, updated_at: new Date().toISOString() });
 

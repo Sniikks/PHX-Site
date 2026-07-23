@@ -477,57 +477,14 @@
     });
   }
 
-  // Recalcule l'état de chaque lettre du clavier à partir de tout
-  // l'historique. Contrairement à un simple "meilleur rang jamais vu", une
-  // lettre "present" (jaune) ne passe "correct" (vert) que si TOUTES ses
-  // occurrences connues dans le mot sont désormais trouvées — sinon elle
-  // reste jaune tant qu'il peut encore en rester une copie cachée ailleurs
-  // (ex: "TRANSPARENT" — le N trouvé aux deux endroits passe vert, mais si
-  // le R n'a qu'une occurrence confirmée sur les deux qu'il compte, il
-  // reste jaune).
-  function computeLetterStates(guesses, knownCorrectArr) {
-    const rank = { absent: 0, present: 1, correct: 2 };
-    const states = {};
-    const maxColoredSeen = {};
-    const provenExact = {};
-
-    guesses.forEach(({ guess, result }) => {
-      const counts = {};
-      for (let i = 0; i < guess.length; i++) {
-        const l = guess[i];
-        if (!states[l] || rank[result[i]] > rank[states[l]]) states[l] = result[i];
-        counts[l] = counts[l] || { colored: 0, absent: 0 };
-        if (result[i] === 'correct' || result[i] === 'present') counts[l].colored++;
-        else counts[l].absent++;
-      }
-      Object.entries(counts).forEach(([l, c]) => {
-        if (c.colored > (maxColoredSeen[l] || 0)) maxColoredSeen[l] = c.colored;
-        // Un essai qui mélange des occurrences colorées ET "absent" pour la
-        // même lettre révèle le nombre EXACT de copies dans le mot (les
-        // copies en trop sont marquées "absent" par le serveur).
-        if (c.absent > 0 && c.colored > 0) provenExact[l] = c.colored;
-      });
-    });
-
-    // Lettres connues uniquement via un indice (jamais tapées) : comptent
-    // comme "correct" au moins une fois.
-    const confirmedCount = {};
-    knownCorrectArr.forEach(l => { if (l) confirmedCount[l] = (confirmedCount[l] || 0) + 1; });
-
-    Object.keys(confirmedCount).forEach(l => {
-      const required = provenExact[l] !== undefined ? provenExact[l] : Math.max(1, maxColoredSeen[l] || 1);
-      // État FORCÉ ici (pas de "else if" conditionné par le rang précédent) :
-      // une lettre déjà marquée "correct" par la boucle des essais doit
-      // pouvoir être redescendue en "present" si le nombre de positions
-      // confirmées est inférieur au nombre d'occurrences qu'on sait exister
-      // — sinon le clavier annonce à tort qu'il n'y a plus cette lettre dans
-      // le mot (ex. "COMPOSE" a 2 "O" : en confirmer un seul ne doit pas
-      // passer la touche au vert).
-      states[l] = confirmedCount[l] >= required ? 'correct' : 'present';
-    });
-
-    return states;
-  }
+  // L'état du clavier (correct/present/absent) vient maintenant du SERVEUR
+  // (session.keyboardStates dans motfrancais.js), pas d'un calcul ici : lui
+  // seul connaît le vrai mot avant la fin de partie, donc lui seul peut
+  // savoir avec certitude combien de fois une lettre y apparaît. Un calcul
+  // ici ne pouvait que deviner à partir de l'historique des essais, et
+  // suffisait à tort dès la 1re occurrence trouvée pour une lettre présente
+  // 2 fois (ex. "COUCOU" : C/O/U passaient au vert après un seul essai
+  // correct chacun, avant même d'avoir confirmé leur 2e occurrence).
 
   function refreshKeyboardColors() {
     document.querySelectorAll('.key').forEach(btn => {
@@ -663,7 +620,7 @@
       if (!knownCorrect[h.index]) knownCorrect[h.index] = h.letter;
     });
 
-    letterStates = computeLetterStates(guesses, knownCorrect);
+    letterStates = session.keyboardStates || {};
     refreshKeyboardColors();
     resetGuessCells();
 

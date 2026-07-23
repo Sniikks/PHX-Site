@@ -61,6 +61,38 @@ function parseOwnersLowerBound(ownersStr) {
 function puzzleKey(date) { return 'motcache_' + date; }
 function secretKey(date) { return 'motcache_secret_' + date; }
 
+// Voir motfrancais.js pour l'explication complète : calcul de l'état du
+// clavier basé sur le VRAI mot (connu seulement ici, côté serveur), pas une
+// supposition côté client sur le nombre d'occurrences d'une lettre.
+function computeKeyboardStates(guesses, answer) {
+    const answerLetters = answer.split('');
+    const totalCount = {};
+    answerLetters.forEach(l => { totalCount[l] = (totalCount[l] || 0) + 1; });
+
+    const confirmedPositions = new Set();
+    const everTried = new Set();
+    guesses.forEach(({ guess }) => {
+        for (let i = 0; i < guess.length; i++) {
+            everTried.add(guess[i]);
+            if (guess[i] === answerLetters[i]) confirmedPositions.add(i);
+        }
+    });
+
+    const confirmedCountPerLetter = {};
+    confirmedPositions.forEach(i => {
+        const l = answerLetters[i];
+        confirmedCountPerLetter[l] = (confirmedCountPerLetter[l] || 0) + 1;
+    });
+
+    const states = {};
+    everTried.forEach(l => {
+        if (!totalCount[l]) { states[l] = 'absent'; return; }
+        const confirmed = confirmedCountPerLetter[l] || 0;
+        states[l] = confirmed >= totalCount[l] ? 'correct' : 'present';
+    });
+    return states;
+}
+
 export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     try {
@@ -152,6 +184,13 @@ async function handleDaily(req, res) {
     if (existing?.data?.wordLength && !force) {
         const publicData = existing.data;
         publicData.session = publicData.session || { guesses: [], solved: false, failed: false };
+        if (publicData.session.guesses.length) {
+            const { data: secretRow } = await supabase
+                .from('motcache_secret').select('data').eq('id', secretKey(dateStr)).maybeSingle();
+            if (secretRow?.data?.word) {
+                publicData.session.keyboardStates = computeKeyboardStates(publicData.session.guesses, secretRow.data.word);
+            }
+        }
         return res.status(200).json(publicData);
     }
 
@@ -266,6 +305,7 @@ async function handleGuess(req, res) {
     }
 
     publicData.session = session;
+    session.keyboardStates = computeKeyboardStates(session.guesses, answer);
 
     await supabase.from('motcache_public').upsert({ id: puzzleKey(dateStr), data: publicData, updated_at: new Date().toISOString() });
 
