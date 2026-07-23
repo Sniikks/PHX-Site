@@ -58,12 +58,15 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Durée de vie du cache DB avant de retenter IGDB/Steam pour cette même
-// saisie (au-delà, la saisie est "rafraîchie" une fois puis re-cachée pour
-// 24h de plus). 24h = compromis entre fraîcheur (un jeu qui sort aujourd'hui
-// doit finir par apparaître) et vitesse (l'immense majorité des saisies ne
-// changent pas de réponse d'un jour à l'autre).
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+// Cache DB PERMANENT (sur demande explicite) : une saisie mise en cache n'expire
+// plus jamais toute seule. Compromis assumé : un jeu qui sort après qu'une
+// saisie donnée a été mise en cache (ex. quelqu'un tape "spi" avant la sortie
+// d'un nouveau "Spirit..." demain) n'apparaîtra pas pour CETTE saisie précise
+// tant que le cache n'est pas invalidé à la main (voir cacheId plus bas, bump
+// de version) ou effacé manuellement dans Supabase. Accepté volontairement
+// pour la vitesse — la table games_cache grossit avec l'usage réel et reste
+// ensuite quasi instantanée pour toujours sur les saisies déjà vues.
+const CACHE_TTL_MS = Infinity;
 
 const BROWSER_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
@@ -192,12 +195,39 @@ async function handleAutocomplete(req, res, debug) {
     // en cache (ex. capturée pendant une transition entre deux déploiements).
     const noCache = req.query.nocache === '1';
 
+    // Cache DB PERMANENT (voir plus haut) — mais pour qu'un jeu qui sort après
+    // coup finisse quand même par apparaître sans intervention manuelle, une
+    // entrée "vieille" (> REVALIDATE_AFTER_MS) déclenche un rafraîchissement en
+    // arrière-plan à chaque fois qu'elle est redemandée : la réponse part
+    // immédiatement avec les données en cache (aucune lenteur ajoutée pour le
+    // joueur), et une VRAIE recherche IGDB/Steam se relance discrètement à
+    // côté ; si elle trouve du nouveau, le cache est mis à jour pour la
+    // prochaine fois. Auto-guérison progressive, sans jamais bloquer personne
+    // ni nécessiter un bump de version manuel pour chaque nouveau jeu.
+    const REVALIDATE_AFTER_MS = 24 * 60 * 60 * 1000;
+
     try {
         if (noCache) throw new Error('nocache=1, lecture sautée volontairement');
         const { data: cached } = await supabase
             .from('games_cache').select('data, updated_at').eq('id', cacheId).maybeSingle();
         if (cached && (Date.now() - new Date(cached.updated_at).getTime()) < CACHE_TTL_MS) {
             debugInfo.cacheHit = true;
+            const age = Date.now() - new Date(cached.updated_at).getTime();
+            if (age > REVALIDATE_AFTER_MS) {
+                debugInfo.backgroundRevalidate = true;
+                // Pas attendu (pas de "await") : ne doit jamais retarder la
+                // réponse déjà prête ci-dessous. Best-effort — même limite
+                // connue que l'écriture de cache non bloquante (peut être
+                // coupé par Vercel juste après la réponse ; se retentera de
+                // toute façon au prochain passage sur cette même saisie).
+                (async () => {
+                    const bgDebug = {};
+                    try {
+                        const fresh = await runLiveSearch(q, bgDebug);
+                        writeCache(cacheId, fresh, bgDebug);
+                    } catch (e) { /* best-effort, on ignore */ }
+                })();
+            }
             res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=86400');
             return res.status(200).json(debug ? { suggestions: cached.data, debug: debugInfo } : { suggestions: cached.data });
         }
@@ -205,6 +235,24 @@ async function handleAutocomplete(req, res, debug) {
         if (!noCache) debugInfo.cacheReadError = e.message; // le cache est un bonus, jamais bloquant
     }
 
+    const merged = await runLiveSearch(q, debugInfo);
+    writeCache(cacheId, merged, debugInfo);
+
+    // Cache CDN Vercel : la même saisie ("borderlands") faite par n'importe qui
+    // dans les 24h est servie instantanément depuis le cache, sans même toucher
+    // Supabase. Allongé de 5 min à 24h (aligné sur le TTL du cache DB) : les
+    // suggestions ne changent quasiment jamais d'un jour à l'autre.
+    res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=86400');
+    return res.status(200).json(debug ? { suggestions: merged, debug: debugInfo } : { suggestions: merged });
+}
+
+// Recherche live complète (IGDB préfixe/contient/floue + Steam + known_games,
+// fusion, filtres anti-DLC, tri par pertinence). Extraite en fonction à part
+// pour être appelée aussi bien sur un cache-miss (résultat attendu, la réponse
+// en dépend) que sur un rafraîchissement en arrière-plan d'une entrée déjà en
+// cache (résultat pas attendu par la réponse, juste utilisé pour mettre à jour
+// le cache — voir handleAutocomplete ci-dessus).
+async function runLiveSearch(q, debugInfo) {
     const clean = q.replace(/["\\*]/g, '');
     const nowUnix = Math.floor(Date.now() / 1000);
 
@@ -481,37 +529,30 @@ async function handleAutocomplete(req, res, debug) {
         return a.name.localeCompare(b.name);
     });
 
+    return filteredResults.slice(0, 60);
+}
 
-    const merged = filteredResults.slice(0, 60);
-
-    // Écriture dans le cache DB (best-effort, ne bloque jamais la réponse au
-    // joueur). Volontairement PAS attendue (pas de "await") : avant, cet
-    // aller-retour Supabase retardait la réponse à chaque cache-miss (donc
-    // à quasiment chaque frappe) — le principal gain de vitesse de ce
-    // correctif. Le joueur reçoit sa réponse dès que les résultats sont prêts ;
-    // l'écriture se termine en arrière-plan, erreur ou pas.
+// Écrit (ou met à jour) l'entrée de cache pour cette saisie — sauf résultat
+// vide suspect (voir plus bas). Séparée en fonction pour être appelée aussi
+// bien après une recherche live "au premier plan" (cache-miss) qu'après un
+// rafraîchissement "en arrière-plan" d'une entrée déjà en cache.
+function writeCache(cacheId, merged, debugInfo) {
     // Garde-fou : si IGDB est configuré mais qu'on se retrouve avec un résultat
     // vide, c'est presque toujours un raté transitoire (timeout, hoquet IGDB)
     // plutôt qu'une vraie saisie sans aucun jeu — on ne le met PAS en cache,
     // pour que la prochaine frappe identique retente au lieu de rester coincée
-    // sur un résultat vide pendant 24h (c'est exactement ce qui est arrivé
+    // sur un résultat vide indéfiniment (c'est exactement ce qui est arrivé
     // avec "spider man"/"half life" pendant une transition de déploiement).
-    const looksLikeTransientFailure = merged.length === 0 && isIgdbConfigured();
-    if (!looksLikeTransientFailure) {
-        supabase.from('games_cache').upsert({ id: cacheId, data: merged, updated_at: new Date().toISOString() })
-            .then(({ error }) => { if (error) debugInfo.cacheWriteError = error.message; })
-            .catch(e => { debugInfo.cacheWriteError = e.message; });
-    } else {
+    if (merged.length === 0 && isIgdbConfigured()) {
         debugInfo.cacheWriteSkipped = 'résultat vide malgré IGDB configuré (probable raté transitoire)';
+        return;
     }
-
-    // Cache CDN Vercel : la même saisie ("borderlands") faite par n'importe qui
-    // dans les 24h est servie instantanément depuis le cache, sans même toucher
-    // Supabase. Allongé de 5 min à 24h (aligné sur le TTL du cache DB) : les
-    // suggestions ne changent quasiment jamais d'un jour à l'autre.
-    res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=86400');
-    return res.status(200).json(debug ? { suggestions: merged, debug: debugInfo } : { suggestions: merged });
+    supabase.from('games_cache').upsert({ id: cacheId, data: merged, updated_at: new Date().toISOString() })
+        .then(({ error }) => { if (error) debugInfo.cacheWriteError = error.message; })
+        .catch(e => { debugInfo.cacheWriteError = e.message; });
 }
+
+
 
 // ───────────────────────── Résolution année (pour l'indice avant/après) ─────────────────────────
 // N'est plus appelée que pour les réponses tapées à la main sans passer par une
