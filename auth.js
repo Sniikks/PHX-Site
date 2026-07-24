@@ -100,7 +100,8 @@ const PHXAuth = {
     return data;
   },
 
-  async signIn(email, password) {
+  async signIn(email, password, rememberMe) {
+    try { localStorage.setItem('phx_persist_pref', rememberMe === false ? 'session' : 'local'); } catch (e) {}
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) throw new Error(this._friendlyError(error));
     await this._loadProfile(data.user?.id);

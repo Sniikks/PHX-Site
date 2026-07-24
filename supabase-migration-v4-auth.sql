@@ -61,6 +61,15 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
+  -- Les sessions anonymes (utilisées par ailleurs sur le site pour autoriser
+  -- l'écriture "authenticated" de base — Bracket, Pixels...) créent aussi une
+  -- ligne dans auth.users, mais n'ont ni email ni pseudo. Sans ce garde-fou,
+  -- l'insertion ci-dessous échouait (username obligatoire) et annulait la
+  -- connexion anonyme entière (le trigger tourne dans la même transaction).
+  if new.is_anonymous then
+    return new;
+  end if;
+
   insert into public.profiles (id, username, role)
   values (
     new.id,

@@ -9,7 +9,36 @@
 const SUPABASE_URL = "https://qalytqwjpzugzxjhymkh.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_sN9nt7F-gdP_hSG6NQZmmQ_NnKbCMPe";
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// ==========================================================
+// STOCKAGE DYNAMIQUE DE SESSION — case "rester connecté"
+// ==========================================================
+// Par défaut, Supabase garde la session dans localStorage (persiste même
+// après fermeture du navigateur). Pour permettre de choisir ("rester
+// connecté" décoché = déconnecté à la fermeture de l'onglet), on route
+// nous-mêmes vers localStorage ou sessionStorage selon une préférence
+// choisie au moment de la connexion (voir auth.js: signIn(...,rememberMe)).
+// La préférence elle-même vit dans localStorage (juste un mot, rien de
+// sensible) pour être connue dès le prochain chargement de page.
+const PHX_PERSIST_PREF_KEY = 'phx_persist_pref'; // 'local' (défaut) | 'session'
+
+const phxDynamicStorage = {
+  getItem(key) {
+    const pref = localStorage.getItem(PHX_PERSIST_PREF_KEY) || 'local';
+    return (pref === 'session' ? sessionStorage : localStorage).getItem(key);
+  },
+  setItem(key, value) {
+    const pref = localStorage.getItem(PHX_PERSIST_PREF_KEY) || 'local';
+    (pref === 'session' ? sessionStorage : localStorage).setItem(key, value);
+  },
+  removeItem(key) {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  }
+};
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { storage: phxDynamicStorage, persistSession: true, autoRefreshToken: true }
+});
 
 // ==========================================================
 // SESSION ANONYME AUTOMATIQUE

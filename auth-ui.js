@@ -51,7 +51,7 @@
       .phx-auth-overlay.open { display: flex; }
       .phx-auth-box {
         background: var(--bg2, #12141d); border: 1px solid var(--border, #2a2d3a);
-        border-radius: 12px; padding: 26px; max-width: 340px; width: 100%;
+        border-radius: 12px; padding: 44px 24px 24px; max-width: 340px; width: 100%;
         box-shadow: 0 10px 40px rgba(0,0,0,.5);
       }
       .phx-auth-tabs { display: flex; gap: 4px; margin-bottom: 18px; }
@@ -69,6 +69,11 @@
       }
       .phx-auth-field input:focus { outline: none; border-color: var(--gold, #00f0ff); }
       .phx-auth-msg { font-size: 12.5px; margin-bottom: 12px; line-height: 1.4; min-height: 1px; }
+      .phx-auth-remember {
+        display: flex; align-items: center; gap: 7px; margin-bottom: 14px;
+        color: var(--text2, #939ab0); font-size: 12.5px; cursor: pointer; user-select: none;
+      }
+      .phx-auth-remember input { margin: 0; accent-color: var(--gold, #00f0ff); cursor: pointer; }
       .phx-auth-msg.err { color: #ff6b6b; }
       .phx-auth-msg.ok { color: #4ade80; }
       .phx-auth-submit {
@@ -126,6 +131,10 @@
           <div class="phx-auth-field">
             <input type="password" placeholder="Mot de passe" data-password autocomplete="current-password" required>
           </div>
+          <label class="phx-auth-remember" data-remember-field>
+            <input type="checkbox" data-remember checked>
+            <span>Rester connecté</span>
+          </label>
           <button type="submit" class="phx-auth-submit" data-submit>Se connecter</button>
         </form>
       </div>`;
@@ -144,6 +153,8 @@
     const usernameInput = overlay.querySelector('[data-username]');
     const emailInput = overlay.querySelector('[data-email]');
     const passwordInput = overlay.querySelector('[data-password]');
+    const rememberField = overlay.querySelector('[data-remember-field]');
+    const rememberInput = overlay.querySelector('[data-remember]');
     const submitBtn = overlay.querySelector('[data-submit]');
     const tabs = overlay.querySelectorAll('.phx-auth-tab');
 
@@ -162,6 +173,7 @@
       tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === m));
       usernameField.style.display = m === 'register' ? 'block' : 'none';
       usernameInput.required = m === 'register';
+      rememberField.style.display = m === 'register' ? 'none' : 'flex';
       submitBtn.textContent = m === 'register' ? "S'inscrire" : 'Se connecter';
       passwordInput.autocomplete = m === 'register' ? 'new-password' : 'current-password';
       setMsg('');
@@ -194,7 +206,7 @@
           setMode('login');
           emailInput.value = email;
         } else {
-          await PHXAuth.signIn(email, password);
+          await PHXAuth.signIn(email, password, rememberInput.checked);
           closeModal();
         }
       } catch (err) {
@@ -229,16 +241,21 @@
     let connected = false;
     pill.addEventListener('click', () => {
       if (connected) {
+        const opening = !menu.classList.contains('open');
         menu.classList.toggle('open');
         const r = pill.getBoundingClientRect();
         menu.style.top = (r.bottom + 8) + 'px';
         menu.style.right = (window.innerWidth - r.right) + 'px';
+        if (opening) document.dispatchEvent(new CustomEvent('phx-menu-open', { detail: { source: 'auth' } }));
       } else {
         openModal();
       }
     });
     document.addEventListener('click', e => {
       if (!menu.contains(e.target) && e.target !== pill) menu.classList.remove('open');
+    });
+    document.addEventListener('phx-menu-open', e => {
+      if (e.detail?.source !== 'auth') menu.classList.remove('open');
     });
     menu.querySelector('[data-logout]').addEventListener('click', async () => {
       menu.classList.remove('open');

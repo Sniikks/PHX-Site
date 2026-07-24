@@ -247,13 +247,10 @@
 <script src="curator-visibility.js" defer></script>
   <script src="db.js"></script>
   <script>
-    // Deux bouts de code écrivaient dans #dbStatus en même temps (RemoteStore.init
-    // ET le ping direct ci-dessous) → une course où le premier à finir écrase le
-    // texte de l'autre, d'où le "● Connecté" générique qui s'affichait parfois au
-    // lieu de "● Connecté à Supabase". On ne garde qu'une seule source : le ping
-    // direct, qui donne le message le plus précis.
-    RemoteStore.init([]);
-    // Ping direct pour un statut fiable même sans clé à précharger
+    // Un seul ping direct suffit pour le statut ; l'appel RemoteStore.init([])
+    // qui existait ici ne servait à rien (aucune clé à précharger) et tapait
+    // en plus sur l'ancienne table "app_data" (supprimée depuis la migration
+    // "une table par page"), d'où un 404 inutile dans la console.
     supabaseClient.from('sniikks_games').select('id').limit(1).then(({ error }) => {
       const el = document.getElementById('dbStatus');
       if (error) { el.textContent = '● Base de données non configurée'; el.classList.add('db-error'); }

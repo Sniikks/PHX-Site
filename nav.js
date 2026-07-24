@@ -109,12 +109,20 @@
       panel.classList.add('open');
       positionPanel();
       btn.setAttribute('aria-expanded', 'true');
+      // Ferme le menu du pseudo (auth-ui.js) s'il était ouvert — les deux
+      // ne doivent jamais s'afficher en même temps.
+      document.dispatchEvent(new CustomEvent('phx-menu-open', { detail: { source: 'nav' } }));
     }
     function close() {
       panel.classList.remove('open');
       btn.setAttribute('aria-expanded', 'false');
     }
     function toggle() { panel.classList.contains('open') ? close() : open(); }
+
+    // Réciproque : si le menu du pseudo (auth-ui.js) s'ouvre, on ferme celui-ci.
+    document.addEventListener('phx-menu-open', e => {
+      if (e.detail?.source !== 'nav') close();
+    });
 
     // Le clic n'emmène plus directement à l'accueil : il ouvre le menu
     // (l'accueil reste la 1ʳᵉ entrée du menu). Sans JS, le lien marche toujours.

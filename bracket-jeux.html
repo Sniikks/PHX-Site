@@ -998,8 +998,8 @@ function loadSavedItem(id){
   toast('Sauvegarde « '+s.name+' » chargée ✓');
 }
 
-function deleteSingleSave(id){
-  if(!confirm('Supprimer cette sauvegarde ?')) return;
+async function deleteSingleSave(id){
+  if(!await phxConfirm('Supprimer cette sauvegarde ?')) return;
   const saves = getSavedList().filter(s=>s.id!==id);
   setSavedList(saves);
   selectedSaveIds.delete(id);
@@ -1135,9 +1135,9 @@ function cancelSelectMode(){
   renderSavedList();
 }
 
-function deleteSelectedSaves(){
+async function deleteSelectedSaves(){
   if(!selectedSaveIds.size) return;
-  if(!confirm(selectedSaveIds.size+' sauvegarde(s) sélectionnée(s) — confirmer la suppression ?')) return;
+  if(!await phxConfirm(selectedSaveIds.size+' sauvegarde(s) sélectionnée(s) — confirmer la suppression ?')) return;
   const saves = getSavedList().filter(s=>!selectedSaveIds.has(s.id));
   setSavedList(saves);
   selectedSaveIds.clear();
@@ -1376,8 +1376,8 @@ function saveCurrentExclusionAsBlacklist(){
   toast('Blacklist « '+name+' » sauvegardée ✓');
 }
 
-function deleteSingleBlacklist(id){
-  if(!confirm('Supprimer cette blacklist ?')) return;
+async function deleteSingleBlacklist(id){
+  if(!await phxConfirm('Supprimer cette blacklist ?')) return;
   setBlacklists(getBlacklists().filter(b=>b.id!==id));
   blSelectedIds.delete(id);
   renderBlacklistModal();
@@ -1389,9 +1389,9 @@ function toggleBlSelectMode(){
   renderBlacklistModal();
 }
 
-function deleteSelectedBlacklists(){
+async function deleteSelectedBlacklists(){
   if(!blSelectedIds.size) return;
-  if(!confirm(blSelectedIds.size+' blacklist(s) sélectionnée(s) — confirmer la suppression ?')) return;
+  if(!await phxConfirm(blSelectedIds.size+' blacklist(s) sélectionnée(s) — confirmer la suppression ?')) return;
   setBlacklists(getBlacklists().filter(b=>!blSelectedIds.has(b.id)));
   blSelectedIds.clear();
   blSelectModeOn = false;
@@ -2231,6 +2231,51 @@ function toast(msg){
   const el=document.getElementById('toast');
   el.textContent=msg;el.classList.add('show');
   clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2600);
+}
+
+// ══════════════════════════════════════════
+//  CONFIRMATION STYLÉE (remplace confirm() natif du navigateur)
+// ══════════════════════════════════════════
+let _phxConfirmEls = null;
+function _phxConfirmBuild(){
+  if(_phxConfirmEls) return _phxConfirmEls;
+  const style = document.createElement('style');
+  style.textContent = `
+    .phx-confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9000;display:none;align-items:center;justify-content:center;padding:20px;font-family:'Exo 2',sans-serif;}
+    .phx-confirm-overlay.open{display:flex;}
+    .phx-confirm-box{background:var(--bg2,#12141d);border:1px solid var(--border,#2a2d3a);border-radius:12px;padding:22px;max-width:320px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.5);text-align:center;}
+    .phx-confirm-msg{color:var(--text,#f0f1f5);font-size:14px;line-height:1.5;margin-bottom:18px;}
+    .phx-confirm-actions{display:flex;gap:10px;}
+    .phx-confirm-actions button{flex:1;padding:9px;border-radius:6px;border:1px solid var(--border,#2a2d3a);cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;}
+    .phx-confirm-cancel{background:transparent;color:var(--text2,#939ab0);}
+    .phx-confirm-ok{background:var(--gold,#00f0ff);color:#0d0e14;border-color:transparent;}
+  `;
+  document.head.appendChild(style);
+
+  const overlay = document.createElement('div');
+  overlay.className = 'phx-confirm-overlay';
+  overlay.innerHTML = `
+    <div class="phx-confirm-box">
+      <div class="phx-confirm-msg" data-confirm-msg></div>
+      <div class="phx-confirm-actions">
+        <button type="button" class="phx-confirm-cancel" data-confirm-cancel>Annuler</button>
+        <button type="button" class="phx-confirm-ok" data-confirm-ok>Supprimer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  _phxConfirmEls = { overlay, msg: overlay.querySelector('[data-confirm-msg]'), ok: overlay.querySelector('[data-confirm-ok]'), cancel: overlay.querySelector('[data-confirm-cancel]') };
+  return _phxConfirmEls;
+}
+function phxConfirm(message){
+  const els = _phxConfirmBuild();
+  els.msg.textContent = message;
+  els.overlay.classList.add('open');
+  return new Promise(resolve => {
+    const cleanup = (val) => { els.overlay.classList.remove('open'); resolve(val); };
+    els.ok.onclick = () => cleanup(true);
+    els.cancel.onclick = () => cleanup(false);
+    els.overlay.onclick = e => { if(e.target === els.overlay) cleanup(false); };
+  });
 }
 
 // ══════════════════════════════════════════

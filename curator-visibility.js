@@ -23,13 +23,39 @@
     'mot-francais.html'
   ];
 
-  function applyVisibility(isCurator) {
-    document.querySelectorAll('a[href]').forEach(a => {
-      if (RESTRICTED_PAGES.includes(a.getAttribute('href'))) {
-        a.style.display = isCurator ? '' : 'none';
-      }
-    });
+  let curatorState = false; // état courant, mis à jour par PHXAuth.onChange
+
+  function hideIfRestricted(a) {
+    if (a.tagName === 'A' && RESTRICTED_PAGES.includes(a.getAttribute('href'))) {
+      a.style.display = curatorState ? '' : 'none';
+    }
   }
+
+  function applyVisibility(isCurator) {
+    curatorState = isCurator;
+    document.querySelectorAll('a[href]').forEach(hideIfRestricted);
+  }
+
+  // Caché par défaut dès l'exécution du script (pas d'attente réseau) :
+  // évite le flash où tout était visible le temps que la session Supabase
+  // soit vérifiée.
+  applyVisibility(false);
+
+  // nav.js construit son panneau de menu APRÈS ce script (il est injecté
+  // dynamiquement, souvent plus bas dans la page). Un observateur permet
+  // de cacher ses liens dès leur apparition, quel que soit l'ordre de
+  // chargement des scripts — sans lui, le menu ☰ afficherait brièvement
+  // (ou durablement, selon l'ordre) tous les onglets avant correction.
+  const observer = new MutationObserver(mutations => {
+    mutations.forEach(m => {
+      m.addedNodes.forEach(node => {
+        if (node.nodeType !== 1) return;
+        hideIfRestricted(node);
+        node.querySelectorAll && node.querySelectorAll('a[href]').forEach(hideIfRestricted);
+      });
+    });
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
 
   PHXAuth.onChange(({ profile }) => {
     applyVisibility(!!profile && profile.role === 'curator');
