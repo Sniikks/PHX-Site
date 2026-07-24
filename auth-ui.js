@@ -250,6 +250,10 @@
         pill.textContent = 'Connexion…';
       }
     });
+
+    // Expose une API minimale pour que d'autres scripts (curator-gate.js)
+    // puissent ouvrir la modal de connexion sans dupliquer sa logique.
+    window.PHXAuthUI = { open: openModal };
   }
 
   if (document.readyState === 'loading') {

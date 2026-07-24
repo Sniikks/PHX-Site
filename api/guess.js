@@ -25,6 +25,7 @@ import { createClient } from '@supabase/supabase-js';
 import { isCorrectGuess, isCloseGuess, sharesLeadingToken, nameHint, extractYear } from './_gamematch.js';
 import { isSameFranchiseIgdb } from './_franchise.js';
 import { rememberKnownGame } from './_knowngames.js';
+import { requireCurator } from './_curatorGuard.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 // La clé service_role est nécessaire pour lire les lignes secrètes une fois
@@ -62,6 +63,9 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ ok: false, error: 'Méthode non autorisée' });
     }
+
+    const guard = await requireCurator(req, res);
+    if (!guard.ok) return;
 
     const body = req.body || {};
     const date = String(body.date || '');

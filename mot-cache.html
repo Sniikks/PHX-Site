@@ -370,6 +370,7 @@
 <script src="config.js"></script>
 <script src="auth.js"></script>
 <script src="auth-ui.js" defer></script>
+<script src="curator-gate.js" defer></script>
 <script src="db.js"></script>
 <script src="nav.js"></script>
 <script src="page-transitions.js" defer></script>
@@ -569,7 +570,7 @@
     try {
       const res = await fetch('/api/motcache', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await PHXAuth.authHeaders()) },
         body: JSON.stringify({ guess: guessStr })
       });
       const data = await safeJson(res);
@@ -819,7 +820,7 @@
       let data;
       if (isLive()) {
         // Aujourd'hui : génération paresseuse si besoin (comportement inchangé).
-        const res = await fetch('/api/motcache', { cache: 'no-store' });
+        const res = await fetch('/api/motcache', { cache: 'no-store', headers: await PHXAuth.authHeaders() });
         data = await safeJson(res);
         if (!res.ok) throw new Error(data.error || 'Erreur serveur');
       } else {

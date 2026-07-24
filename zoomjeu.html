@@ -468,6 +468,7 @@
   <script src="config.js"></script>
 <script src="auth.js"></script>
 <script src="auth-ui.js" defer></script>
+<script src="curator-gate.js" defer></script>
   <script src="db.js"></script>
   <script>
   // ==========================================================
@@ -1051,7 +1052,7 @@
     try {
       const res = await fetch('/api/guess', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await PHXAuth.authHeaders()) },
         body: JSON.stringify({ date: viewingDate, action, ...extra })
       });
       const data = await res.json().catch(() => ({}));

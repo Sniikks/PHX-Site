@@ -951,6 +951,9 @@ function renderSavedList(){
     wrap.innerHTML = saves.map(s=>{
       const sel = selectedSaveIds.has(s.id);
       const dateStr = new Date(s.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+      // La liste par défaut (générée auto depuis les jeux "Terminé") ne peut
+      // pas être supprimée — pas de croix pour cette entrée précise.
+      const isDefaultList = s.id.startsWith('default_');
       return `<div class="saved-item${selectModeOn?' select-mode':''}${sel?' selected':''}" onclick="onSavedItemClick('${s.id}')">
         <div class="saved-chk">${sel?'✕':''}</div>
         <div class="saved-info">
@@ -958,7 +961,7 @@ function renderSavedList(){
           <div class="saved-meta">${s.count} jeux · ${dateStr}</div>
         </div>
         <button class="saved-add" onclick="event.stopPropagation();openAddGamesModal('${s.id}')" title="Ajouter des jeux">➕</button>
-        <button class="saved-del" onclick="event.stopPropagation();deleteSingleSave('${s.id}')" title="Supprimer">✕</button>
+        ${isDefaultList ? '' : `<button class="saved-del" onclick="event.stopPropagation();deleteSingleSave('${s.id}')" title="Supprimer">✕</button>`}
       </div>`;
     }).join('');
   }

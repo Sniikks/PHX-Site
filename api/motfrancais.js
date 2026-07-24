@@ -9,6 +9,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import MOTS_POOL from './_mots-francais.json';
+import { requireCurator } from './_curatorGuard.js';
 const VALID_WORDS = new Set(MOTS_POOL.map(w => w.word));
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -78,6 +79,13 @@ function computeKeyboardStates(guesses, answer) {
 export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     try {
+        // Le cron (génération quotidienne) passe par ?key=ADMIN_KEY et n'a pas
+        // de session utilisateur — seul ce cas échappe à la vérification curateur.
+        const isAdminCall = ADMIN_KEY && req.query.key === ADMIN_KEY;
+        if (!isAdminCall) {
+            const guard = await requireCurator(req, res);
+            if (!guard.ok) return;
+        }
         if (req.method === 'POST') return await handleGuess(req, res);
         return await handleDaily(req, res);
     } catch (e) {

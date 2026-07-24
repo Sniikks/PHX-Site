@@ -49,6 +49,14 @@ const PHXAuth = {
     return this._profile?.role === 'curator';
   },
 
+  // En-tête Authorization à joindre aux appels fetch() vers les API
+  // réservées aux curateurs (guess, motcache, motfrancais) — objet vide
+  // si personne n'est connecté (le serveur renverra alors 401).
+  async authHeaders() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    return session ? { 'Authorization': `Bearer ${session.access_token}` } : {};
+  },
+
   // Vérifie si un pseudo est déjà pris (pré-vérification, confort UI —
   // la vraie garantie d'unicité vient de la contrainte SQL "unique").
   async isUsernameTaken(username) {
