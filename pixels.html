@@ -38,6 +38,27 @@
 
   .title { font-family:'Rajdhani',sans-serif; font-size:clamp(1.3rem,4vw,1.9rem); font-weight:700; line-height:1.15; letter-spacing:.1em; color:var(--gold); text-transform:uppercase; }
   .subtitle { color:var(--text2); font-size:12.5px; margin-top:.35rem; margin-bottom:1.2rem; letter-spacing:.03em; text-align:center; }
+  .leaderboard-btn {
+    display:block; margin:0 auto 1.2rem; padding:9px 16px; border-radius:3px;
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); color:#e5e5e5;
+    font-family:'Exo 2',sans-serif; font-size:12.5px; font-weight:600; letter-spacing:.02em;
+    cursor:pointer; transition:background-color .15s ease, border-color .15s ease, color .15s ease;
+  }
+  .leaderboard-btn:hover { background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.24); color:#fff; }
+  .leaderboard-box { max-width:340px; }
+  .leaderboard-list { max-height:340px; overflow-y:auto; margin:1rem 0; text-align:left; }
+  .leaderboard-empty { color:var(--text2); font-size:13px; text-align:center; padding:1rem 0; }
+  .leaderboard-row {
+    display:flex; align-items:center; gap:.6rem; padding:.5rem .3rem;
+    border-bottom:1px solid var(--border); font-size:13.5px;
+  }
+  .leaderboard-row:last-child { border-bottom:none; }
+  .leaderboard-rank { width:1.6rem; color:var(--text2); font-weight:700; flex-shrink:0; }
+  .leaderboard-row:nth-child(1) .leaderboard-rank { color:#ffd700; }
+  .leaderboard-row:nth-child(2) .leaderboard-rank { color:#c8c8d0; }
+  .leaderboard-row:nth-child(3) .leaderboard-rank { color:#cd7f32; }
+  .leaderboard-name { flex:1; color:var(--text); }
+  .leaderboard-score { color:var(--gold); font-weight:700; }
 
   #loading { color:var(--text2); font-size:13px; margin-top:2rem; text-align:center; max-width:320px; }
   #game { display:none; width:100%; max-width:740px; }
@@ -160,6 +181,7 @@
 <a class="menu-btn" href="index.html">☰ Menu</a>
 <div class="title">🧩 Pixels</div>
 <div class="subtitle">Devine le jeu avant qu'il soit trop tard — 5 essais par image, 3 vies</div>
+<button type="button" id="leaderboardBtn" class="leaderboard-btn">🏆 Classement</button>
 
 <div id="loading">Chargement de la partie…</div>
 
@@ -216,6 +238,16 @@
     <div class="result-actions">
       <button class="btn-io primary" id="retryBtn">Rejouer</button>
       <button class="btn-io" id="closeResultBtn">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<div class="result-modal" id="leaderboardModal">
+  <div class="result-box leaderboard-box">
+    <div class="result-title">🏆 Classement</div>
+    <div id="leaderboardList" class="leaderboard-list"><div class="leaderboard-empty">Chargement…</div></div>
+    <div class="result-actions">
+      <button class="btn-io" id="closeLeaderboardBtn">Fermer</button>
     </div>
   </div>
 </div>
@@ -520,7 +552,42 @@
     document.getElementById('statScore').textContent = state.streak;
     document.getElementById('statBest').textContent = s.best;
     document.getElementById('resultModal').classList.add('open');
+    loadLeaderboard(); // rafraîchit en fond, prêt si le joueur l'ouvre juste après
   }
+
+  async function loadLeaderboard() {
+    const listEl = document.getElementById('leaderboardList');
+    try {
+      const res = await fetch('/api/pixels?leaderboard=1', { cache: 'no-store' });
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+      const rows = data.leaderboard || [];
+      if (!rows.length) {
+        listEl.innerHTML = '<div class="leaderboard-empty">Aucun score enregistré pour l\'instant.</div>';
+        return;
+      }
+      listEl.innerHTML = rows.map((r, i) => `
+        <div class="leaderboard-row">
+          <div class="leaderboard-rank">#${i + 1}</div>
+          <div class="leaderboard-name">${escapeHtml(r.username)}</div>
+          <div class="leaderboard-score">${r.best_score}</div>
+        </div>`).join('');
+    } catch (e) {
+      listEl.innerHTML = '<div class="leaderboard-empty">Classement indisponible pour l\'instant.</div>';
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  document.getElementById('leaderboardBtn').addEventListener('click', () => {
+    document.getElementById('leaderboardModal').classList.add('open');
+    loadLeaderboard();
+  });
+  document.getElementById('closeLeaderboardBtn').addEventListener('click', () => {
+    document.getElementById('leaderboardModal').classList.remove('open');
+  });
 
   async function sendAction(action, extra) {
     if (submitting) return;

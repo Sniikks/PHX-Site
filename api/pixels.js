@@ -45,13 +45,17 @@ function keysFor(userId) {
 export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     try {
+        if (req.method === 'GET' && req.query.leaderboard !== undefined) {
+            return await handleLeaderboard(req, res);
+        }
+
         const userId = await getCallerId(req);
         if (!userId) {
             return res.status(401).json({ error: 'Session invalide, recharge la page.' });
         }
         const keys = keysFor(userId);
 
-        if (req.method === 'POST') return await handleAction(req, res, keys);
+        if (req.method === 'POST') return await handleAction(req, res, keys, userId);
         if (req.method === 'GET') {
             if (req.query.image !== undefined) return await handleImage(req, res, keys);
             return await handleState(req, res, keys);
@@ -60,6 +64,39 @@ export default async function handler(req, res) {
     } catch (e) {
         console.error('❌ pixels error:', e);
         return res.status(500).json({ error: e.message });
+    }
+}
+
+// ────────────────────────────────────────────────────────
+// GET /api/pixels?leaderboard=1 — classement des meilleurs scores
+// ────────────────────────────────────────────────────────
+async function handleLeaderboard(req, res) {
+    const { data, error } = await supabase
+        .from('pixels_leaderboard')
+        .select('username, best_score')
+        .order('best_score', { ascending: false })
+        .limit(20);
+    if (error) return res.status(500).json({ error: error.message });
+    return res.status(200).json({ leaderboard: data || [] });
+}
+
+// Enregistre le score (série obtenue) d'une partie terminée — seulement
+// pour un compte réel (pseudo connu) ; les sessions anonymes ne sont pas
+// classées. Ne met à jour QUE si le score dépasse le meilleur déjà enregistré.
+async function maybeUpdateLeaderboard(userId, score) {
+    if (!score || score <= 0) return;
+    try {
+        const { data: profile } = await supabase.from('profiles').select('username').eq('id', userId).maybeSingle();
+        if (!profile?.username) return; // session anonyme : pas de classement
+
+        const { data: existing } = await supabase.from('pixels_leaderboard').select('best_score').eq('user_id', userId).maybeSingle();
+        if (existing && existing.best_score >= score) return; // pas mieux que l'ancien score, on ne touche à rien
+
+        await supabase.from('pixels_leaderboard').upsert({
+            user_id: userId, username: profile.username, best_score: score, updated_at: new Date().toISOString()
+        });
+    } catch (e) {
+        console.error('❌ pixels leaderboard error:', e);
     }
 }
 
@@ -132,7 +169,7 @@ async function savePublicOnly(publicData, keys) {
     await supabase.from('pixels_public').upsert({ id: keys.GAME_KEY, data: publicData, updated_at: new Date().toISOString() });
 }
 
-async function resolveLoss(publicData, secretName, secretYear, res, keys) {
+async function resolveLoss(publicData, secretName, secretYear, res, keys, userId) {
     publicData.lives--;
     publicData.guesses.push({ text: `✕ Réponse : ${secretName}`, wrong: true });
     publicData.roundOver = true;
@@ -144,10 +181,11 @@ async function resolveLoss(publicData, secretName, secretYear, res, keys) {
     };
     await savePublicOnly(publicData, keys);
     await rememberKnownGame(supabase, secretName, secretYear);
+    if (publicData.gameOver) await maybeUpdateLeaderboard(userId, publicData.streak);
     return res.status(200).json(publicData);
 }
 
-async function handleAction(req, res, keys) {
+async function handleAction(req, res, keys, userId) {
     const { action, text } = req.body || {};
     if (!['guess', 'skip', 'continue', 'retry'].includes(action)) {
         return res.status(400).json({ error: 'Action invalide.' });
@@ -211,7 +249,7 @@ async function handleAction(req, res, keys) {
 
         publicData.attempt++;
         if (publicData.attempt >= MAX_ATTEMPTS) {
-            return await resolveLoss(publicData, secretName, secretYear, res, keys);
+            return await resolveLoss(publicData, secretName, secretYear, res, keys, userId);
         }
         let close = isCloseGuess(text, secretName);
         // Repli licence réelle : un seul mot en commun (le premier) ne suffit
@@ -230,7 +268,7 @@ async function handleAction(req, res, keys) {
     if (action === 'skip') {
         publicData.attempt++;
         if (publicData.attempt >= MAX_ATTEMPTS) {
-            return await resolveLoss(publicData, secretName, secretYear, res, keys);
+            return await resolveLoss(publicData, secretName, secretYear, res, keys, userId);
         }
         publicData.guesses.push({ text: '» Passé', wrong: true });
         await savePublicOnly(publicData, keys);

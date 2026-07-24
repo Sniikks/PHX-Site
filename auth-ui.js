@@ -10,9 +10,6 @@
   function injectStyles() {
     const css = `
       .phx-auth-pill {
-        position: fixed; top: max(20px, env(safe-area-inset-top));
-        right: max(24px, env(safe-area-inset-right));
-        z-index: 700;
         display: inline-flex; align-items: center; justify-content: center; gap: 6px;
         min-width: 100px; box-sizing: border-box;
         padding: 9px 16px;
@@ -36,8 +33,40 @@
         color: #fff;
       }
       .phx-auth-pill .crown { color: var(--gold, #00f0ff); }
+
+      /* Variante par défaut : pages sans en-tête qui se cache au scroll —
+         le bouton reste fixe, épinglé en haut à droite, immobile. */
+      .phx-auth-pill-fixed {
+        position: fixed; top: max(20px, env(safe-area-inset-top));
+        right: max(24px, env(safe-area-inset-right));
+        z-index: 700;
+      }
       @media (max-width: 640px) {
-        .phx-auth-pill { padding: 7px 13px; font-size: 11.5px; top: 14px; right: 14px; min-width: 84px; }
+        .phx-auth-pill-fixed { padding: 7px 13px; font-size: 11.5px; top: 14px; right: 14px; min-width: 84px; }
+      }
+
+      /* Variante "absolue" (Sniikks : .page-header) — mirroir du bouton
+         ☰ Menu, dans le même en-tête qui se cache au scroll sur mobile. */
+      .phx-auth-pill-absolute {
+        position: absolute; right: max(32px, env(safe-area-inset-right));
+        top: 50%; transform: translateY(-50%); z-index: 5; min-width: 0;
+      }
+      /* Même point de bascule que .menu-btn sur cette page (voir
+         Sniikks_liste_de_jeux.html) : le header passe en rangée flex
+         [Menu][Titre][Pastille] au lieu de [Menu absolu] + [Titre centré]. */
+      @media (max-width: 760px), (max-height: 599px) {
+        .phx-auth-pill-absolute {
+          position: static; transform: none; order: 2; flex-shrink: 0;
+          padding: 7px 12px; font-size: 11px;
+        }
+      }
+
+      /* Variante "en flux" (369 / Proposition : rangée flex space-between
+         qui contient déjà le bouton ☰ Menu) — pas de position spéciale,
+         juste un élément de plus dans la même rangée. */
+      .phx-auth-pill-inline { min-width: 0; flex-shrink: 0; }
+      @media (max-width: 640px) {
+        .phx-auth-pill-inline { padding: 7px 12px; font-size: 11px; }
       }
 
       .phx-auth-menu {
@@ -107,12 +136,33 @@
     document.head.appendChild(style);
   }
 
+  // Sur Sniikks/369/Proposition, un en-tête existant se cache déjà au
+  // scroll (mobile/tablette) et contient le bouton ☰ Menu — on y glisse la
+  // pastille au lieu de la fixer indépendamment, pour qu'elle se cache et
+  // s'aligne avec lui automatiquement. Sur les autres pages (aucun de ces
+  // conteneurs n'existe), la pastille reste fixe en haut à droite, immobile.
+  function findHeaderSlot() {
+    const pageHeader = document.querySelector('#appHeader .page-header'); // Sniikks
+    if (pageHeader) return { type: 'absolute', parent: pageHeader };
+    const brandRow = document.querySelector('.brand-row'); // 369
+    if (brandRow) return { type: 'inline', parent: brandRow };
+    const shTitle = document.querySelector('.sh-title'); // Proposition
+    if (shTitle) return { type: 'inline', parent: shTitle };
+    return null;
+  }
+
   function build() {
     // Pastille
     const pill = document.createElement('div');
-    pill.className = 'phx-auth-pill';
+    const slot = findHeaderSlot();
+    if (slot) {
+      pill.className = 'phx-auth-pill ' + (slot.type === 'absolute' ? 'phx-auth-pill-absolute' : 'phx-auth-pill-inline');
+      slot.parent.appendChild(pill);
+    } else {
+      pill.className = 'phx-auth-pill phx-auth-pill-fixed';
+      document.body.appendChild(pill);
+    }
     pill.textContent = 'Connexion';
-    document.body.appendChild(pill);
 
     // Menu déroulant (affiché quand connecté)
     const menu = document.createElement('div');
