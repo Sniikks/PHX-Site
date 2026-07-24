@@ -1471,7 +1471,7 @@ function vote(side){
   addHistoryChip(winner.name,loser.name,false);
   matchesDone++; qIdx++;
   updateTopbar();
-  setTimeout(()=>{ voting=false; showNextMatch(); },800);
+  setTimeout(()=>{ voting=false; showNextMatch(); },1000);
 }
 
 function endRound(){
@@ -1613,7 +1613,7 @@ function draftPick(idx){
   draftPicksDone++;
   updateDraftTopbar();
 
-  setTimeout(()=>{ voting=false; showNextDraftPick(); }, 800);
+  setTimeout(()=>{ voting=false; showNextDraftPick(); }, 1000);
 }
 
 function draftAutoPickRandom(){
@@ -1770,7 +1770,7 @@ function draftGroupPick(idx){
   draftBracketQIdx++;
   updateDraftGroupTopbar();
 
-  setTimeout(()=>{ voting=false; showNextDraftGroupMatch(); }, 800);
+  setTimeout(()=>{ voting=false; showNextDraftGroupMatch(); }, 1000);
 }
 
 function draftGroupAutoPickRandom(){
@@ -1999,7 +1999,7 @@ function championVote(role){
   matchesDone++;
   updateChampionTopbar();
 
-  setTimeout(()=>{ voting=false; showNextChampionRound(); }, 800);
+  setTimeout(()=>{ voting=false; showNextChampionRound(); }, 1000);
 }
 
 function championAutoVote(){
