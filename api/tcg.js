@@ -144,7 +144,7 @@ async function actionOpen(req, res) {
       .from('tcg_inventory')
       .update({ unopened_count: currentCount, updated_at: new Date().toISOString() })
       .eq('user_id', userId);
-    return res.status(502).json({ error: "Erreur lors du tirage des cartes, réessaie plus tard." });
+    return res.status(502).json({ error: `Erreur lors du tirage des cartes : ${e.message}` });
   }
 
   // Lecture des quantités existantes EN PARALLÈLE (pas une par une),
