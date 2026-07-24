@@ -239,6 +239,7 @@
   const REVEAL_SCHEDULE = [0.06, 0.18, 0.34, 0.52, 0.72, 1];
 
   let state = null;        // dernier état public reçu (pixels_game)
+  let currentGameKey = null; // "pixels_game_<userId>" — propre à l'utilisateur connecté
   let img = null;
   let cols = GRID_COLS, rows = 6;
   let cellColors = [];
@@ -459,7 +460,7 @@
     document.getElementById('loading').textContent = 'Chargement de l\'image…';
     document.getElementById('game').style.display = 'none';
 
-    const res = await fetch('/api/pixels?image=1', { cache: 'no-store' });
+    const res = await fetch('/api/pixels?image=1', { cache: 'no-store', headers: await PHXAuth.authHeaders() });
     const data = await safeJson(res);
     if (!res.ok) throw new Error(data.error || 'Erreur serveur');
     img = await loadImageEl(data.image);
@@ -529,7 +530,7 @@
     try {
       const res = await fetch('/api/pixels', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await PHXAuth.authHeaders()) },
         body: JSON.stringify({ action, ...extra })
       });
       const data = await safeJson(res);
@@ -671,9 +672,10 @@
   window.addEventListener('resize', () => { if (img && state) { resizeCanvasToDisplay(); draw(); } });
 
   function subscribeRealtime() {
+    if (!currentGameKey) return;
     realtimeChannel = supabaseClient
-      .channel('pixels_game')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pixels_public', filter: 'id=eq.pixels_game' }, payload => {
+      .channel(currentGameKey)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pixels_public', filter: 'id=eq.' + currentGameKey }, payload => {
         if (payload.new?.data?.roundId) applyState(payload.new.data);
       })
       .subscribe();
@@ -681,7 +683,11 @@
 
   async function init() {
     try {
-      const res = await fetch('/api/pixels', { cache: 'no-store' });
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) throw new Error('Session non initialisée, recharge la page.');
+      currentGameKey = 'pixels_game_' + session.user.id;
+
+      const res = await fetch('/api/pixels', { cache: 'no-store', headers: await PHXAuth.authHeaders() });
       const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error || 'Erreur serveur');
       await applyState(data);

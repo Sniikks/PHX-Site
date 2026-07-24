@@ -10,25 +10,34 @@
   function injectStyles() {
     const css = `
       .phx-auth-pill {
-        position: fixed; top: max(14px, env(safe-area-inset-top));
-        right: max(14px, env(safe-area-inset-right));
+        position: fixed; top: max(20px, env(safe-area-inset-top));
+        right: max(24px, env(safe-area-inset-right));
         z-index: 700;
         display: inline-flex; align-items: center; justify-content: center; gap: 6px;
         min-width: 100px; box-sizing: border-box;
-        padding: 8px 14px;
-        background: rgba(255,255,255,.04);
-        border: 1px solid var(--border, #2a2d3a);
-        border-radius: 999px;
-        color: var(--text, #e5e5e5);
+        padding: 9px 16px;
+        background: rgba(255, 255, 255, .04);
+        border: 1px solid rgba(255, 255, 255, .14);
+        border-radius: 3px;
+        color: #e5e5e5;
         font-family: 'Exo 2', sans-serif;
         font-size: 12.5px; font-weight: 600; letter-spacing: .02em;
         cursor: pointer; white-space: nowrap;
-        transition: all .15s ease;
+        line-height: normal;
+        text-shadow: none;
+        /* Uniquement les couleurs au survol — PAS "transition: all" : celui-ci
+           animait aussi la largeur du bouton à chaque changement de texte
+           (Connexion → pseudo), ce qui donnait l'impression qu'il "glissait". */
+        transition: background-color .15s ease, border-color .15s ease, color .15s ease;
       }
-      .phx-auth-pill:hover { background: rgba(255,255,255,.09); border-color: var(--gold, #00f0ff); }
+      .phx-auth-pill:hover {
+        background: rgba(255, 255, 255, .09);
+        border-color: rgba(255, 255, 255, .24);
+        color: #fff;
+      }
       .phx-auth-pill .crown { color: var(--gold, #00f0ff); }
       @media (max-width: 640px) {
-        .phx-auth-pill { padding: 6px 11px; font-size: 11px; top: 10px; right: 10px; }
+        .phx-auth-pill { padding: 7px 13px; font-size: 11.5px; top: 14px; right: 14px; min-width: 84px; }
       }
 
       .phx-auth-menu {
