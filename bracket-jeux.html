@@ -1471,7 +1471,7 @@ function vote(side){
   addHistoryChip(winner.name,loser.name,false);
   matchesDone++; qIdx++;
   updateTopbar();
-  setTimeout(()=>{ voting=false; showNextMatch(); },1200);
+  setTimeout(()=>{ voting=false; showNextMatch(); },800);
 }
 
 function endRound(){
