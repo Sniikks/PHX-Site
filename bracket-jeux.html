@@ -9,6 +9,7 @@
 <script src="config.js"></script>
 <script src="auth.js"></script>
 <script src="auth-ui.js" defer></script>
+<script src="curator-visibility.js" defer></script>
 <script src="protected-write.js"></script>
 <script src="db.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -79,6 +80,8 @@ body{background:radial-gradient(1200px 600px at 50% -200px, rgba(0,240,255,.08),
 .saved-item{display:flex;align-items:center;gap:.5rem;background:var(--bg3);border:1px solid var(--border);padding:.35rem .5rem;cursor:pointer;transition:all .12s;text-align:left;}
 .saved-item:hover{border-color:var(--gold-dim);background:var(--gold-glow);}
 .saved-item.selected{border-color:#c04040;background:rgba(224,80,80,.12);}
+.saved-item.select-mode.saved-item-locked{cursor:default;opacity:.55;}
+.saved-item.select-mode.saved-item-locked:hover{border-color:var(--border);background:var(--bg3);}
 .saved-chk{flex-shrink:0;width:14px;height:14px;border:1px solid var(--border2);background:var(--bg4);display:none;align-items:center;justify-content:center;font-size:9px;}
 .saved-item.select-mode .saved-chk{display:flex;}
 .saved-item.selected .saved-chk{background:#5a2020;border-color:#c04040;color:#ff8080;}
@@ -951,25 +954,34 @@ function renderSavedList(){
     wrap.innerHTML = saves.map(s=>{
       const sel = selectedSaveIds.has(s.id);
       const dateStr = new Date(s.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
-      // La liste par défaut (générée auto depuis les jeux "Terminé") ne peut
-      // pas être supprimée — pas de croix pour cette entrée précise.
+      // La liste par défaut (générée auto depuis les jeux "Terminé") : seuls
+      // les comptes curateurs (Sniikks/369) peuvent l'ajouter/la supprimer.
       const isDefaultList = s.id.startsWith('default_');
-      return `<div class="saved-item${selectModeOn?' select-mode':''}${sel?' selected':''}" onclick="onSavedItemClick('${s.id}')">
-        <div class="saved-chk">${sel?'✕':''}</div>
+      const isCurator = typeof PHXAuth !== 'undefined' && PHXAuth.isCurator();
+      const lockedForMe = isDefaultList && !isCurator;
+      const showDefaultActions = !isDefaultList || isCurator;
+      return `<div class="saved-item${selectModeOn?' select-mode':''}${sel?' selected':''}${lockedForMe?' saved-item-locked':''}" onclick="onSavedItemClick('${s.id}')">
+        <div class="saved-chk">${(sel&&!lockedForMe)?'✕':''}</div>
         <div class="saved-info">
           <div class="saved-name">${esc(s.name)}</div>
           <div class="saved-meta">${s.count} jeux · ${dateStr}</div>
         </div>
-        <button class="saved-add" onclick="event.stopPropagation();openAddGamesModal('${s.id}')" title="Ajouter des jeux">➕</button>
-        ${isDefaultList ? '' : `<button class="saved-del" onclick="event.stopPropagation();deleteSingleSave('${s.id}')" title="Supprimer">✕</button>`}
+        ${showDefaultActions ? `<button class="saved-add" onclick="event.stopPropagation();openAddGamesModal('${s.id}')" title="Ajouter des jeux">➕</button>` : ''}
+        ${showDefaultActions ? `<button class="saved-del" onclick="event.stopPropagation();deleteSingleSave('${s.id}')" title="Supprimer">✕</button>` : ''}
       </div>`;
     }).join('');
   }
   updateSelectBar();
 }
 
+// La liste par défaut affiche/masque son ➕ et sa ✕ selon le statut
+// curateur : on réaffiche dès que la connexion change.
+if (typeof PHXAuth !== 'undefined') PHXAuth.onChange(() => renderSavedList());
+
 function onSavedItemClick(id){
   if(selectModeOn){
+    const isCurator = typeof PHXAuth !== 'undefined' && PHXAuth.isCurator();
+    if(id.startsWith('default_') && !isCurator) return; // liste par défaut : réservée aux curateurs
     if(selectedSaveIds.has(id)) selectedSaveIds.delete(id);
     else selectedSaveIds.add(id);
     renderSavedList();
