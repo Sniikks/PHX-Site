@@ -147,30 +147,37 @@ async function actionOpen(req, res) {
     return res.status(502).json({ error: "Erreur lors du tirage des cartes, réessaie plus tard." });
   }
 
-  for (const card of cards) {
-    const { data: existingCard } = await supabaseAdmin
-      .from('tcg_collection').select('quantity')
-      .eq('user_id', userId).eq('card_id', card.id).maybeSingle();
+  // Lecture des quantités existantes EN PARALLÈLE (pas une par une),
+  // puis écriture (update ou insert selon le cas) EN PARALLÈLE aussi
+  // — ça ramène ~12 allers-retours séquentiels à 2 vagues parallèles,
+  // ce qui évite de dépasser le temps d'exécution max de la fonction.
+  const existingResults = await Promise.all(
+    cards.map(card =>
+      supabaseAdmin.from('tcg_collection').select('quantity')
+        .eq('user_id', userId).eq('card_id', card.id).maybeSingle()
+    )
+  );
 
+  await Promise.all(cards.map((card, i) => {
+    const existingCard = existingResults[i].data;
     if (existingCard) {
-      await supabaseAdmin
+      return supabaseAdmin
         .from('tcg_collection')
         .update({ quantity: existingCard.quantity + 1 })
         .eq('user_id', userId).eq('card_id', card.id);
-    } else {
-      await supabaseAdmin.from('tcg_collection').insert({
-        user_id: userId,
-        card_id: card.id,
-        card_name: card.name,
-        set_id: card.set?.id || '',
-        set_name: card.set?.name || '',
-        rarity: card.rarity || null,
-        image_small: card.images?.small || null,
-        image_large: card.images?.large || null,
-        quantity: 1,
-      });
     }
-  }
+    return supabaseAdmin.from('tcg_collection').insert({
+      user_id: userId,
+      card_id: card.id,
+      card_name: card.name,
+      set_id: card.set?.id || '',
+      set_name: card.set?.name || '',
+      rarity: card.rarity || null,
+      image_small: card.images?.small || null,
+      image_large: card.images?.large || null,
+      quantity: 1,
+    });
+  }));
 
   return res.status(200).json({
     cards: cards.map(c => ({

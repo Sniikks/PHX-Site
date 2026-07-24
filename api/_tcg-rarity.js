@@ -54,24 +54,49 @@ function buildRarityQuery(values) {
   return '(' + values.map(v => `rarity:"${v}"`).join(' OR ') + ')';
 }
 
+// Timeout court par requête externe : sur Vercel Hobby, une fonction
+// serverless est tuée au bout de 10s max. Tirer 6 cartes en séquence
+// (2 appels réseau chacune) pouvait facilement dépasser ce budget et
+// faire échouer TOUTE l'ouverture sans qu'aucune carte ne s'affiche.
+// On limite chaque appel à 6s et on parallélise tout ce qui peut
+// l'être (voir drawBooster) pour rester largement sous la limite.
 async function fetchJSON(url) {
-  const res = await fetch(url, {
-    headers: { 'X-Api-Key': process.env.POKEMON_TCG_API_KEY },
-  });
-  if (!res.ok) throw new Error(`pokemontcg.io ${res.status}`);
-  return res.json();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
+  try {
+    const res = await fetch(url, {
+      headers: { 'X-Api-Key': process.env.POKEMON_TCG_API_KEY },
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`pokemontcg.io ${res.status}`);
+    return await res.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// Cache mémoire valable le temps d'UNE ouverture de booster : les 5
+// cartes de base ne roulent que sur 2 valeurs possibles (Common /
+// Uncommon), donc sans ce cache on redemandait le même total() à
+// l'API 5 fois pour rien.
+function makeCountCache() {
+  const cache = new Map();
+  return async function getTotal(query) {
+    if (cache.has(query)) return cache.get(query);
+    const data = await fetchJSON(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(query)}&pageSize=1`);
+    const total = data.totalCount || 0;
+    cache.set(query, total);
+    return total;
+  };
 }
 
 // Tire UNE carte au hasard parmi tous les sets, pour une liste de
 // valeurs de rareté données. Utilise pageSize=1 + un numéro de page
 // aléatoire dans [1, totalCount] pour piocher un élément précis sans
 // avoir à rapatrier toutes les cartes.
-async function pickRandomCardForValues(values) {
+async function pickRandomCardForValues(values, getTotal) {
   const query = buildRarityQuery(values);
-  const countData = await fetchJSON(
-    `https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(query)}&pageSize=1`
-  );
-  const total = countData.totalCount || 0;
+  const total = await getTotal(query);
   if (total === 0) return null;
 
   const randomPage = Math.floor(Math.random() * total) + 1;
@@ -81,34 +106,38 @@ async function pickRandomCardForValues(values) {
   return (cardData.data && cardData.data[0]) || null;
 }
 
-async function drawCardFromTierGroup(tiers, fallbackOrder) {
+async function drawCardFromTierGroup(tiers, fallbackOrder, getTotal) {
   let tierKey = weightedPick(tiers);
-  let card = await pickRandomCardForValues(tiers[tierKey].values);
+  let card = await pickRandomCardForValues(tiers[tierKey].values, getTotal);
 
   // Repli en cascade si le palier tiré n'a rien renvoyé
   let i = fallbackOrder.indexOf(tierKey);
   while (!card && i < fallbackOrder.length - 1) {
     i += 1;
     tierKey = fallbackOrder[i];
-    card = await pickRandomCardForValues(tiers[tierKey].values);
+    card = await pickRandomCardForValues(tiers[tierKey].values, getTotal);
   }
   return { card, tier: tierKey };
 }
 
 // Tire un booster complet : 5 cartes de base (commune/peu commune)
-// + 1 carte du slot rare garanti.
+// + 1 carte du slot rare garanti. Les 6 tirages sont indépendants,
+// donc lancés EN PARALLÈLE (Promise.all) plutôt qu'en séquence —
+// c'était la cause probable des échecs silencieux (fonction tuée
+// avant la fin des 12 appels réseau séquentiels).
 async function drawBooster() {
-  const cards = [];
+  const getTotal = makeCountCache();
 
-  for (let i = 0; i < 5; i++) {
-    const { card, tier } = await drawCardFromTierGroup(BASE_TIERS, BASE_FALLBACK_ORDER);
-    if (card) cards.push({ ...card, _tier: tier });
-  }
+  const basePromises = Array.from({ length: 5 }, () =>
+    drawCardFromTierGroup(BASE_TIERS, BASE_FALLBACK_ORDER, getTotal)
+  );
+  const rarePromise = drawCardFromTierGroup(RARE_SLOT_TIERS, RARE_FALLBACK_ORDER, getTotal);
 
-  const { card: rareCard, tier: rareTier } = await drawCardFromTierGroup(RARE_SLOT_TIERS, RARE_FALLBACK_ORDER);
-  if (rareCard) cards.push({ ...rareCard, _tier: rareTier });
+  const results = await Promise.all([...basePromises, rarePromise]);
 
-  return cards;
+  return results
+    .filter(r => r.card)
+    .map(r => ({ ...r.card, _tier: r.tier }));
 }
 
 module.exports = { drawBooster, BASE_TIERS, RARE_SLOT_TIERS };

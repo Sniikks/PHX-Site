@@ -83,7 +83,7 @@ document.getElementById('claimBtn').addEventListener('click', async () => {
     await refreshStatus();
   } catch (e) {
     console.error('claim error:', e);
-    alert("Impossible de récupérer le booster pour l'instant.");
+    alert("Impossible de récupérer le booster : " + e.message);
     btn.disabled = false;
   }
 });
@@ -109,7 +109,7 @@ document.getElementById('openBoosterBtn').addEventListener('click', async () => 
     await refreshStatus();
   } catch (e) {
     console.error('open error:', e);
-    alert("Impossible d'ouvrir de booster pour l'instant.");
+    alert("Impossible d'ouvrir de booster : " + e.message);
   } finally {
     btn.disabled = false;
   }
@@ -146,10 +146,11 @@ document.getElementById('openingClose').addEventListener('click', () => {
 // ---------- Collection ----------
 
 async function loadSets() {
+  const select = document.getElementById('setSelect');
   try {
     const res = await fetch('/api/tcg?action=sets');
     const data = await res.json();
-    const select = document.getElementById('setSelect');
+    if (!res.ok) throw new Error(data.error || 'Erreur');
     (data.sets || []).forEach(s => {
       const opt = document.createElement('option');
       opt.value = s.id;
@@ -158,6 +159,10 @@ async function loadSets() {
     });
   } catch (e) {
     console.error('loadSets error:', e);
+    const opt = document.createElement('option');
+    opt.textContent = 'Erreur de chargement des sets — vérifie POKEMON_TCG_API_KEY';
+    opt.disabled = true;
+    select.appendChild(opt);
   }
 }
 
