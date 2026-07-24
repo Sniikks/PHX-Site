@@ -45,7 +45,7 @@
       .phx-auth-menu button:hover { background: var(--bg3, #181a25); color: var(--gold, #00f0ff); }
 
       .phx-auth-overlay {
-        position: fixed; inset: 0; background: rgba(0,0,0,.72); z-index: 800;
+        position: fixed; inset: 0; background: rgba(0,0,0,.72); z-index: 950;
         display: none; align-items: center; justify-content: center; padding: 20px;
         font-family: 'Exo 2', sans-serif;
       }

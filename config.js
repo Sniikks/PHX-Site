@@ -59,4 +59,14 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 // Si la connexion échoue (offline, anon sign-in pas encore activé
 // côté Supabase...), on n'affiche rien et le site continue de
 // fonctionner en lecture — exactement comme avant cette évolution.
-supabaseClient.auth.signInAnonymously().catch(() => {});
+//
+// ⚠️ IMPORTANT : signInAnonymously() ne doit JAMAIS être appelé s'il existe
+// déjà une session (un vrai compte connecté, Sniikks/369 ou autre) — sinon
+// elle est remplacée par une session anonyme à CHAQUE chargement de page,
+// ce qui déconnecte silencieusement tout le monde en permanence. On vérifie
+// donc d'abord qu'aucune session n'existe avant d'en ouvrir une anonyme.
+supabaseClient.auth.getSession().then(({ data: { session } }) => {
+  if (!session) {
+    supabaseClient.auth.signInAnonymously().catch(() => {});
+  }
+});
