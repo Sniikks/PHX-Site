@@ -1613,7 +1613,7 @@ function draftPick(idx){
   draftPicksDone++;
   updateDraftTopbar();
 
-  setTimeout(()=>{ voting=false; showNextDraftPick(); }, 1800);
+  setTimeout(()=>{ voting=false; showNextDraftPick(); }, 800);
 }
 
 function draftAutoPickRandom(){
@@ -1770,7 +1770,7 @@ function draftGroupPick(idx){
   draftBracketQIdx++;
   updateDraftGroupTopbar();
 
-  setTimeout(()=>{ voting=false; showNextDraftGroupMatch(); }, 1800);
+  setTimeout(()=>{ voting=false; showNextDraftGroupMatch(); }, 800);
 }
 
 function draftGroupAutoPickRandom(){
@@ -1999,7 +1999,7 @@ function championVote(role){
   matchesDone++;
   updateChampionTopbar();
 
-  setTimeout(()=>{ voting=false; showNextChampionRound(); }, 1800);
+  setTimeout(()=>{ voting=false; showNextChampionRound(); }, 800);
 }
 
 function championAutoVote(){
