@@ -15,15 +15,24 @@
 const PHXAuth = {
   _listeners: [],
   _profile: null, // { username, role } du compte connecté, une fois chargé
+  _session: null,
+  _resolved: false, // true dès que le premier état (connecté/déconnecté) est connu
 
   // S'abonner aux changements d'état (connexion, déconnexion, profil chargé).
-  // callback reçoit { session, profile } — profile peut être null un court
-  // instant après la connexion, le temps de la requête vers la table profiles.
+  // callback reçoit { session, profile } — si l'état initial est déjà connu
+  // au moment de l'appel, callback est invoqué immédiatement avec cet état
+  // (évite la course où un script chargé en <script defer> s'abonnerait
+  // APRÈS le tout premier événement et le raterait silencieusement).
   onChange(callback) {
     this._listeners.push(callback);
+    if (this._resolved) {
+      try { callback({ session: this._session, profile: this._profile }); } catch (e) { console.error(e); }
+    }
   },
 
   _emit(session) {
+    this._session = session;
+    this._resolved = true;
     this._listeners.forEach(cb => {
       try { cb({ session, profile: this._profile }); } catch (e) { console.error(e); }
     });

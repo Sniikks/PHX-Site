@@ -26,6 +26,9 @@
       }
       .phx-auth-pill:hover { background: rgba(255,255,255,.09); border-color: var(--gold, #00f0ff); }
       .phx-auth-pill .crown { color: var(--gold, #00f0ff); }
+      @media (max-width: 640px) {
+        .phx-auth-pill { padding: 6px 11px; font-size: 11px; top: 10px; right: 10px; }
+      }
 
       .phx-auth-menu {
         position: fixed; z-index: 701; min-width: 160px;
@@ -75,9 +78,12 @@
       }
       .phx-auth-submit:disabled { opacity: .5; cursor: default; }
       .phx-auth-close {
-        all: unset; position: absolute; top: 14px; right: 18px; cursor: pointer;
-        color: var(--text2, #939ab0); font-size: 20px; line-height: 1;
+        all: unset; position: absolute; top: 12px; right: 12px; cursor: pointer;
+        width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+        color: var(--text2, #939ab0); font-size: 18px; line-height: 1; border-radius: 50%;
+        box-sizing: border-box;
       }
+      .phx-auth-close:hover { background: rgba(255,255,255,.08); color: var(--text, #f0f1f5); }
       .phx-auth-box { position: relative; }
       .phx-auth-resend { background: none; border: none; color: var(--gold, #00f0ff); text-decoration: underline; cursor: pointer; font: inherit; padding: 0; }
     `;
