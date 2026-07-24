@@ -2,17 +2,18 @@
 
 ## Fichiers fournis
 - `tcg.html`, `tcg.css`, `tcg.js` — la page
-- `api/tcg-claim.js` — récupération du booster du créneau en cours
-- `api/tcg-open.js` — ouverture d'un booster (tirage pondéré)
-- `api/tcg-status.js` — statut (inventaire + créneau) pour le front
-- `api/tcg-sets.js` — liste des sets Pokémon (filtre collection)
-- `api/tcg-collection.js` — cartes d'un set + possédées/manquantes
-- `api/_tcg-rarity.js` — classification des raretés + tirage (pas une route, utilisé par tcg-open.js)
+- `api/tcg.js` — **une seule fonction serverless** qui regroupe les 5 actions (statut, claim, ouverture, sets, collection), pour ne consommer qu'1 slot sur la limite de 12 fonctions du plan Vercel Hobby. Dispatch via le paramètre `?action=` :
+  - `GET /api/tcg?action=status`
+  - `POST /api/tcg?action=claim`
+  - `POST /api/tcg?action=open`
+  - `GET /api/tcg?action=sets`
+  - `GET /api/tcg?action=collection&setId=xxx`
+- `api/_tcg-rarity.js` — classification des raretés + tirage pondéré (préfixé `_`, donc pas une route déployée — juste un module importé par `tcg.js`, comme tes autres fichiers `api/_*.js`)
 - `supabase-tcg-schema.sql` — les 3 nouvelles tables + policies RLS
 
 ## À faire côté toi
 
-**1. Copier les fichiers** dans les mêmes dossiers que le reste du site (les `api/tcg-*.js` dans ton dossier `api/` existant, le reste à la racine).
+**1. Copier les fichiers** dans les mêmes dossiers que le reste du site (les `api/tcg.js` dans ton dossier `api/` existant, le reste à la racine).
 
 **2. Exécuter `supabase-tcg-schema.sql`** dans l'éditeur SQL Supabase (crée les 3 tables + policies, ne touche à rien d'existant).
 

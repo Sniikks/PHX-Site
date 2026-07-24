@@ -19,7 +19,7 @@ async function authHeader() {
 async function refreshStatus() {
   try {
     const headers = await authHeader();
-    const res = await fetch('/api/tcg-status', { headers });
+    const res = await fetch('/api/tcg?action=status', { headers });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erreur');
 
@@ -77,7 +77,7 @@ document.getElementById('claimBtn').addEventListener('click', async () => {
   btn.disabled = true;
   try {
     const headers = await authHeader();
-    const res = await fetch('/api/tcg-claim', { method: 'POST', headers });
+    const res = await fetch('/api/tcg?action=claim', { method: 'POST', headers });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erreur');
     await refreshStatus();
@@ -102,7 +102,7 @@ document.getElementById('openBoosterBtn').addEventListener('click', async () => 
   btn.disabled = true;
   try {
     const headers = await authHeader();
-    const res = await fetch('/api/tcg-open', { method: 'POST', headers });
+    const res = await fetch('/api/tcg?action=open', { method: 'POST', headers });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erreur');
     showOpening(data.cards);
@@ -147,7 +147,7 @@ document.getElementById('openingClose').addEventListener('click', () => {
 
 async function loadSets() {
   try {
-    const res = await fetch('/api/tcg-sets');
+    const res = await fetch('/api/tcg?action=sets');
     const data = await res.json();
     const select = document.getElementById('setSelect');
     (data.sets || []).forEach(s => {
@@ -170,7 +170,7 @@ document.getElementById('setSelect').addEventListener('change', async (e) => {
   grid.innerHTML = '<p style="color:var(--text-dim);font-size:13px;">Chargement…</p>';
   try {
     const headers = await authHeader();
-    const res = await fetch(`/api/tcg-collection?setId=${encodeURIComponent(setId)}`, { headers });
+    const res = await fetch(`/api/tcg?action=collection&setId=${encodeURIComponent(setId)}`, { headers });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erreur');
 
