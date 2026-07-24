@@ -50,8 +50,16 @@ function weightedPick(tiers) {
   return entries[entries.length - 1][0];
 }
 
+// La doc pokemontcg.io ne montre les parenthèses OR qu'en groupe
+// SECONDAIRE à côté d'une autre clause (ex. name:charizard
+// (subtypes:mega OR subtypes:vmax)). Ici la clause de rareté est la
+// SEULE clause de la requête : envelopper un groupe unique dans des
+// parenthèses comme unique contenu semble faire planter leur parseur
+// côté serveur (500). On envoie donc l'expression OR sans parenthèses
+// englobantes, et sans aucune parenthèse du tout pour un seul terme.
 function buildRarityQuery(values) {
-  return '(' + values.map(v => `rarity:"${v}"`).join(' OR ') + ')';
+  if (values.length === 1) return `rarity:"${values[0]}"`;
+  return values.map(v => `rarity:"${v}"`).join(' OR ');
 }
 
 // Timeout court par requête externe : sur Vercel Hobby, une fonction
@@ -108,14 +116,24 @@ async function pickRandomCardForValues(values, getTotal) {
 
 async function drawCardFromTierGroup(tiers, fallbackOrder, getTotal) {
   let tierKey = weightedPick(tiers);
-  let card = await pickRandomCardForValues(tiers[tierKey].values, getTotal);
+  let card = null;
+  try {
+    card = await pickRandomCardForValues(tiers[tierKey].values, getTotal);
+  } catch (e) {
+    console.error(`tcg rarity draw error (tier ${tierKey}):`, e.message);
+  }
 
-  // Repli en cascade si le palier tiré n'a rien renvoyé
+  // Repli en cascade si le palier tiré n'a rien renvoyé OU si
+  // l'appel a échoué (erreur réseau/serveur ponctuelle côté API)
   let i = fallbackOrder.indexOf(tierKey);
   while (!card && i < fallbackOrder.length - 1) {
     i += 1;
     tierKey = fallbackOrder[i];
-    card = await pickRandomCardForValues(tiers[tierKey].values, getTotal);
+    try {
+      card = await pickRandomCardForValues(tiers[tierKey].values, getTotal);
+    } catch (e) {
+      console.error(`tcg rarity draw error (tier ${tierKey}):`, e.message);
+    }
   }
   return { card, tier: tierKey };
 }
