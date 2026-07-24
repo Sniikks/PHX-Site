@@ -2224,7 +2224,22 @@ function toast(msg){
 // statut change ensuite là-bas (repasse "En cours", etc.), il RESTE dans
 // Bracket. Seule une suppression manuelle ici (ou en base) le retire.
 // Lecture seule sur les tables 369/Sniikks, jamais d'écriture dedans.
-function normGameName(s){ return String(s||'').trim().toLowerCase(); }
+// Insensible à la casse ET aux petites variations de formatage entre les deux
+// pages (™/®/©, apostrophes/guillemets, accents) — la casse était la cause
+// principale des doublons (369 mettait tout en MAJUSCULES, corrigé à la
+// source), mais ces symboles peuvent encore différer d'une page à l'autre
+// (ex. "Mirror's Edge" vs "Mirrors Edge", "THE LAST OF US™ PART I" vs "The
+// Last Of Us Part I") sans que ce soit un jeu différent pour autant.
+function normGameName(s){
+  return String(s||'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // accents
+    .replace(/[™®©]/g, '')
+    .replace(/['''`]/g, '') // apostrophes/guillemets courbes
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 function steamAppIdFromUrl(url){
   if(!url) return null;
@@ -2235,13 +2250,37 @@ function steamHeaderUrl(appId){
   return `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`;
 }
 
+// 369 garde ses titres en MAJUSCULES sur SA page (préférence assumée, pas un
+// bug) — mais le bracket veut le format "normal" habituel du Steam Store
+// (ex. "The Witcher 3: Wild Hunt", pas "THE WITCHER 3: WILD HUNT"). On
+// reconvertit donc UNIQUEMENT ici, au moment du transfert, jamais côté 369.
+// Chiffres romains (I à XVI, les seuls réalistes pour un titre de jeu)
+// gardés entièrement en majuscules — "capitaliser juste la 1re lettre"
+// donnerait "Ii"/"Iii" au lieu de "II"/"III". Liste fermée plutôt qu'une
+// regex générale, pour ne pas capturer par erreur un mot ordinaire qui
+// ressemble à un chiffre romain (ex. "MIX", "DIM", "LIVE").
+const ROMAN_NUMERALS = new Set(['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI']);
+const KNOWN_ACRONYMS = new Set(['HD','DLC','VR','GOTY','ODST','GTA','PC','2D','3D','XL']);
+function toSteamCase(name){
+  const s = String(name || '').trim();
+  if(!s) return s;
+  // Ne touche pas aux titres qui ne sont pas entièrement en majuscules —
+  // uniquement un filet de sécurité si jamais un jour 369 change d'avis.
+  if(s !== s.toUpperCase() || s === s.toLowerCase()) return s;
+  return s.toLowerCase().replace(/[a-zà-ÿ0-9']+/gi, w => {
+    const upper = w.toUpperCase();
+    if(ROMAN_NUMERALS.has(upper) || KNOWN_ACRONYMS.has(upper)) return upper;
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  });
+}
+
 async function fetchFinishedFrom369(){
   try{
     const { data } = await supabaseClient.from('369_games').select('data').eq('id','backlog_cards_v1').maybeSingle();
     const list = Array.isArray(data?.data) ? data.data : [];
     return list.filter(g => g.status === 'Fini' && g.title).map(g => {
       const appId = steamAppIdFromUrl(g.steamId);
-      return { name: g.title.trim(), src: appId ? steamHeaderUrl(appId) : (g.steamId || '') };
+      return { name: toSteamCase(g.title.trim()), src: appId ? steamHeaderUrl(appId) : (g.steamId || '') };
     });
   }catch(e){ console.error('Sync 369 → Bracket, erreur:', e); return []; }
 }

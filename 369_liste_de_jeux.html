@@ -1128,6 +1128,10 @@ function openEdit(id){
 }
 function closeModal(){document.getElementById('modalOverlay').classList.remove('open');editingId=null;}
 function confirmModal(){
+  // 369 veut garder ses titres en MAJUSCULES sur SA page (préférence assumée,
+  // pas un bug) — la reconversion au format Steam normal se fait uniquement
+  // au moment du transfert vers le bracket (voir bracket-jeux.html,
+  // fetchFinishedFrom369 + toSteamCase), pas ici.
   const title=document.getElementById('inputTitle').value.trim().toUpperCase();
   const status=document.getElementById('inputStatus').value;
   const noteRaw=parseFloat(document.getElementById('inputNote').value);
