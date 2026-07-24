@@ -19,33 +19,44 @@ const PHXAuth = {
   _resolved: false, // true dès que le premier état (connecté/déconnecté) est connu
 
   // S'abonner aux changements d'état (connexion, déconnexion, profil chargé).
-  // callback reçoit { session, profile } — si l'état initial est déjà connu
-  // au moment de l'appel, callback est invoqué immédiatement avec cet état
-  // (évite la course où un script chargé en <script defer> s'abonnerait
-  // APRÈS le tout premier événement et le raterait silencieusement).
+  // callback reçoit { session, profile, isAnonymous } — isAnonymous distingue
+  // la session anonyme technique (ouverte par config.js pour autoriser
+  // l'écriture "authenticated" de base sur Bracket/Pixels) d'un vrai compte :
+  // une session anonyme n'aura JAMAIS de profil, ce n'est pas un chargement
+  // en cours. Si l'état initial est déjà connu au moment de l'appel, callback
+  // est invoqué immédiatement avec cet état (évite la course où un script
+  // chargé en <script defer> s'abonnerait APRÈS le tout premier événement et
+  // le raterait silencieusement).
   onChange(callback) {
     this._listeners.push(callback);
     if (this._resolved) {
-      try { callback({ session: this._session, profile: this._profile }); } catch (e) { console.error(e); }
+      try { callback({ session: this._session, profile: this._profile, isAnonymous: this._isAnon() }); } catch (e) { console.error(e); }
     }
+  },
+
+  _isAnon() {
+    return !!this._session?.user?.is_anonymous;
   },
 
   _emit(session) {
     this._session = session;
     this._resolved = true;
     this._listeners.forEach(cb => {
-      try { cb({ session, profile: this._profile }); } catch (e) { console.error(e); }
+      try { cb({ session, profile: this._profile, isAnonymous: this._isAnon() }); } catch (e) { console.error(e); }
     });
   },
 
   async _loadProfile(userId) {
     if (!userId) { this._profile = null; return; }
     try {
+      // maybeSingle() (pas single()) : une session anonyme n'a jamais de ligne
+      // profiles (voir handle_new_user côté SQL) — ce n'est pas une erreur,
+      // juste "pas de profil", donc pas de log ni d'exception pour ce cas.
       const { data, error } = await supabaseClient
         .from('profiles')
         .select('username, role')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       this._profile = data;
     } catch (e) {

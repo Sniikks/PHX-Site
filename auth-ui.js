@@ -13,7 +13,8 @@
         position: fixed; top: max(14px, env(safe-area-inset-top));
         right: max(14px, env(safe-area-inset-right));
         z-index: 700;
-        display: inline-flex; align-items: center; gap: 6px;
+        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        min-width: 100px; box-sizing: border-box;
         padding: 8px 14px;
         background: rgba(255,255,255,.04);
         border: 1px solid var(--border, #2a2d3a);
@@ -263,9 +264,9 @@
     });
 
     // Réagit aux changements de session (connexion/déconnexion/profil chargé)
-    PHXAuth.onChange(({ session, profile }) => {
-      connected = !!session;
-      if (!session) {
+    PHXAuth.onChange(({ session, profile, isAnonymous }) => {
+      connected = !!session && !isAnonymous;
+      if (!session || isAnonymous) {
         pill.textContent = 'Connexion';
       } else if (profile) {
         pill.innerHTML = (profile.role === 'curator' ? '<span class="crown">👑</span> ' : '') + profile.username;
