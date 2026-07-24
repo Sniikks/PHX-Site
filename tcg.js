@@ -105,6 +105,7 @@ document.getElementById('openBoosterBtn').addEventListener('click', async () => 
     const res = await fetch('/api/tcg?action=open', { method: 'POST', headers });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erreur');
+    if (!data.cards || data.cards.length === 0) throw new Error('0 carte renvoyée par le serveur.');
     showOpening(data.cards);
     await refreshStatus();
   } catch (e) {

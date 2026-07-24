@@ -117,9 +117,11 @@ async function pickRandomCardForValues(values, getTotal) {
 async function drawCardFromTierGroup(tiers, fallbackOrder, getTotal) {
   let tierKey = weightedPick(tiers);
   let card = null;
+  let lastError = null;
   try {
     card = await pickRandomCardForValues(tiers[tierKey].values, getTotal);
   } catch (e) {
+    lastError = e.message;
     console.error(`tcg rarity draw error (tier ${tierKey}):`, e.message);
   }
 
@@ -132,10 +134,11 @@ async function drawCardFromTierGroup(tiers, fallbackOrder, getTotal) {
     try {
       card = await pickRandomCardForValues(tiers[tierKey].values, getTotal);
     } catch (e) {
+      lastError = e.message;
       console.error(`tcg rarity draw error (tier ${tierKey}):`, e.message);
     }
   }
-  return { card, tier: tierKey };
+  return { card, tier: tierKey, lastError };
 }
 
 // Tire un booster complet : 5 cartes de base (commune/peu commune)
@@ -143,6 +146,11 @@ async function drawCardFromTierGroup(tiers, fallbackOrder, getTotal) {
 // donc lancés EN PARALLÈLE (Promise.all) plutôt qu'en séquence —
 // c'était la cause probable des échecs silencieux (fonction tuée
 // avant la fin des 12 appels réseau séquentiels).
+//
+// Si TOUS les tirages échouent (0 carte au final), on ne renvoie
+// plus un booster vide en silence : on lève une erreur avec le
+// dernier message concret rencontré, pour que l'utilisateur (et moi)
+// voyions enfin la vraie cause au lieu d'un overlay vide sans rien.
 async function drawBooster() {
   const getTotal = makeCountCache();
 
@@ -152,10 +160,14 @@ async function drawBooster() {
   const rarePromise = drawCardFromTierGroup(RARE_SLOT_TIERS, RARE_FALLBACK_ORDER, getTotal);
 
   const results = await Promise.all([...basePromises, rarePromise]);
+  const cards = results.filter(r => r.card).map(r => ({ ...r.card, _tier: r.tier }));
 
-  return results
-    .filter(r => r.card)
-    .map(r => ({ ...r.card, _tier: r.tier }));
+  if (cards.length === 0) {
+    const lastError = results.map(r => r.lastError).find(Boolean);
+    throw new Error(lastError || 'Aucune carte renvoyée par pokemontcg.io (raison inconnue).');
+  }
+
+  return cards;
 }
 
 module.exports = { drawBooster, BASE_TIERS, RARE_SLOT_TIERS };
