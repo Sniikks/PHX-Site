@@ -68,7 +68,12 @@ function buildRarityQuery(values) {
 // faire échouer TOUTE l'ouverture sans qu'aucune carte ne s'affiche.
 // On limite chaque appel à 6s et on parallélise tout ce qui peut
 // l'être (voir drawBooster) pour rester largement sous la limite.
-async function fetchJSON(url) {
+//
+// 1 retry automatique sur échec 429 (quota/minute dépassé — probable
+// en lançant 6 tirages en parallèle d'un coup) ou 500 ponctuel, avant
+// d'abandonner ce palier : explique pourquoi certains tirages
+// n'obtenaient qu'une partie des 6 cartes.
+async function fetchJSON(url, attempt = 1) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 6000);
   try {
@@ -76,7 +81,14 @@ async function fetchJSON(url) {
       headers: { 'X-Api-Key': process.env.POKEMON_TCG_API_KEY },
       signal: controller.signal,
     });
-    if (!res.ok) throw new Error(`pokemontcg.io ${res.status}`);
+    if (!res.ok) {
+      if ((res.status === 429 || res.status >= 500) && attempt < 2) {
+        clearTimeout(timeout);
+        await new Promise(r => setTimeout(r, 350 * attempt));
+        return fetchJSON(url, attempt + 1);
+      }
+      throw new Error(`pokemontcg.io ${res.status}`);
+    }
     return await res.json();
   } finally {
     clearTimeout(timeout);

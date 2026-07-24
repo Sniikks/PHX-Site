@@ -121,20 +121,12 @@ function showOpening(cards) {
   const stage = document.getElementById('openingStage');
   stage.innerHTML = '';
 
-  cards.forEach((card, i) => {
+  cards.forEach(card => {
     const wrap = document.createElement('div');
     wrap.className = `reveal-card${card.tier ? ' tier-' + card.tier : ''}`;
-    wrap.innerHTML = `
-      <div class="face back">📦</div>
-      <div class="face front">
-        <img src="${card.imageLarge || card.imageSmall || ''}" alt="${card.name}" loading="lazy">
-      </div>
-    `;
+    wrap.innerHTML = `<img src="${card.imageLarge || card.imageSmall || ''}" alt="${card.name}" loading="lazy">`;
     wrap.title = `${card.name} — ${card.rarity || ''}`;
     stage.appendChild(wrap);
-
-    // Révélation en cascade, légèrement décalée par carte
-    setTimeout(() => wrap.classList.add('flipped'), 300 + i * 220);
   });
 
   overlay.classList.add('active');
